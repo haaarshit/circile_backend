@@ -6,7 +6,7 @@ from .views import (
     RegisterProducerView,
     LoginView,
     send_verification_email,
-    verify_email
+    verify_email,
 )
 
 urlpatterns = [
@@ -17,6 +17,7 @@ urlpatterns = [
     # Authentication Routes
     path('login/', LoginView.as_view(), name='token_obtain_pair'),
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+
 
     # Email Verification Routes
     path('send-verification-email/', send_verification_email, name='send-verification-email'),

@@ -1,3 +1,4 @@
+import uuid 
 from django.db import models
 from django.contrib.auth.hashers import make_password
 from django.utils.crypto import get_random_string
@@ -8,18 +9,21 @@ from datetime import timedelta
 from django.contrib.auth.models import AbstractBaseUser, UserManager,PermissionsMixin
 from .managers import CustomUserManager  # Import the custom manager
 import re
-from .const import getTemplate
 
 class BaseUserModel(AbstractBaseUser):
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)  # UUID primary key
 
     email = models.EmailField(unique=True, max_length=255)
     full_name = models.CharField(max_length=100)
     mobile_no = models.CharField(max_length=15)
     designation = models.CharField(max_length=100)
     password = models.CharField(max_length=255)
+    # TODO -> ADD company_name,city name,state,gst,pcb no,address,company_logo,pcb_doc
 
-    username = None 
     USERNAME_FIELD = 'email'
+    # REQUIRED_FIELDS = []
+
 
     is_active = models.BooleanField(default=True)  
     # Email verification fields

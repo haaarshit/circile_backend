@@ -1,9 +1,21 @@
 from rest_framework import generics, status
 from rest_framework.response import Response
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, authentication_classes, permission_classes
 from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework.permissions import AllowAny
 from django.shortcuts import get_object_or_404
+
+from django.contrib.auth import get_user_model
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.parsers import JSONParser
+
+# Import serializer for user updates
+
+from django.contrib.auth.hashers import check_password
+from rest_framework_simplejwt.tokens import RefreshToken
 
 import jwt
 from django.conf import settings
@@ -12,7 +24,8 @@ from django.utils import timezone
 from datetime import timedelta
 from .utils import validate_unique_email
 from .models import Recycler, Producer
-from .serializers import RecyclerSerializer, ProducerSerializer
+from .serializers import RecyclerSerializer, ProducerSerializer, CustomTokenObtainPairSerializer
+from .authentication import CustomJWTAuthentication
 
 class RegisterRecyclerView(generics.CreateAPIView):
     """
@@ -79,6 +92,7 @@ class RegisterProducerView(generics.CreateAPIView):
         
         # Create user but keep is_verified as False
         user = serializer.save()
+        # Send verification token to be verified
         user.generate_verification_token()
         user.send_verification_email()
         
@@ -91,35 +105,39 @@ class LoginView(TokenObtainPairView):
     """
     Custom login view with email verification check
     """
+    # change default serializer
+    # serializer_class = CustomTokenObtainPairSerializer
+
+    permission_classes = [AllowAny]
+
     def post(self, request, *args, **kwargs):
         email = request.data.get("username")
+        password = request.data.get("password")
 
-        print('---------------------------------------------------------------------------')
-        print(email)
-        print('---------------------------------------------------------------------------')
-        
+        user = None
 
-        # Check both Recycler and Producer models
         try:
             user = Recycler.objects.get(email=email)
         except Recycler.DoesNotExist:
             try:
                 user = Producer.objects.get(email=email)
             except Producer.DoesNotExist:
-                return Response(
-                    {"error": "Invalid email or password."}, 
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-        
-        # Verify email status
+                return Response({"error": "Invalid email or password."}, status=status.HTTP_400_BAD_REQUEST)
+
+        if not check_password(password, user.password):
+            return Response({"error": "Invalid email or password."}, status=status.HTTP_400_BAD_REQUEST)
+
         if not user.is_verified:
-            return Response(
-                {"error": "Email not verified. Please check your email."}, 
-                status=status.HTTP_400_BAD_REQUEST
-            )
+            user.generate_verification_token()
+            user.send_verification_email()
+            return Response({"error": "Email is not verified. Please check your email."}, status=status.HTTP_400_BAD_REQUEST)
 
-        return super().post(request, *args, **kwargs)
-
+        # Generate JWT tokens manually
+        refresh = RefreshToken.for_user(user)
+        return Response({
+            "refresh": str(refresh),
+            "access": str(refresh.access_token),
+        })
 
 @api_view(['POST'])
 def send_verification_email(request):
@@ -146,43 +164,6 @@ def send_verification_email(request):
     }, status=status.HTTP_200_OK)
 
 @api_view(['GET'])
-# def verify_email(request,user_type,token):
-#     """
-#     Verify user email using token
-#     """
-    # token = request.GET.get('token')
-
-    # # Try to find user in both Recycler and Producer models
-    # def find_user_by_token(token):
-    #     for model in [Recycler, Producer]:
-    #         try:
-    #             return model.objects.get(verification_token=token)
-    #         except model.DoesNotExist:
-    #             continue
-    #     return None
-
-    # user = find_user_by_token(token)
-
-    # if not user:
-    #     return Response({
-    #         'error': 'Invalid verification token'
-    #     }, status=status.HTTP_400_BAD_REQUEST)
-
-    # # Check token expiration (24 hours)
-    # if (timezone.now() - user.token_created_at).total_seconds() > 24 * 3600:
-    #     return Response({
-    #         'error': 'Verification token has expired'
-    #     }, status=status.HTTP_400_BAD_REQUEST)
-
-    # # Verify the user
-    # user.is_verified = True
-    # user.verification_token = None
-    # user.save()
-
-    # return Response({
-    #     'message': 'Email verified successfully'
-    # }, status=status.HTTP_200_OK)
-
 def verify_email(request, user_type, token):
  
     # Select the correct model based on user type
@@ -200,3 +181,4 @@ def verify_email(request, user_type, token):
 
     # TODO -> redirect to profile of the user
     return Response({'message': 'Email verified successfully'}, status=status.HTTP_200_OK)
+
