@@ -7,8 +7,10 @@ from django.conf import settings
 from django.utils import timezone
 from datetime import timedelta
 from django.contrib.auth.models import AbstractBaseUser, UserManager,PermissionsMixin
-from .managers import CustomUserManager  # Import the custom manager
+from .managers import CustomUserManager  
 import re
+
+from cloudinary.models import CloudinaryField
 
 class BaseUserModel(AbstractBaseUser):
 
@@ -19,7 +21,17 @@ class BaseUserModel(AbstractBaseUser):
     mobile_no = models.CharField(max_length=15)
     designation = models.CharField(max_length=100)
     password = models.CharField(max_length=255)
-    # TODO -> ADD company_name,city name,state,gst,pcb no,address,company_logo,pcb_doc
+    
+     # New fields (optional at registration)
+    company_name = models.CharField(max_length=255, null=True, blank=True)
+    city = models.CharField(max_length=100, null=True, blank=True)
+    state = models.CharField(max_length=100, null=True, blank=True)
+    gst_number = models.CharField(max_length=50, null=True, blank=True)
+    pcb_number = models.CharField(max_length=100, null=True, blank=True)
+    address = models.TextField(null=True, blank=True)
+
+    company_logo = CloudinaryField('image', null=True, blank=True)
+    pcb_doc = CloudinaryField('raw', resource_type='raw', null=True, blank=True)
 
     USERNAME_FIELD = 'email'
     # REQUIRED_FIELDS = []

@@ -1,5 +1,7 @@
 from rest_framework import serializers
 from .models import Recycler, Producer
+from decouple import config
+cloud_name = config('CLOUDINARY_CLOUD_NAME')
 
 class RecyclerSerializer(serializers.ModelSerializer):
     class Meta:
@@ -21,45 +23,94 @@ class ProducerSerializer(serializers.ModelSerializer):
         user = Producer.objects.create_user(**validated_data)
         return user
 
-
-
-from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
-
-class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
-    @classmethod
-    def get_token(cls, user):
-        token = super().get_token(user)
-
-        # Ensure UUID is stored as a string in the JWT token
-        token["user_id"] = str(user.id)
-
-        return token
-
-# class RecyclerUpdateSerializer(serializers.ModelSerializer):
-#     class Meta:
-#         model = Recycler
-#         fields = ['full_name', 'designation', 'password']
-#         extra_kwargs = {'password': {'write_only': True}}
+class RecyclerUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Recycler
+        # fields = [
+        #     'company_name', 'city', 'state', 'gst_number', 'pcb_number', 'address', 'company_logo', 'pcb_doc'
+        # ]
+        fields = '__all__'
+    
+    def validate(self, data):
+        request = self.context.get('request')
+        if request and request.method in ['PATCH', 'PUT']:
+            # For partial updates, only validate fields that are being updated
+            if 'company_logo' in request.FILES and not request.FILES.get('company_logo'):
+                raise serializers.ValidationError({"company_logo": "Company logo file is required."})
+                
+            if 'pcb_doc' in request.FILES and not request.FILES.get('pcb_doc'):
+                raise serializers.ValidationError({"pcb_doc": "PCB document file is required."})
+             
+        return data
+    
+            
+    def to_representation(self, instance):
+        # This is for GET requests (viewing the data)
+        representation = super().to_representation(instance)
         
-#         # Make fields optional
-#         extra_kwargs = {
-#             'password': {'write_only': True},
-#             'full_name': {'required': False},
-#             'designation': {'required': False},
-#             'password': {'required': False},
-#         }
-    
-# class ProducerUpdateSerializer(serializers.ModelSerializer):
-#     class Meta:
-#         model = Producer
-#         fields = ['full_name', 'designation', 'password']
+        # Add the full URLs for company_logo
+        if instance.company_logo:
+            if instance.company_logo.url.startswith('http'):
+                representation['company_logo'] = instance.company_logo.url
+            else:
+                representation['company_logo'] = f'https://res.cloudinary.com/{cloud_name}/{instance.company_logo.url}'
         
-#         # Make fields optional
-#         extra_kwargs = {
-#             'password': {'write_only': True},
-#             'full_name': {'required': False},
-#             'designation': {'required': False},
-#             'password': {'required': False},
-#         }
+        # Add the full URLs for pcb_doc
+        if instance.pcb_doc:
+            if instance.pcb_doc.url.startswith('http'):
+                representation['pcb_doc'] = instance.pcb_doc.url
+            else:
+                representation['pcb_doc'] = f'https://res.cloudinary.com/{cloud_name}/{instance.pcb_doc.url}'
+        representation.pop('password', None)        
+        return representation
+
+class ProducerUpdateSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = Producer
+        fields = '__all__'
     
+    def validate(self, data):
+        request = self.context.get('request')
+        if request and request.method in ['PATCH', 'PUT']:
+            # For partial updates, only validate fields that are being updated
+            if 'company_logo' in request.FILES and not request.FILES.get('company_logo'):
+                raise serializers.ValidationError({"company_logo": "Company logo file is required."})
+                
+            if 'pcb_doc' in request.FILES and not request.FILES.get('pcb_doc'):
+                raise serializers.ValidationError({"pcb_doc": "PCB document file is required."})
+            
+            # company_logo = request.FILES.get('company_logo')
+            # if company_logo:
+            #     if not company_logo.content_type.startswith('image/'):
+            #         raise serializers.ValidationError({"company_logo": "File must be an image."})
+            
+            # pcb_doc = request.FILES.get('pcb_doc')
+            # if pcb_doc:
+            #     valid_doc_types = ['application/pdf', 'application/msword', 
+            #                       'application/vnd.openxmlformats-officedocument.wordprocessingml.document']
+            #     if pcb_doc.content_type not in valid_doc_types:
+            #         raise serializers.ValidationError({"pcb_doc": "File must be a PDF or DOC/DOCX document."})
+        
+        return data
     
+    def to_representation(self, instance):
+        # This is for GET requests (viewing the data)
+        representation = super().to_representation(instance)
+        
+        # Add the full URLs for company_logo
+        if instance.company_logo:
+            if instance.company_logo.url.startswith('http'):
+                representation['company_logo'] = instance.company_logo.url
+            else:
+                representation['company_logo'] = f'https://res.cloudinary.com/{cloud_name}/{instance.company_logo.url}'
+        
+        # Add the full URLs for pcb_doc
+        if instance.pcb_doc:
+            if instance.pcb_doc.url.startswith('http'):
+                representation['pcb_doc'] = instance.pcb_doc.url
+            else:
+                representation['pcb_doc'] = f'https://res.cloudinary.com/{cloud_name}/{instance.pcb_doc.url}'
+        representation.pop('password', None)
+
+        return representation

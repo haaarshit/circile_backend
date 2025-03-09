@@ -1,6 +1,5 @@
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework_simplejwt.tokens import UntypedToken
-from django.contrib.auth.models import AnonymousUser
 from users.models import Recycler, Producer
 from jwt import decode
 from django.conf import settings

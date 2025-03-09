@@ -10,8 +10,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
-from rest_framework.parsers import JSONParser
-
+from rest_framework.parsers import JSONParser, MultiPartParser, FormParser
 # Import serializer for user updates
 
 from django.contrib.auth.hashers import check_password
@@ -24,7 +23,7 @@ from django.utils import timezone
 from datetime import timedelta
 from .utils import validate_unique_email
 from .models import Recycler, Producer
-from .serializers import RecyclerSerializer, ProducerSerializer, CustomTokenObtainPairSerializer
+from .serializers import RecyclerSerializer, ProducerSerializer,RecyclerUpdateSerializer,ProducerUpdateSerializer
 from .authentication import CustomJWTAuthentication
 
 class RegisterRecyclerView(generics.CreateAPIView):
@@ -62,7 +61,6 @@ class RegisterRecyclerView(generics.CreateAPIView):
             "message": "Registration successful. Please check your email to verify your account.",
             "user": serializer.data
         }, status=status.HTTP_201_CREATED)
-
 
 class RegisterProducerView(generics.CreateAPIView):
     """
@@ -105,15 +103,12 @@ class LoginView(TokenObtainPairView):
     """
     Custom login view with email verification check
     """
-    # change default serializer
-    # serializer_class = CustomTokenObtainPairSerializer
 
     permission_classes = [AllowAny]
 
     def post(self, request, *args, **kwargs):
         email = request.data.get("username")
         password = request.data.get("password")
-
         user = None
 
         try:
@@ -138,6 +133,41 @@ class LoginView(TokenObtainPairView):
             "refresh": str(refresh),
             "access": str(refresh.access_token),
         })
+
+class UpdateUserProfileView(APIView):
+  
+    authentication_classes = [CustomJWTAuthentication]
+    permission_classes = [IsAuthenticated]
+    parser_classes = [JSONParser, FormParser, MultiPartParser]
+     
+    # TODO -> MAY REMOVE 
+    def put(self, request):
+        return self.update_profile(request, partial=False)  
+
+    def patch(self, request):
+        return self.update_profile(request, partial=True)  
+
+    def update_profile(self, request, partial):
+        user = request.user  # Authenticated user
+
+        if isinstance(user, Recycler):
+            serializer = RecyclerUpdateSerializer(user, data=request.data, partial=partial)
+        elif isinstance(user, Producer):
+            serializer = ProducerUpdateSerializer(user, data=request.data, partial=partial)
+        else:
+            return Response({"error": "Invalid user type"}, status=status.HTTP_400_BAD_REQUEST)
+
+        if serializer.is_valid():
+            serializer.save()
+            return Response(
+                {"message": "Profile updated successfully", "data": serializer.data},
+                status=status.HTTP_200_OK
+            )
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+
 
 @api_view(['POST'])
 def send_verification_email(request):

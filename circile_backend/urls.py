@@ -19,5 +19,25 @@ from django.urls import path,include
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('api/users/',include('users.urls'),name='users')
+    path('api/users/',include('users.urls'),name='users'),
+    path('api/epr/',include('epr_account.urls'),name='epr_account')
 ]
+
+"""
+# REGISTER FOR RECYCLER 
+http://localhost:3000/api/users/register/recycler/
+# REGISTER FOR RECYCLER
+http://localhost:3000/api/users/register/producer/
+# LOGIN FOR BOTH
+http://localhost:3000/api/users/register/login/
+# UPDATE FOR BOTH
+http://localhost:3000/api/users/register/update/
+
+# EPR_ACCOUNT [ROUTE FOR ALL => POST,PUT,DELETE,PATCH,GET]
+# FOR RECYCLER
+http://localhost:3000/api/epr/recycler/
+# FOR PRODUCER
+http://localhost:3000/api/epr/producer/
+# EPR CREDIT -> ONLY FOR RECYLER
+http://localhost:3000/api/epr/recycler/credit/
+"""
