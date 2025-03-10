@@ -110,12 +110,16 @@ class LoginView(TokenObtainPairView):
         email = request.data.get("username")
         password = request.data.get("password")
         user = None
+        account_type = None
+
 
         try:
             user = Recycler.objects.get(email=email)
+            account_type = "recycler"
         except Recycler.DoesNotExist:
             try:
                 user = Producer.objects.get(email=email)
+                account_type = "producer"
             except Producer.DoesNotExist:
                 return Response({"error": "Invalid email or password."}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -132,6 +136,7 @@ class LoginView(TokenObtainPairView):
         return Response({
             "refresh": str(refresh),
             "access": str(refresh.access_token),
+            "account": account_type  # Add the account type to response
         })
 
 class UpdateUserProfileView(APIView):

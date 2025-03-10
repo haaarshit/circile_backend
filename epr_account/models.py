@@ -177,32 +177,11 @@ class ProducerEPR(models.Model):
 
 # ONLY FOR REDUCER
 class EPRCredit(models.Model):
-    # WASTE_CHOICES = {   
-    #     'Plastic': {
-    #         'product_types': ['Category I','Category II','Category III','Category IV',],
-    #         'credit_types': ['Recycled Plastic Credit', 'Processed Plastic Credit']
-    #     },
-    # 'E-waste': {
-    #     'product_types': ['Motherboards', 'Hard Drives', 'Laptops', 'Mobile Phones'],
-    #     'credit_types': ['E-waste Recycling Credit', 'E-waste Processing Credit']
-    # },
-    # 'Battery': {
-    #     'product_types': ['Lithium-Ion Battery', 'Lead-Acid Battery', 'Nickel-Cadmium Battery'],
-    #     'credit_types': ['Battery Recycling Credit', 'Battery Collection Credit']
-    # },
-    # 'Tyre': {
-    #     'product_types': ['Rubber Powder', 'Crumb Rubber', 'Tyre Derived Fuel (TDF)'],
-    #     'credit_types': ['Tyre Recycling Credit', 'Rubber Recovery Credit']
-    # },
-    # 'Oil': {
-    #     'product_types': ['Used Engine Oil', 'Lubricating Oil', 'Transformer Oil'],
-    #     'credit_types': ['Oil Recycling Credit', 'Oil Collection Credit']
-    # }
-    # }
+
     id = models.UUIDField(default=uuid.uuid4, primary_key=True, editable=False)
 
-    recycler = models.ForeignKey('users.Recycler', on_delete=models.CASCADE, related_name='recyler')
-    epr_account = models.ForeignKey(RecyclerEPR, on_delete=models.CASCADE, related_name='epr_accounts')
+    recycler = models.ForeignKey('users.Recycler', on_delete=models.CASCADE, related_name='recycler_epr_credits')
+    epr_account = models.ForeignKey(RecyclerEPR, on_delete=models.CASCADE, related_name='epr_account_credits')
     epr_registration_number = models.CharField(max_length=50)
     waste_type = models.CharField(max_length=20, choices=[(wt, wt) for wt in WASTE_CHOICES.keys()])
 
@@ -234,8 +213,8 @@ class EPRCredit(models.Model):
 class EPRTarget(models.Model):
 
     id = models.UUIDField(default=uuid.uuid4, primary_key=True, editable=False)
-    producer = models.ForeignKey('users.Producer', on_delete=models.CASCADE, related_name='producer')
-    epr_account = models.ForeignKey(ProducerEPR, on_delete=models.CASCADE, related_name='epr_accounts')
+    producer = models.ForeignKey('users.Producer', on_delete=models.CASCADE, related_name='producer_epr_targets')
+    epr_account = models.ForeignKey(ProducerEPR, on_delete=models.CASCADE, related_name='epr_account_targets')
     epr_registration_number = models.CharField(max_length=50)
     waste_type = models.CharField(max_length=20, choices=[(wt, wt) for wt in WASTE_CHOICES.keys()])
 
@@ -263,15 +242,55 @@ class EPRTarget(models.Model):
 # CREDIT OFFER BY RECYLER
 class CreditOffer(models.Model):
     id = models.UUIDField(default=uuid.uuid4, primary_key=True, editable=False)
-    recycler = models.ForeignKey('users.Recycler', on_delete=models.CASCADE, related_name='recyler')
-    epr_account = models.ForeignKey(ProducerEPR, on_delete=models.CASCADE, related_name='epr_accounts')
-    epr_credit = models.ForeignKey(EPRCredit, on_delete=models.CASCADE, related_name='epr_credit')
+    recycler = models.ForeignKey('users.Recycler', on_delete=models.CASCADE, related_name='recycler_credit_offers')
+    epr_account = models.ForeignKey(RecyclerEPR, on_delete=models.CASCADE, related_name='epr_account_credit_offers')
+    epr_credit = models.ForeignKey(EPRCredit, on_delete=models.CASCADE, related_name='epr_credit_offers')
+    # populate from credit record
     epr_registration_number = models.CharField(max_length=50)
-    FY = models.IntegerField()
     waste_type = models.CharField(max_length=20, choices=[(wt, wt) for wt in WASTE_CHOICES.keys()])
+    # approved super admin
+    is_approved = models.BooleanField(default=False)  
     
-    
+    # hard entry from user
+    FY = models.IntegerField()
+    offer_title = models.CharField(max_length=255)
+    credit_available = models.FloatField() # in kgs
+    minimum_purchase = models.FloatField()
+    price_per_credit = models.FloatField()
+    documents = CloudinaryField('raw', resource_type='raw')
 
-    product_type = models.CharField(max_length=100)
-    credit_type = models.CharField(max_length=100)
-    target_quantity = models.IntegerField() # in kgs
+
+    
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+
+# COUNTER CREDIT OFFER BY PRODUCER
+class CounterCreditOffer(models.Model):
+    STATUS_CHOICES = [
+        ("pending", "Pending"),
+        ("approved", "Approved"),
+        ("rejected", "Rejected"),
+    ]
+
+    id = models.UUIDField(default=uuid.uuid4, primary_key=True, editable=False)
+    producer = models.ForeignKey('users.Producer', on_delete=models.CASCADE, related_name='producer_counter_credit_offer')
+    recycler = models.ForeignKey('users.Recycler', on_delete=models.CASCADE, related_name='recycler_counter_credit_offers')
+    credit_offer = models.ForeignKey(CreditOffer, on_delete=models.CASCADE, related_name='counter_credit_offers')
+    
+    # hard entry from user
+    quantity = models.FloatField(blank=False) # in kgs
+    offer_price = models.FloatField(blank=False)
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default="pending")  
+    is_approved = models.BooleanField(default=False)  
+
+
+
+
+    def clean(self):
+        pass
+    
+    def save(self, *args, **kwargs):
+        self.clean()
+        super().save(*args, **kwargs)
+
+

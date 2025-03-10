@@ -80,18 +80,6 @@ class ProducerUpdateSerializer(serializers.ModelSerializer):
             if 'pcb_doc' in request.FILES and not request.FILES.get('pcb_doc'):
                 raise serializers.ValidationError({"pcb_doc": "PCB document file is required."})
             
-            # company_logo = request.FILES.get('company_logo')
-            # if company_logo:
-            #     if not company_logo.content_type.startswith('image/'):
-            #         raise serializers.ValidationError({"company_logo": "File must be an image."})
-            
-            # pcb_doc = request.FILES.get('pcb_doc')
-            # if pcb_doc:
-            #     valid_doc_types = ['application/pdf', 'application/msword', 
-            #                       'application/vnd.openxmlformats-officedocument.wordprocessingml.document']
-            #     if pcb_doc.content_type not in valid_doc_types:
-            #         raise serializers.ValidationError({"pcb_doc": "File must be a PDF or DOC/DOCX document."})
-        
         return data
     
     def to_representation(self, instance):
