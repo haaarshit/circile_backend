@@ -89,25 +89,7 @@ WASTE_CHOICES = {
 }
 
 class RecyclerEPR(models.Model):
-    # WASTE_CHOICES = {
-    # 'Plastic': {
-    #     'recycler_types': ['Plastic Recycler A', 'Plastic Recycler B', 'Shredder', 'Pelletizer'],
-    # },
-    # 'E-waste': {
-    #     'recycler_types': ['E-waste Processor', 'Refurbisher', 'Dismantler'],
-    # },
-    # 'Battery': {
-    #     'recycler_types': ['Battery Recycler', 'Battery Smelter', 'Lead Acid Processor'],
-    # },
-    # 'Tyre': {
-    #     'recycler_types': ['Tyre Shredder', 'Crumb Rubber Processor', 'Tyre Pyrolysis Unit'],
-    # },
-    # 'Oil': {
-    #     'recycler_types': ['Waste Oil Collector', 'Oil Refinery', 'Oil Re-processor'],
-    # }
-    # }
-    # WASTE_CHOICES = ('Plastic','E-waste','Battery','Tyre','Oil')
-
+   
     id = models.UUIDField(default=uuid.uuid4, primary_key=True, editable=False)
     recycler = models.ForeignKey('users.Recycler', on_delete=models.CASCADE, related_name='epr_accounts')
 
@@ -126,9 +108,8 @@ class RecyclerEPR(models.Model):
 
     
     def clean(self):
-        if self.waste_type in self.WASTE_CHOICES:
-            valid_recycler_types = self.WASTE_CHOICES[self.waste_type]['recycler_types']
-
+        if self.waste_type in WASTE_CHOICES:
+            valid_recycler_types = WASTE_CHOICES[self.waste_type]['recycler_types']
             if self.recycler_type not in valid_recycler_types:
                 raise ValidationError(f"Invalid Recycler Type '{self.recycler_type}' for Waste Type '{self.waste_type}'")
             

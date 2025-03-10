@@ -14,7 +14,7 @@ router = DefaultRouter()
 
 # EPR related endpoints
 router.register(r'recycler', RecyclerEPRViewSet, basename='recycler-epr')
-router.register(r'recycler/credit', EPRCreditViewSet, basename='recycler-credit')
+router.register(r'recycler/credit', EPRCreditViewSet, basename='recycler-credit') # problem
 router.register(r'producer', ProducerEPRViewSet, basename='producer-epr')
 router.register(r'producer/target', EPRTargetViewSet, basename='producer-target')
 

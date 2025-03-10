@@ -24,18 +24,6 @@ class RecyclerEPRSerializer(serializers.ModelSerializer):
                 
         return None
 
-    # def create(self, validated_data):
-    
-    #     request = self.context['request']
-    #     validated_data['recycler'] = request.user
-    #     # Handle file uploads explicitly
-    #     epr_certificate = request.FILES.get('epr_certificate')
-    #     if epr_certificate:
-    #         validated_data['epr_certificate'] = epr_certificate
-    #     else:
-    #         validated_data['epr_certificate'] = None  
-
-    #     return super().create(validated_data)
     def validate(self, data):
         """
         Check that the EPR certificate file is provided.
@@ -48,12 +36,24 @@ class RecyclerEPRSerializer(serializers.ModelSerializer):
     def create(self, validated_data): 
 
         request = self.context['request']
-        validated_data['producer'] = request.user
+        validated_data['recycler'] = request.user
         
         epr_certificate = request.FILES.get('epr_certificate')
         validated_data['epr_certificate'] = epr_certificate
         
         return super().create(validated_data)
+    # def create(self, validated_data):
+    
+    #     request = self.context['request']
+    #     validated_data['recycler'] = request.user
+    #     # Handle file uploads explicitly
+    #     epr_certificate = request.FILES.get('epr_certificate')
+    #     if epr_certificate:
+    #         validated_data['epr_certificate'] = epr_certificate
+    #     else:
+    #         validated_data['epr_certificate'] = None  
+
+    #     return super().create(validated_data)
 
 class ProducerEPRSerializer(serializers.ModelSerializer):
     epr_certificate = serializers.SerializerMethodField()

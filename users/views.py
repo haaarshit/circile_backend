@@ -146,9 +146,13 @@ class UpdateUserProfileView(APIView):
     parser_classes = [JSONParser, FormParser, MultiPartParser]
      
     # TODO -> MAY REMOVE 
+    # def put(self, request):
+    #     return self.update_profile(request, partial=False)  
     def put(self, request):
-        return self.update_profile(request, partial=False)  
-
+        return Response(
+            {"error": "PUT method is not allowed. Please use PATCH instead."},
+            status=status.HTTP_405_METHOD_NOT_ALLOWED
+        )
     def patch(self, request):
         return self.update_profile(request, partial=True)  
 
