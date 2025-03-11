@@ -1,4 +1,4 @@
-from rest_framework import generics, status
+from rest_framework import status, serializers,generics
 from rest_framework.response import Response
 from rest_framework.decorators import api_view, authentication_classes, permission_classes
 from rest_framework_simplejwt.views import TokenObtainPairView
@@ -67,7 +67,7 @@ class RegisterRecyclerView(generics.CreateAPIView):
             print('---------------------------------------------------------------------------')
             if existing_user:
                 return Response(
-                    {"error": "User already exist."}, 
+                    {"error": "User already exist.","status":False}, 
                     status=status.HTTP_400_BAD_REQUEST
                 )
             request_data = {}
@@ -88,13 +88,14 @@ class RegisterRecyclerView(generics.CreateAPIView):
             
             return Response({
                 "message": "Registration successful. Please check your email to verify your account.",
-                "user": serializer.data
+                "user": serializer.data,
+                "status":True
             }, status=status.HTTP_201_CREATED)
         
         except Exception as e:
             print(f"Registration error: {str(e)}")
             return Response(
-                {"error": f"{str(e)}"},
+                {"error": f"{str(e)}","status":False},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
         
@@ -120,7 +121,7 @@ class RegisterProducerView(generics.CreateAPIView):
             print('---------------------------------------------------------------------------')
             if existing_user:
                 return Response(
-                    {"error": "User already exist."}, 
+                    {"error": "User already exist.","status":False}, 
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
@@ -136,11 +137,11 @@ class RegisterProducerView(generics.CreateAPIView):
             return Response({
                 "message": "Registration successful. Please check your email to verify your account.",
                 "user": serializer.data
-            }, status=status.HTTP_201_CREATED)
+            ,"status":True}, status=status.HTTP_201_CREATED)
         except Exception as e:
             print(f"Registration error: {str(e)}")
             return Response(
-                {"error": f"{str(e)}"},
+                {"error": f"{str(e)}","status":False},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
@@ -152,37 +153,45 @@ class LoginView(TokenObtainPairView):
     permission_classes = [AllowAny]
 
     def post(self, request, *args, **kwargs):
-        email = request.data.get("username")
-        password = request.data.get("password")
-        user = None
-        account_type = None
-
-
         try:
-            user = Recycler.objects.get(email=email)
-            account_type = "recycler"
-        except Recycler.DoesNotExist:
+            email = request.data.get("username")
+            password = request.data.get("password")
+            user = None
+            account_type = None
+
+
             try:
-                user = Producer.objects.get(email=email)
-                account_type = "producer"
-            except Producer.DoesNotExist:
-                return Response({"error": "Invalid email or password."}, status=status.HTTP_400_BAD_REQUEST)
+                user = Recycler.objects.get(email=email)
+                account_type = "recycler"
+            except Recycler.DoesNotExist:
+                try:
+                    user = Producer.objects.get(email=email)
+                    account_type = "producer"
+                except Producer.DoesNotExist:
+                    return Response({"error": "Invalid email or password.","status":False}, status=status.HTTP_400_BAD_REQUEST)
 
-        if not check_password(password, user.password):
-            return Response({"error": "Invalid email or password."}, status=status.HTTP_400_BAD_REQUEST)
+            if not check_password(password, user.password):
+                return Response({"error": "Invalid email or password.","status":False}, status=status.HTTP_400_BAD_REQUEST)
 
-        if not user.is_verified:
-            user.generate_verification_token()
-            user.send_verification_email()
-            return Response({"error": "Email is not verified. Please check your email."}, status=status.HTTP_400_BAD_REQUEST)
+            if not user.is_verified:
+                user.generate_verification_token()
+                user.send_verification_email()
+                return Response({"error": "Email is not verified. Please check your email.","status":False}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Generate JWT tokens manually
-        refresh = RefreshToken.for_user(user)
-        return Response({
-            "refresh": str(refresh),
-            "access": str(refresh.access_token),
-            "account": account_type  # Add the account type to response
-        })
+            # Generate JWT tokens manually
+            refresh = RefreshToken.for_user(user)
+            return Response({
+                "refresh": str(refresh),
+                "access": str(refresh.access_token),
+                "account": account_type  ,
+                "status":True
+            })
+        except Exception as e:
+            # Handle other exceptions
+            return Response(
+                {"error": f"{str(e)}","status":False},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
 class UpdateUserProfileView(APIView):
   
@@ -195,7 +204,7 @@ class UpdateUserProfileView(APIView):
     #     return self.update_profile(request, partial=False)  
     def put(self, request):
             return Response(
-                {"error": "PUT method is not allowed. Please use PATCH instead."},
+                {"error": "PUT method is not allowed. Please use PATCH instead.","status":False},
                 status=status.HTTP_405_METHOD_NOT_ALLOWED
             )
     def patch(self, request):
@@ -215,7 +224,7 @@ class UpdateUserProfileView(APIView):
                         # Only raise error if they're actually trying to change the value
                         if current_value != requested_value:
                             return Response(
-                                {"error": f"{field} cannot be modified after registration"},
+                                {"error": f"{field} cannot be modified after registration","status":False},
                                 status=status.HTTP_400_BAD_REQUEST
                             )
 
@@ -224,20 +233,20 @@ class UpdateUserProfileView(APIView):
                 elif isinstance(user, Producer):
                     serializer = ProducerUpdateSerializer(user, data=request.data, partial=partial)
                 else:
-                    return Response({"error": "Invalid user type"}, status=status.HTTP_400_BAD_REQUEST)
+                    return Response({"error": "Invalid user type","status":False}, status=status.HTTP_400_BAD_REQUEST)
 
                 if serializer.is_valid():
                     serializer.save()
                     return Response(
-                        {"message": "Profile updated successfully", "data": serializer.data},
+                        {"message": "Profile updated successfully", "data": serializer.data,"status":True},
                         status=status.HTTP_200_OK
                     )
 
-                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+                return Response({"error": "Invalid user type","status":False}, status=status.HTTP_400_BAD_REQUEST)
             except Exception as e:
                     print(f"Registration error: {str(e)}")
                     return Response(
-                        {"error": f"{str(e)}"},
+                        {"error": f"{str(e)}","status":False},
                         status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
     
@@ -276,8 +285,6 @@ class UpdateUserProfileView(APIView):
 
 
 
-
-
 class GetProfileView(APIView):
     authentication_classes = [CustomJWTAuthentication]
     permission_classes = [IsAuthenticated]
@@ -292,21 +299,22 @@ class GetProfileView(APIView):
             elif isinstance(user, Producer):
                 serializer = ProducerDetailSerializer(user)  # Create a detailed serializer for profile viewing
             else:
-                return Response({"error": "Invalid user type"}, status=status.HTTP_400_BAD_REQUEST)
+                return Response({"error": "Invalid user type","status":False}, status=status.HTTP_400_BAD_REQUEST)
             
             # Return user profile data
             return Response(
                 {
                     "status": "success",
                     "message": "Profile retrieved successfully",
-                    "data": serializer.data
+                    "data": serializer.data,
+                    "status":True
                 },
                 status=status.HTTP_200_OK
             )
         except Exception as e:
                     print(f"Registration error: {str(e)}")
                     return Response(
-                        {"error": f"{str(e)}"},
+                        {"error": f"{str(e)}","status":False},
                         status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
     
@@ -326,32 +334,43 @@ def send_verification_email(request):
         try:
             user = Producer.objects.get(email=email)
         except Producer.DoesNotExist:
-            return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'error': 'User not found',"status":False}, status=status.HTTP_404_NOT_FOUND)
 
     # Generate and send new verification token
     user.generate_verification_token()
     user.send_verification_email()
 
     return Response({
-        'message': 'Verification email resent successfully'
+        'message': 'Verification email resent successfully',"status":True
     }, status=status.HTTP_200_OK)
 
 @api_view(['GET'])
 def verify_email(request, user_type, token):
+    try:
  
-    # Select the correct model based on user type
-    model = Recycler if user_type.lower() == "recycler" else Producer
-    user = get_object_or_404(model, verification_token=token)
+        # Select the correct model based on user type
+        model = Recycler if user_type.lower() == "recycler" else Producer
+        user = get_object_or_404(model, verification_token=token)
 
-    # Check if token is expired (24 hours)
-    if (timezone.now() - user.token_created_at).total_seconds() > 24 * 3600:
-        return Response({'error': 'Verification token has expired'}, status=status.HTTP_400_BAD_REQUEST)
+        # Check if token is expired (24 hours)
+        if (timezone.now() - user.token_created_at).total_seconds() > 24 * 3600:
+            return Response({'error': 'Verification token has expired',"status":False}, status=status.HTTP_400_BAD_REQUEST)
 
-    # Verify user
-    user.is_verified = True
-    user.verification_token = None
-    user.save()
+        # Verify user
+        user.is_verified = True
+        user.verification_token = None
+        user.save()
 
-    # TODO -> redirect to profile of the user
-    return Response({'message': 'Email verified successfully'}, status=status.HTTP_200_OK)
+        # TODO -> redirect to profile of the user
+        return Response({'message': 'Email verified successfully',"status":True}, status=status.HTTP_200_OK)
+    
+    except Exception as e:
+                    print(f"Mail verification error: {str(e)}")
+                    return Response(
+                        {"error": f"{str(e)}","status":False},
+                        status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+    
+
+
 

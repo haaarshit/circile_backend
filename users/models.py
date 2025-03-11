@@ -9,7 +9,7 @@ from datetime import timedelta
 from django.contrib.auth.models import AbstractBaseUser, UserManager,PermissionsMixin
 from .managers import CustomUserManager  
 import re
-
+import os
 from cloudinary.models import CloudinaryField
 
 class BaseUserModel(AbstractBaseUser):
@@ -72,7 +72,8 @@ class BaseUserModel(AbstractBaseUser):
         """
         Send email verification link
         """
-        verification_link = f"http://localhost:8000/api/users/verify-email/{self.__class__.__name__.lower()}/{self.verification_token}/"
+        base_url = os.getenv('BASE_URL')
+        verification_link = f"{base_url}/api/users/verify-email/{self.__class__.__name__.lower()}/{self.verification_token}/"
         
         subject = "Verify Your Email Address"
         message = f"""

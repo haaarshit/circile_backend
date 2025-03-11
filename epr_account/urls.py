@@ -7,6 +7,7 @@ from .views import (
     EPRTargetViewSet,
     CreditOfferViewSet,
     CounterCreditOfferViewSet,
+    PublicCreditOfferListView
 )
 from rest_framework.routers import DefaultRouter
 
@@ -25,5 +26,6 @@ router.register(r'counter-credit-offers', CounterCreditOfferViewSet, basename='c
 
 urlpatterns = [
     path('', include(router.urls)),
+      path('public-credit-offers/', PublicCreditOfferListView.as_view(), name='public-credit-offers'),
 ]
 

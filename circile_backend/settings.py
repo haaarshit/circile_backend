@@ -156,6 +156,8 @@ REST_FRAMEWORK = {
         'users.authentication.CustomJWTAuthentication',  # Use the custom authentication class
 
     ),
+        'EXCEPTION_HANDLER': 'epr_account.exceptions.custom_exception_handler',
+
 }
 
 # AUTH_USER_MODEL = 'users.BaseUserMode'  

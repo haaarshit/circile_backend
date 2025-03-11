@@ -1,6 +1,6 @@
 from django.urls import path
-from rest_framework_simplejwt.views import TokenRefreshView
-
+# from rest_framework_simplejwt.views import TokenRefreshView
+from .refresh_token import CustomRefreshTokenAuthentication
 from .views import (
     RegisterRecyclerView,
     RegisterProducerView,
@@ -18,7 +18,9 @@ urlpatterns = [
 
     # Authentication Routes
     path('login/', LoginView.as_view(), name='token_obtain_pair'),
-    path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    # /api/users/token/refresh
+    path('token/refresh/',  CustomRefreshTokenAuthentication.as_view(), name='token_refresh'),
+
     path('update/', UpdateUserProfileView.as_view(), name='udpate_view'),
     path('profile/', GetProfileView.as_view(), name='profile_view'),
 
