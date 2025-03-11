@@ -158,6 +158,51 @@ class UpdateUserProfileView(APIView):
 
     def update_profile(self, request, partial):
         user = request.user  # Authenticated user
+        protected_fields = ['email', 'mobile_no','password']
+        for field in protected_fields:
+            if field in request.data:
+                print(field)
+                current_value = getattr(user, field)
+                print(field)
+                requested_value = request.data.get(field)
+                
+                # Only raise error if they're actually trying to change the value
+                if current_value != requested_value:
+                    return Response(
+                        {"error": f"{field} cannot be modified after registration"},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+        # Handle password change specifically
+        # if 'password' in request.data:
+        #     current_password = request.data.get('current_password')
+        #     new_password = request.data.get('password')
+            
+        #     if not current_password:
+        #         return Response(
+        #             {"error": "Current password is required to change password"},
+        #             status=status.HTTP_400_BAD_REQUEST
+        #         )
+            
+        #     if not check_password(current_password, user.password):
+        #         return Response(
+        #             {"error": "Current password is incorrect"},
+        #             status=status.HTTP_400_BAD_REQUEST
+        #         )
+            
+        #     if len(new_password) < 8:  # Basic validation, add more as needed
+        #         return Response(
+        #             {"error": "New password must be at least 8 characters"},
+        #             status=status.HTTP_400_BAD_REQUEST
+        #         )
+            
+        #     user.set_password(new_password)
+        #     user.save()
+            
+        #     data = request.data.copy()
+        #     data.pop('password')
+        #     data.pop('current_password', None)  
+        # else:
+        #     data = request.data
 
         if isinstance(user, Recycler):
             serializer = RecyclerUpdateSerializer(user, data=request.data, partial=partial)

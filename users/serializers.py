@@ -8,6 +8,7 @@ class RecyclerSerializer(serializers.ModelSerializer):
         model = Recycler
         fields = ['email', 'full_name', 'mobile_no', 'designation', 'password']
         extra_kwargs = {'password': {'write_only': True}}
+        read_only_fields = ['id', 'created_at', 'mobile_no','email']
 
     def create(self, validated_data):
         user = Recycler.objects.create_user(**validated_data)
@@ -18,6 +19,8 @@ class ProducerSerializer(serializers.ModelSerializer):
         model = Producer
         fields = ['email', 'full_name', 'mobile_no', 'designation', 'password']
         extra_kwargs = {'password': {'write_only': True}}
+        read_only_fields = ['id', 'created_at', 'mobile_no','email','password']
+
 
     def create(self, validated_data):
         user = Producer.objects.create_user(**validated_data)

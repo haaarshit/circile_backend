@@ -94,7 +94,7 @@ class EPRCreditViewSet(viewsets.ModelViewSet):
                     except RecyclerEPR.DoesNotExist:
                         raise serializers.ValidationError({"error": "Invalid epr_account_id or not authorized."})
                     
-                    return EPRCredit.objects.filter(producer=self.request.user, epr_account=get_epr_account)
+                    return EPRCredit.objects.filter(recycler=self.request.user, epr_account=get_epr_account)
 
                 return EPRCredit.objects.filter(recycler=self.request.user)
             except Exception as e:
@@ -442,7 +442,7 @@ class EPRTargetViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         # serializer.save(producer=self.request.user)
         try:
-            instance = serializer.save(recycler=self.request.user)
+            instance = serializer.save(producer=self.request.user)
             # Call full_clean to trigger model validation
             try:
                 instance.full_clean()
