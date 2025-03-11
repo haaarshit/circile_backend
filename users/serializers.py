@@ -8,9 +8,9 @@ class RecyclerSerializer(serializers.ModelSerializer):
         model = Recycler
         fields = ['email', 'full_name', 'mobile_no', 'designation', 'password']
         extra_kwargs = {'password': {'write_only': True}}
-        read_only_fields = ['id', 'created_at', 'mobile_no','email']
 
     def create(self, validated_data):
+        print(validated_data)
         user = Recycler.objects.create_user(**validated_data)
         return user
 
@@ -19,7 +19,6 @@ class ProducerSerializer(serializers.ModelSerializer):
         model = Producer
         fields = ['email', 'full_name', 'mobile_no', 'designation', 'password']
         extra_kwargs = {'password': {'write_only': True}}
-        read_only_fields = ['id', 'created_at', 'mobile_no','email','password']
 
 
     def create(self, validated_data):
@@ -105,3 +104,23 @@ class ProducerUpdateSerializer(serializers.ModelSerializer):
         representation.pop('password', None)
 
         return representation
+    
+class RecyclerDetailSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Recycler
+        fields = [
+            'id', 'email', 'full_name', 'mobile_no', 'designation', 
+            'company_name', 'city', 'state', 'gst_number', 'pcb_number', 
+            'address', 'company_logo', 'pcb_doc', 'is_active', 'is_verified'
+        ]
+        # Password is intentionally excluded for security reasons
+    
+class ProducerDetailSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Producer
+        fields = [
+            'id', 'email', 'full_name', 'mobile_no', 'designation', 
+            'company_name', 'city', 'state', 'gst_number', 'pcb_number', 
+            'address', 'company_logo', 'pcb_doc', 'is_active', 'is_verified'
+        ]
+        # Password is intentionally excluded for security reasons

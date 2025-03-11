@@ -7,6 +7,7 @@ from .views import (
     LoginView,
     send_verification_email,
     verify_email,
+    GetProfileView,
     UpdateUserProfileView
 )
 
@@ -19,6 +20,7 @@ urlpatterns = [
     path('login/', LoginView.as_view(), name='token_obtain_pair'),
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('update/', UpdateUserProfileView.as_view(), name='udpate_view'),
+    path('profile/', GetProfileView.as_view(), name='profile_view'),
 
     # Email Verification Routes
     path('send-verification-email/', send_verification_email, name='send-verification-email'),

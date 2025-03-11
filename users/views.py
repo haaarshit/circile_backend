@@ -23,7 +23,7 @@ from django.utils import timezone
 from datetime import timedelta
 from .utils import validate_unique_email
 from .models import Recycler, Producer
-from .serializers import RecyclerSerializer, ProducerSerializer,RecyclerUpdateSerializer,ProducerUpdateSerializer
+from .serializers import RecyclerSerializer, ProducerSerializer,RecyclerUpdateSerializer,ProducerUpdateSerializer,RecyclerDetailSerializer,ProducerDetailSerializer
 from .authentication import CustomJWTAuthentication
 
 class RegisterRecyclerView(generics.CreateAPIView):
@@ -35,33 +35,73 @@ class RegisterRecyclerView(generics.CreateAPIView):
     serializer_class = RecyclerSerializer
     permission_classes = [AllowAny]
 
+
     def create(self, request, *args, **kwargs):
+
+        # existing_user =  validate_unique_email(request.data.get("email"))
         # print('---------------------------------------------------------------------------')
-        # print(request.data.get("email"))
+        # print(existing_user)
         # print('---------------------------------------------------------------------------')
-        existing_user =  validate_unique_email(request.data.get("email"))
-        print('---------------------------------------------------------------------------')
-        print(existing_user)
-        print('---------------------------------------------------------------------------')
-        if existing_user:
+        # if existing_user:
+        #     return Response(
+        #         {"error": "User already exist."}, 
+        #         status=status.HTTP_400_BAD_REQUEST
+        #     )
+
+        # serializer = self.get_serializer(data=request.data)
+        # serializer.is_valid(raise_exception=True)
+        
+        # # Create user but keep is_verified as False
+        # user = serializer.save()
+        # user.generate_verification_token()
+        # user.send_verification_email()
+        
+        # return Response({
+        #     "message": "Registration successful. Please check your email to verify your account.",
+        #     "user": serializer.data
+        # }, status=status.HTTP_201_CREATED)
+        try:
+            existing_user = validate_unique_email(request.data.get("email"))
+            print('---------------------------------------------------------------------------')
+            print(existing_user)
+            print('---------------------------------------------------------------------------')
+            if existing_user:
+                return Response(
+                    {"error": "User already exist."}, 
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            request_data = {}
+            for key, value in self.request.data.items():
+                    if isinstance(value, list) and value:
+                        request_data[key] = value[0]
+                    else:
+                        request_data[key] = value
+            print(request_data)
+            serializer = self.get_serializer(data=request_data)
+            print(request.data)
+            serializer.is_valid(raise_exception=True)
+            
+            # Create user but keep is_verified as False
+            user = serializer.save()
+            user.generate_verification_token()
+            user.send_verification_email()
+            
+            return Response({
+                "message": "Registration successful. Please check your email to verify your account.",
+                "user": serializer.data
+            }, status=status.HTTP_201_CREATED)
+        
+        except Exception as e:
+            print(f"Registration error: {str(e)}")
             return Response(
-                {"error": "User already exist."}, 
-                status=status.HTTP_400_BAD_REQUEST
+                {"error": f"{str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
-
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
         
-        # Create user but keep is_verified as False
-        user = serializer.save()
-        user.generate_verification_token()
-        user.send_verification_email()
-        
-        return Response({
-            "message": "Registration successful. Please check your email to verify your account.",
-            "user": serializer.data
-        }, status=status.HTTP_201_CREATED)
-
+        # return Response(
+        #     {"error": "Registration failed due to an internal server error. Please try again later."},
+        #     status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        # )
 class RegisterProducerView(generics.CreateAPIView):
     """
     View for Producer user registration
@@ -72,32 +112,37 @@ class RegisterProducerView(generics.CreateAPIView):
     permission_classes = [AllowAny]
 
     def create(self, request, *args, **kwargs):
-        # print('---------------------------------------------------------------------------')
-        # print(request.data.get("email"))
-        # print('---------------------------------------------------------------------------')
-        existing_user =  validate_unique_email(request.data.get("email"))
-        print('---------------------------------------------------------------------------')
-        print(existing_user)
-        print('---------------------------------------------------------------------------')
-        if existing_user:
-            return Response(
-                {"error": "User already exist."}, 
-                status=status.HTTP_400_BAD_REQUEST
-            )
+        
+        try:
+            existing_user =  validate_unique_email(request.data.get("email"))
+            print('---------------------------------------------------------------------------')
+            print(existing_user)
+            print('---------------------------------------------------------------------------')
+            if existing_user:
+                return Response(
+                    {"error": "User already exist."}, 
+                    status=status.HTTP_400_BAD_REQUEST
+                )
 
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        
-        # Create user but keep is_verified as False
-        user = serializer.save()
-        # Send verification token to be verified
-        user.generate_verification_token()
-        user.send_verification_email()
-        
-        return Response({
-            "message": "Registration successful. Please check your email to verify your account.",
-            "user": serializer.data
-        }, status=status.HTTP_201_CREATED)
+            serializer = self.get_serializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            
+            # Create user but keep is_verified as False
+            user = serializer.save()
+            # Send verification token to be verified
+            user.generate_verification_token()
+            user.send_verification_email()
+            
+            return Response({
+                "message": "Registration successful. Please check your email to verify your account.",
+                "user": serializer.data
+            }, status=status.HTTP_201_CREATED)
+        except Exception as e:
+            print(f"Registration error: {str(e)}")
+            return Response(
+                {"error": f"{str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
 class LoginView(TokenObtainPairView):
     """
@@ -149,30 +194,54 @@ class UpdateUserProfileView(APIView):
     # def put(self, request):
     #     return self.update_profile(request, partial=False)  
     def put(self, request):
-        return Response(
-            {"error": "PUT method is not allowed. Please use PATCH instead."},
-            status=status.HTTP_405_METHOD_NOT_ALLOWED
-        )
+            return Response(
+                {"error": "PUT method is not allowed. Please use PATCH instead."},
+                status=status.HTTP_405_METHOD_NOT_ALLOWED
+            )
     def patch(self, request):
-        return self.update_profile(request, partial=True)  
+            return self.update_profile(request, partial=True)  
 
     def update_profile(self, request, partial):
-        user = request.user  # Authenticated user
-        protected_fields = ['email', 'mobile_no','password']
-        for field in protected_fields:
-            if field in request.data:
-                print(field)
-                current_value = getattr(user, field)
-                print(field)
-                requested_value = request.data.get(field)
-                
-                # Only raise error if they're actually trying to change the value
-                if current_value != requested_value:
+            try:
+                user = request.user  # Authenticated user
+                protected_fields = ['email', 'mobile_no','password']
+                for field in protected_fields:
+                    if field in request.data:
+                        print(field)
+                        current_value = getattr(user, field)
+                        print(field)
+                        requested_value = request.data.get(field)
+                        
+                        # Only raise error if they're actually trying to change the value
+                        if current_value != requested_value:
+                            return Response(
+                                {"error": f"{field} cannot be modified after registration"},
+                                status=status.HTTP_400_BAD_REQUEST
+                            )
+
+                if isinstance(user, Recycler):
+                    serializer = RecyclerUpdateSerializer(user, data=request.data, partial=partial)
+                elif isinstance(user, Producer):
+                    serializer = ProducerUpdateSerializer(user, data=request.data, partial=partial)
+                else:
+                    return Response({"error": "Invalid user type"}, status=status.HTTP_400_BAD_REQUEST)
+
+                if serializer.is_valid():
+                    serializer.save()
                     return Response(
-                        {"error": f"{field} cannot be modified after registration"},
-                        status=status.HTTP_400_BAD_REQUEST
+                        {"message": "Profile updated successfully", "data": serializer.data},
+                        status=status.HTTP_200_OK
                     )
-        # Handle password change specifically
+
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            except Exception as e:
+                    print(f"Registration error: {str(e)}")
+                    return Response(
+                        {"error": f"{str(e)}"},
+                        status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+    
+         # Handle password change specifically
         # if 'password' in request.data:
         #     current_password = request.data.get('current_password')
         #     new_password = request.data.get('password')
@@ -204,23 +273,43 @@ class UpdateUserProfileView(APIView):
         # else:
         #     data = request.data
 
-        if isinstance(user, Recycler):
-            serializer = RecyclerUpdateSerializer(user, data=request.data, partial=partial)
-        elif isinstance(user, Producer):
-            serializer = ProducerUpdateSerializer(user, data=request.data, partial=partial)
-        else:
-            return Response({"error": "Invalid user type"}, status=status.HTTP_400_BAD_REQUEST)
 
-        if serializer.is_valid():
-            serializer.save()
+
+
+
+
+class GetProfileView(APIView):
+    authentication_classes = [CustomJWTAuthentication]
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        try:
+            user = request.user  # Authenticated user
+            
+            # Determine user type and use appropriate serializer
+            if isinstance(user, Recycler):
+                serializer = RecyclerDetailSerializer(user)  # Create a detailed serializer for profile viewing
+            elif isinstance(user, Producer):
+                serializer = ProducerDetailSerializer(user)  # Create a detailed serializer for profile viewing
+            else:
+                return Response({"error": "Invalid user type"}, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Return user profile data
             return Response(
-                {"message": "Profile updated successfully", "data": serializer.data},
+                {
+                    "status": "success",
+                    "message": "Profile retrieved successfully",
+                    "data": serializer.data
+                },
                 status=status.HTTP_200_OK
             )
-
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-
+        except Exception as e:
+                    print(f"Registration error: {str(e)}")
+                    return Response(
+                        {"error": f"{str(e)}"},
+                        status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+    
 
 
 @api_view(['POST'])

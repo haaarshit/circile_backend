@@ -84,6 +84,7 @@ class EPRCreditViewSet(viewsets.ModelViewSet):
     serializer_class = EPRCreditSerializer
     authentication_classes = [CustomJWTAuthentication]
     permission_classes = [permissions.IsAuthenticated,IsRecycler]
+    parser_classes = (MultiPartParser, FormParser)
 
     def get_queryset(self):
             try:
@@ -114,13 +115,27 @@ class EPRCreditViewSet(viewsets.ModelViewSet):
                     raise serializers.ValidationError({"error": "Invalid epr_id or not authorized."})
                
                 
-                kwargs["data"] = {
-                    **self.request.data,  # Preserve request data
-                    "epr_account": epr_account.id,
+                # kwargs["data"] = {
+                #     **self.request.data,  # Preserve request data
+                #     "epr_account": epr_account.id,
+                #     "epr_registration_number": epr_account.epr_registration_number,
+                #     "waste_type": epr_account.waste_type,
+                # }
+                request_data = {}
+                for key, value in self.request.data.items():
+                    if isinstance(value, list) and value:
+                        request_data[key] = value[0]
+                    else:
+                        request_data[key] = value
+
+                request_data.update({
+                    "epr_account":epr_account.id,
+                    "recycler": epr_account.id,
                     "epr_registration_number": epr_account.epr_registration_number,
                     "waste_type": epr_account.waste_type,
-                }
+                })
 
+                kwargs["data"] = request_data
             return super().get_serializer(*args, **kwargs)
         except Exception as e:
             raise serializers.ValidationError({"error": str(e)})
@@ -361,6 +376,10 @@ class CreditOfferViewSet(viewsets.ModelViewSet):
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+
+
+
+
 # PRODUCER -> CREATE EPR ACCOUNT 
 class ProducerEPRViewSet(viewsets.ModelViewSet):
     
@@ -400,13 +419,16 @@ class ProducerEPRViewSet(viewsets.ModelViewSet):
             # Handle other exceptions
             raise serializers.ValidationError({"error": str(e)})
 
+
+
+
     
 # PRODUCER -> ADD TARGET
 class EPRTargetViewSet(viewsets.ModelViewSet):
     serializer_class = EPRTargetSerializer
     authentication_classes = [CustomJWTAuthentication]
     permission_classes = [permissions.IsAuthenticated,IsProducer]
-
+    parser_classes = (MultiPartParser, FormParser)
     def get_queryset(self):
         epr_account_id = self.request.query_params.get("epr_id")
         if epr_account_id:
@@ -430,13 +452,29 @@ class EPRTargetViewSet(viewsets.ModelViewSet):
             except ProducerEPR.DoesNotExist:
                 raise serializers.ValidationError({"error": "Invalid epr_id or not authorized."})
 
-            kwargs["data"] = {
-                **self.request.data,  # Preserve request data
-                "epr_account": epr_account.id,  
-                "epr_registration_number": epr_account.epr_registration_number,
-                "waste_type": epr_account.waste_type,
-            }
+            # kwargs["data"] = {
+            #     **self.request.data,  # Preserve request data
+            #     "epr_account": epr_account.id,  
+            #     "epr_registration_number": epr_account.epr_registration_number,
+            #     "waste_type": epr_account.waste_type,
+            # }
 
+
+            request_data = {}
+            for key, value in self.request.data.items():
+                    if isinstance(value, list) and value:
+                        request_data[key] = value[0]
+                    else:
+                        request_data[key] = value
+
+            request_data.update({
+                    "epr_account":epr_account.id,
+                    "recycler": epr_account.id,
+                    "epr_registration_number": epr_account.epr_registration_number,
+                    "waste_type": epr_account.waste_type,
+                })
+
+            kwargs["data"] = request_data
         return super().get_serializer(*args, **kwargs)
 
     def perform_create(self, serializer):
@@ -466,6 +504,11 @@ class EPRTargetViewSet(viewsets.ModelViewSet):
     def partial_update(self, request, *args, **kwargs):
         kwargs['partial'] = True
         return self.update(request, *args, **kwargs)
+    
+
+
+
+
     
 # PRODUCER -> CREATE COUNTER CREDIT OFFER
 class CounterCreditOfferViewSet(viewsets.ModelViewSet):
