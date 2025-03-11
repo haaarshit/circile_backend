@@ -92,7 +92,7 @@ class EPRCreditViewSet(viewsets.ModelViewSet):
                     try:
                         get_epr_account = RecyclerEPR.objects.get(id=epr_account_id, recycler=self.request.user)
                     except RecyclerEPR.DoesNotExist:
-                        raise serializers.ValidationError({"error": "Invalid epr_account_id or not authorized."})
+                        raise serializers.ValidationError({"error": "Invalid epr_id or not authorized."})
                     
                     return EPRCredit.objects.filter(recycler=self.request.user, epr_account=get_epr_account)
 
@@ -106,12 +106,12 @@ class EPRCreditViewSet(viewsets.ModelViewSet):
                 epr_account_id = self.request.query_params.get("epr_id")
                 print(f"epr_account {epr_account_id}")
                 if not epr_account_id:
-                    raise serializers.ValidationError({"error": "epr_account_id is required in query parameters."})
+                    raise serializers.ValidationError({"error": "epr_id is required in query parameters."})
 
                 try:
                     epr_account = RecyclerEPR.objects.get(id=epr_account_id, recycler=self.request.user)
                 except RecyclerEPR.DoesNotExist:
-                    raise serializers.ValidationError({"error": "Invalid epr_account_id or not authorized."})
+                    raise serializers.ValidationError({"error": "Invalid epr_id or not authorized."})
                
                 
                 kwargs["data"] = {
@@ -413,7 +413,7 @@ class EPRTargetViewSet(viewsets.ModelViewSet):
             try:
                get_epr_account = ProducerEPR.objects.get(id=epr_account_id, producer=self.request.user)
             except ProducerEPR.DoesNotExist:
-                raise serializers.ValidationError({"error": "Invalid epr_account_id or not authorized."})
+                raise serializers.ValidationError({"error": "Invalid epr_id or not authorized."})
             if get_epr_account:
                 return EPRTarget.objects.filter(producer=self.request.user,epr_account=get_epr_account)
         return EPRTarget.objects.filter(producer=self.request.user)
@@ -423,12 +423,12 @@ class EPRTargetViewSet(viewsets.ModelViewSet):
             epr_account_id = self.request.query_params.get("epr_id")
 
             if not epr_account_id:
-                raise serializers.ValidationError({"error": "epr_account_id is required in query parameters."})
+                raise serializers.ValidationError({"error": "epr_id is required in query parameters."})
 
             try:
                 epr_account = ProducerEPR.objects.get(id=epr_account_id, producer=self.request.user)
             except ProducerEPR.DoesNotExist:
-                raise serializers.ValidationError({"error": "Invalid epr_account_id or not authorized."})
+                raise serializers.ValidationError({"error": "Invalid epr_id or not authorized."})
 
             kwargs["data"] = {
                 **self.request.data,  # Preserve request data
