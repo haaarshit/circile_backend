@@ -8,13 +8,13 @@ from django.shortcuts import get_object_or_404
 from django.contrib.auth import get_user_model
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.parsers import JSONParser, MultiPartParser, FormParser
 # Import serializer for user updates
 
 from django.contrib.auth.hashers import check_password
 from rest_framework_simplejwt.tokens import RefreshToken
+
 
 import jwt
 from django.conf import settings
@@ -103,6 +103,7 @@ class RegisterRecyclerView(generics.CreateAPIView):
         #     {"error": "Registration failed due to an internal server error. Please try again later."},
         #     status=status.HTTP_500_INTERNAL_SERVER_ERROR
         # )
+
 class RegisterProducerView(generics.CreateAPIView):
     """
     View for Producer user registration
@@ -159,7 +160,6 @@ class LoginView(TokenObtainPairView):
             user = None
             account_type = None
 
-
             try:
                 user = Recycler.objects.get(email=email)
                 account_type = "recycler"
@@ -192,7 +192,7 @@ class LoginView(TokenObtainPairView):
                 {"error": f"{str(e)}","status":False},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
-
+        
 class UpdateUserProfileView(APIView):
   
     authentication_classes = [CustomJWTAuthentication]
@@ -282,9 +282,6 @@ class UpdateUserProfileView(APIView):
         # else:
         #     data = request.data
 
-
-
-
 class GetProfileView(APIView):
     authentication_classes = [CustomJWTAuthentication]
     permission_classes = [IsAuthenticated]
@@ -370,7 +367,3 @@ def verify_email(request, user_type, token):
                         {"error": f"{str(e)}","status":False},
                         status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
-    
-
-
-

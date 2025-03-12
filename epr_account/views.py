@@ -8,7 +8,7 @@ from rest_framework.exceptions import ValidationError
 from django.core.exceptions import ValidationError as DjangoValidationError
 
 from rest_framework.views import APIView
-from rest_framework.parsers import MultiPartParser, FormParser
+from rest_framework.parsers import MultiPartParser, FormParser,JSONParser
 from rest_framework.exceptions import PermissionDenied, NotFound
 from django.shortcuts import get_object_or_404
 
@@ -31,50 +31,109 @@ class IsProducer(permissions.BasePermission):
         return obj.producer == request.user
 
 
-
-
-# RECYLER -> CREATE EPR ACCOUNT 
+# RECYLER -> CREATE EPR ACCOUNT ✅ 
 class RecyclerEPRViewSet(viewsets.ModelViewSet):
 
     serializer_class = RecyclerEPRSerializer
     authentication_classes = [CustomJWTAuthentication]
     permission_classes = [permissions.IsAuthenticated,IsRecycler]
-    parser_classes = (MultiPartParser, FormParser)
+    parser_classes = (MultiPartParser, FormParser,JSONParser)
 
 
     def get_queryset(self):
             return RecyclerEPR.objects.filter(recycler=self.request.user)
-
+    
+    def list(self, request, *args, **kwargs):
+        try:
+            queryset = self.get_queryset()
+            serializer = self.get_serializer(queryset, many=True)
+            return Response({
+                "status": True,
+                "data": serializer.data
+            }, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({
+                "status": False,
+                "error": str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+    def retrieve(self, request, *args, **kwargs):
+        try:
+            instance = self.get_object()  # Automatically filters by ID and checks permissions
+            serializer = self.get_serializer(instance)
+            return Response({
+                "status": True,
+                "data": serializer.data
+            }, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({
+                "status": False,
+                "error": str(e)
+            }, status=status.HTTP_404_NOT_FOUND if "DoesNotExist" in str(e) else status.HTTP_500_INTERNAL_SERVER_ERROR)
     # PUT
     def update(self, request, *args, **kwargs):
-        # try:
-        #     instance = self.get_object()
-        #     if instance.recycler != request.user:
-        #         return Response({"error": "You are not authorized to update this record.","status":False}, status=status.HTTP_403_FORBIDDEN)
-
-        #     return super().update(request, *args, **kwargs)
-        # except Exception as e:
-        #     return Response({"error": str(e),"status":False}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+       
         try:
             instance = self.get_object()
             if instance.recycler != request.user:
-                return Response({"error": "You are not authorized to update this record.", "status": False}, 
-                               status=status.HTTP_403_FORBIDDEN)
+                return Response({
+                    "status": False,
+                    "error": "You are not authorized to update this record."
+                }, status=status.HTTP_403_FORBIDDEN)
 
-            return super().update(request, *args, **kwargs)
+            serializer = self.get_serializer(instance, data=request.data, partial=False)
+            serializer.is_valid(raise_exception=True)
+            self.perform_update(serializer)
+            return Response({
+                "status": True,
+                "data": serializer.data
+            }, status=status.HTTP_200_OK)
+        except serializers.ValidationError as e:
+            return Response({
+                "status": False,
+                "error": str(e.detail) if e.detail else str(e)
+            }, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
-            return Response({"error": str(e), "status": False}, 
-                           status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
+            return Response({
+                "status": False,
+                "error": str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
     # PATCH
     def partial_update(self, request, *args, **kwargs):
-        kwargs['partial'] = True
-        return self.update(request, *args, **kwargs)  
+        try:
+            instance = self.get_object()
+            if instance.recycler != request.user:
+                return Response({
+                    "status": False,
+                    "error": "You are not authorized to update this record."
+                }, status=status.HTTP_403_FORBIDDEN)
+
+            serializer = self.get_serializer(instance, data=request.data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            self.perform_update(serializer)
+            return Response({
+                "status": True,
+                "data": serializer.data
+            }, status=status.HTTP_200_OK)
+        except serializers.ValidationError as e:
+            return Response({
+                "status": False,
+                "error": str(e.detail) if e.detail else str(e)
+            }, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({
+                "status": False,
+                "error": str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
+
+
     def perform_create(self, serializer):
         # serializer.save(producer=self.request.user)
         try:
             instance = serializer.save(recycler=self.request.user)
+            print(instance)
             # Call full_clean to trigger model validation
             try:
                 instance.full_clean()
@@ -86,227 +145,243 @@ class RecyclerEPRViewSet(viewsets.ModelViewSet):
 
         except Exception as e:
             raise serializers.ValidationError({"error": str(e),"status":False})
+    
+    def create(self, request, *args, **kwargs):
+        try:
+            recycler = request.user  # Assuming Recycler is your user model
+            if not self.is_profile_complete(recycler):
+                return Response({
+                    "status": False,
+                    "error": "You must complete your profile  before creating an EPR account."
+                }, status=status.HTTP_400_BAD_REQUEST)
+            serializer = self.get_serializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            self.perform_create(serializer)
+            return Response({
+                "status": True,
+                "data": serializer.data
+            }, status=status.HTTP_201_CREATED)
+        except serializers.ValidationError as e:
+             raise serializers.ValidationError({"error": str(e),"status":False}) 
+        except Exception as e:
+            return Response({
+                "status": False,
+                "error": str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+    def is_profile_complete(self, recycler):
+        """
+        Check if the recycler's profile is complete based on all required fields.
+        """
+        required_fields = [
+            'email', 'full_name', 'mobile_no', 'designation', 'password',
+            'company_name', 'city', 'state', 'gst_number', 'pcb_number', 'address',
+            'company_logo', 'pcb_doc','registration_date'
+        ]
+        for field in required_fields:
+            value = getattr(recycler, field, None)
+            if value is None or value == "":
+                return False
+        return True
 
 
-
-
-    # RECYLER -> CREATE CREDIT
+# RECYLER -> CREATE CREDIT   ✅ 
 class EPRCreditViewSet(viewsets.ModelViewSet):
-        serializer_class = EPRCreditSerializer
-        authentication_classes = [CustomJWTAuthentication]
-        permission_classes = [permissions.IsAuthenticated,IsRecycler]
-        parser_classes = (MultiPartParser, FormParser)
+    serializer_class = EPRCreditSerializer
+    authentication_classes = [CustomJWTAuthentication]
+    permission_classes = [permissions.IsAuthenticated, IsRecycler]
+    parser_classes = (MultiPartParser, FormParser,JSONParser)
 
-        def get_queryset(self):
-                # try:
-                #     epr_account_id = self.request.query_params.get("epr_id")
-                #     if epr_account_id:
-                #         try:
-                #             get_epr_account = RecyclerEPR.objects.get(id=epr_account_id, recycler=self.request.user)
-                #         except RecyclerEPR.DoesNotExist:
-                #             raise serializers.ValidationError({"error": "Invalid epr_id or not authorized."})
-                 
-                        
-                #         return EPRCredit.objects.filter(recycler=self.request.user, epr_account=get_epr_account)
-
-                #     return EPRCredit.objects.filter(recycler=self.request.user)
-                # except Exception as e:
-                #     raise serializers.ValidationError({"error": str(e)})
-                 epr_account_id = self.request.query_params.get("epr_id")
-                 if epr_account_id:
-                    try:
-                        get_epr_account = RecyclerEPR.objects.get(id=epr_account_id, recycler=self.request.user)
-                        return EPRCredit.objects.filter(recycler=self.request.user, epr_account=get_epr_account)
-                    except RecyclerEPR.DoesNotExist:
-                        raise serializers.ValidationError({"error": "Invalid epr_id or not authorized."})
-
-                 return EPRCredit.objects.filter(recycler=self.request.user)
-
-        def get_serializer(self, *args, **kwargs):
+    def get_queryset(self):
+        epr_account_id = self.request.query_params.get("epr_id")
+        if epr_account_id:
             try:
-                if self.request.method == "POST":
-                    epr_account_id = self.request.query_params.get("epr_id")
-                    print(f"epr_account {epr_account_id}")
-                    if not epr_account_id:
-                        raise serializers.ValidationError({"error": "epr_id is required in query parameters."})
-                    #     return Response(
-                    #         {"error": f" epr_id is required in query parameter","status":False}
-                    # )      
-                    try:
-                        epr_account = RecyclerEPR.objects.get(id=epr_account_id, recycler=self.request.user)
-                    except RecyclerEPR.DoesNotExist: 
-                        raise serializers.ValidationError({"error": "Invalid epr_id or not authorized."})
-                
-                    
+                get_epr_account = RecyclerEPR.objects.get(id=epr_account_id, recycler=self.request.user)
+                return EPRCredit.objects.filter(recycler=self.request.user, epr_account=get_epr_account)
+            except RecyclerEPR.DoesNotExist:
+                raise serializers.ValidationError({"error": "Invalid epr_id or not authorized."})
+        return EPRCredit.objects.filter(recycler=self.request.user)
 
-                    request_data = {}
-                    for key, value in self.request.data.items():
-                        if isinstance(value, list) and value:
-                            request_data[key] = value[0]
-                        else:
-                            request_data[key] = value
+    # GET - List
+    def list(self, request, *args, **kwargs):
+        try:
+            queryset = self.get_queryset()
+            serializer = self.get_serializer(queryset, many=True)
+            return Response({
+                "status": True,
+                "data": serializer.data
+            }, status=status.HTTP_200_OK)
+        except serializers.ValidationError as e:
+            return Response({
+                "status": False,
+                "error": e.detail if hasattr(e, 'detail') else str(e)
+            }, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({
+                "status": False,
+                "error": str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-                    request_data.update({
-                        "epr_account":epr_account.id,
-                        "recycler": epr_account.id,
-                        "epr_registration_number": epr_account.epr_registration_number,
-                        "waste_type": epr_account.waste_type,
-                    })
+    # GET - Retrieve
+    def retrieve(self, request, *args, **kwargs):
+        try:
+            instance = self.get_object()
+            serializer = self.get_serializer(instance)
+            return Response({
+                "status": True,
+                "data": serializer.data
+            }, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({
+                "status": False,
+                "error": str(e)
+            }, status=status.HTTP_404_NOT_FOUND if "DoesNotExist" in str(e) else status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-                    kwargs["data"] = request_data
-                return super().get_serializer(*args, **kwargs)
-            except Exception as e:
-                raise serializers.ValidationError({"error": str(e), "status": False})
+    # POST - Create with Profile Completion Check
+    def create(self, request, *args, **kwargs):
+        try:
+            serializer = self.get_serializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            self.perform_create(serializer)
+            return Response({
+                "status": True,
+                "data": serializer.data
+            }, status=status.HTTP_201_CREATED)
+        except serializers.ValidationError as e:
+            return Response({
+                "status": False,
+                "error": e.detail if hasattr(e, 'detail') else str(e)
+            }, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({
+                "status": False,
+                "error": str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+    
+    def perform_create(self, serializer):
+        instance = None
+        try:
+            instance = serializer.save(recycler=self.request.user)
+            if instance is None:
+              raise ValueError("Serializer.save() returned None, expected an instance.")
+            instance.full_clean()  
+        except DjangoValidationError as e:
+            if instance is not None: 
+                instance.delete()
+            raise serializers.ValidationError(e.message_dict if hasattr(e, 'message_dict') else {'error': str(e)})
+        except Exception as e:
+            if instance is not None:  # Only delete if instance was created
+               instance.delete()
+            raise serializers.ValidationError({"error": str(e)})
 
-        
-        # def perform_create(self, serializer):
-        #     try:
-        #         serializer.save(recycler=self.request.user)
-        #     except Exception as e:
-        #         raise serializers.ValidationError({"error": str(e)})
+    # PUT - Update
+    def update(self, request, *args, **kwargs):
+        try:
+            instance = self.get_object()
+            if instance.recycler != request.user:
+                return Response({
+                    "status": False,
+                    "error": "You are not authorized to update this record."
+                }, status=status.HTTP_403_FORBIDDEN)
 
-        def perform_create(self, serializer):
-            # serializer.save(producer=self.request.user)
-            try:
-                instance = serializer.save(recycler=self.request.user)
+            serializer = self.get_serializer(instance, data=request.data, partial=False)
+            serializer.is_valid(raise_exception=True)
+            self.perform_update(serializer)
+            return Response({
+                "status": True,
+                "data": serializer.data
+            }, status=status.HTTP_200_OK)
+        except serializers.ValidationError as e:
+            return Response({
+                "status": False,
+                "error": e.detail if hasattr(e, 'detail') else str(e)
+            }, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({
+                "status": False,
+                "error": str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    # PATCH - Partial Update
+    def partial_update(self, request, *args, **kwargs):
+        try:
+            instance = self.get_object()
+            if instance.recycler != request.user:
+                return Response({
+                    "status": False,
+                    "error": "You are not authorized to update this record."
+                }, status=status.HTTP_403_FORBIDDEN)
+
+            serializer = self.get_serializer(instance, data=request.data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            self.perform_update(serializer)
+            return Response({
+                "status": True,
+                "data": serializer.data
+            }, status=status.HTTP_200_OK)
+        except serializers.ValidationError as e:
+            return Response({
+                "status": False,
+                "error": e.detail if hasattr(e, 'detail') else str(e)
+            }, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({
+                "status": False,
+                "error": str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def get_serializer(self, *args, **kwargs):
+        try:
+            if self.request.method == "POST":
+                epr_account_id = self.request.query_params.get("epr_id")
+                if not epr_account_id:
+                    raise serializers.ValidationError({"error": "epr_id is required in query parameters."})
+
                 try:
-                    instance.full_clean()
+                    epr_account = RecyclerEPR.objects.get(id=epr_account_id, recycler=self.request.user)
+                except RecyclerEPR.DoesNotExist:
+                    raise serializers.ValidationError({"error": "Invalid epr_id or not authorized."})
 
-                except DjangoValidationError as e:
-                    instance.delete()
-                    
-                    raise serializers.ValidationError(e.message_dict if hasattr(e, 'message_dict') else {'error': str(e)})
-                
-                return Response(
-                    {"message": "EPR Credit created successfully!", "user": serializer.data,"status":True},
-                    status=status.HTTP_201_CREATED
-                )
-            
-            except Exception as e:
-                raise serializers.ValidationError({"error": str(e)})
-                # return Response({"error": str(e),"status":False}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                request_data = {}
+                for key, value in self.request.data.items():
+                    if isinstance(value, list) and value:
+                        request_data[key] = value[0]
+                    else:
+                        request_data[key] = value
 
+                request_data.update({
+                    "epr_account": epr_account.id,
+                    "recycler": epr_account.id,  # Note: This might be a typo; should it be self.request.user.id?
+                    "epr_registration_number": epr_account.epr_registration_number,
+                    "waste_type": epr_account.waste_type,
+                })
 
-        def update(self, request, *args, **kwargs):
-            try:
-                instance = self.get_object()
-
-                if instance.recycler != request.user:
-                    return Response({"error": "You are not authorized to update this record.","status":False}, status=status.HTTP_403_FORBIDDEN)
-
-                return super().update(request, *args, **kwargs)
-            except Exception as e:
-                return Response({"error": str(e),"status":False}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-        def partial_update(self, request, *args, **kwargs):
-            try:
-                kwargs['partial'] = True
-                return self.update(request, *args, **kwargs)
-            except Exception as e:
-                return Response({"error": str(e),"status":False}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        
+                kwargs["data"] = request_data
+            return super().get_serializer(*args, **kwargs)
+        except Exception as e:
+            raise serializers.ValidationError({"error": str(e)})
 
 
-
-# RECYLER -> CREATE CREDIT OFFER
+# RECYLER -> CREATE CREDIT OFFER ✅ 
 class CreditOfferViewSet(viewsets.ModelViewSet):
     serializer_class = CreditOfferSerializer
     authentication_classes = [CustomJWTAuthentication]
-    permission_classes = [permissions.IsAuthenticated,IsRecycler]
-    parser_classes = (MultiPartParser, FormParser)
+    permission_classes = [permissions.IsAuthenticated, IsRecycler]
+    parser_classes = (MultiPartParser, FormParser,JSONParser)
 
-    # def get_queryset(self):
-    #     epr_account_id = self.request.query_params.get("epr_id")
-    #     epr_credit_id = self.request.query_params.get("epr_credit_id")
-
-    #     if epr_account_id:
-    #             get_epr_account = RecyclerEPR.objects.get(id=epr_account_id, recycler=self.request.user)
-    #             if epr_credit_id:
-    #                 get_epr_credit = EPRCredit.objects.get(id=epr_credit_id, recycler=self.request.user,epr_account=get_epr_account)
-    #                 if get_epr_account and get_epr_credit:
-    #                     return CreditOffer.objects.filter(recycler=self.request.user,epr_account=get_epr_account,epr_credit=get_epr_credit)
-    #             else:
-    #                 return CreditOffer.objects.filter(recycler=self.request.user,epr_account=get_epr_account)
-                
-    #     return CreditOffer.objects.filter(recycler=self.request.user)
-
-    # def get_serializer(self, *args, **kwargs):
-    #     print("Enter get serializer ")
-    #     if self.request.method == "POST":
-    #         print("Enter get serializer ")
-    #         epr_account_id = self.request.query_params.get("epr_id")
-    #         epr_credit_id = self.request.query_params.get("epr_credit_id")
-
-    #         if not epr_account_id or not epr_credit_id:
-    #             raise serializers.ValidationError(
-    #                 {"error": "Both epr_account_id and epr_credit_id are required in query parameters."}
-    #             )
-
-    #         try:
-    #             get_epr_account = RecyclerEPR.objects.get(id=epr_account_id, recycler=self.request.user)
-    #             epr_credit = EPRCredit.objects.get(id=epr_credit_id, recycler=self.request.user, epr_account=get_epr_account)
-    #         except RecyclerEPR.DoesNotExist:
-    #             raise serializers.ValidationError({"error": "Invalid epr_account_id or not authorized."})
-    #         except EPRCredit.DoesNotExist:
-    #             raise serializers.ValidationError({"error": "No record found for credit with the given EPR account."})
-    #         data = kwargs.get("data", {}).copy()
-        
-            
-    #         print(kwargs["data"])
-            
-    #         request_data = {}
-    #         for key, value in self.request.data.items():
-    #             # in case if values are in the list
-    #             if isinstance(value, list) and value:
-    #                 request_data[key] = value[0]  
-    #             else:
-    #                 request_data[key] = value 
-                
-    #         # Add the additional fields
-    #         request_data.update({
-    #             "epr_account": get_epr_account.id,
-    #             "epr_registration_number": get_epr_account.epr_registration_number,
-    #             "waste_type": get_epr_account.waste_type,
-    #             "epr_credit": epr_credit.id
-    #         })
-            
-    #         kwargs["data"] = request_data
-    #         print("-----------")
-    #         print(kwargs["data"])
-
-    #     return super().get_serializer(*args, **kwargs)
-
-    # def perform_create(self, serializer):
-    #     epr_account_id = self.request.query_params.get("epr_id")
-    #     epr_credit_id = self.request.query_params.get("epr_credit_id")
-        
-    #     # Get the related objects
-    #     epr_account = RecyclerEPR.objects.get(id=epr_account_id)
-    #     epr_credit = EPRCredit.objects.get(id=epr_credit_id)
-        
-    #     # Save with all required relationships
-    #     serializer.save(
-    #         recycler=self.request.user,
-    #         epr_account=epr_account,
-    #         epr_credit=epr_credit
-    #     )
-
-    # def update(self, request, *args, **kwargs):
-    #     instance = self.get_object()
-
-    #     if instance.recycler != request.user:
-    #         return Response({"error": "You are not authorized to update this record."}, status=status.HTTP_403_FORBIDDEN)
-
-    #     return super().update(request, *args, **kwargs)
-
-    # def partial_update(self, request, *args, **kwargs):
-        # kwargs['partial'] = True
-        # return self.update(request, *args, **kwargs)
     def get_queryset(self):
         try:
             epr_account_id = self.request.query_params.get("epr_id")
             epr_credit_id = self.request.query_params.get("epr_credit_id")
+
+            # Case 1: Only epr_credit_id is provided
+            if epr_credit_id and not epr_account_id:
+                get_epr_credit = EPRCredit.objects.get(id=epr_credit_id, recycler=self.request.user)
+                return CreditOffer.objects.filter(
+                    recycler=self.request.user,
+                    epr_credit=get_epr_credit
+                )
 
             if epr_account_id:
                 get_epr_account = RecyclerEPR.objects.get(id=epr_account_id, recycler=self.request.user)
@@ -323,12 +398,124 @@ class CreditOfferViewSet(viewsets.ModelViewSet):
 
             return CreditOffer.objects.filter(recycler=self.request.user)
 
-        except RecyclerEPR.DoesNotExist:
+        except RecyclerEPR.DoesNotExist:    
             raise ValidationError({"error": "Invalid epr_account_id or not authorized."})
         except EPRCredit.DoesNotExist:
             raise ValidationError({"error": "No record found for credit with the given EPR account."})
         except Exception as e:
             raise ValidationError({"error": str(e)})
+
+    # GET - List
+    def list(self, request, *args, **kwargs):
+        try:
+            queryset = self.get_queryset()
+            serializer = self.get_serializer(queryset, many=True)
+            return Response({
+                "status": True,
+                "data": serializer.data
+            }, status=status.HTTP_200_OK)
+        except ValidationError as e:
+            return Response({
+                "status": False,
+                "error": e.detail if hasattr(e, 'detail') else str(e)
+            }, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({
+                "status": False,
+                "error": str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    # GET - Retrieve
+    def retrieve(self, request, *args, **kwargs):
+        try:
+            instance = self.get_object()
+            serializer = self.get_serializer(instance)
+            return Response({
+                "status": True,
+                "data": serializer.data
+            }, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({
+                "status": False,
+                "error": str(e)
+            }, status=status.HTTP_404_NOT_FOUND if "DoesNotExist" in str(e) else status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    # POST - Create with Profile Completion Check
+    def create(self, request, *args, **kwargs):
+        try:
+            serializer = self.get_serializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            self.perform_create(serializer)
+            return Response({
+                "status": True,
+                "data": serializer.data
+            }, status=status.HTTP_201_CREATED)
+        except ValidationError as e:
+            return Response({
+                "status": False,
+                "error": e.detail if hasattr(e, 'detail') else str(e)
+            }, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({
+                "status": False,
+                "error": str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    # PUT - Update
+    def update(self, request, *args, **kwargs):
+        try:
+            instance = self.get_object()
+            if instance.recycler != request.user:
+                return Response({
+                    "status": False,
+                    "error": "You are not authorized to update this record."
+                }, status=status.HTTP_403_FORBIDDEN)
+
+            serializer = self.get_serializer(instance, data=request.data, partial=False)
+            serializer.is_valid(raise_exception=True)
+            self.perform_update(serializer)
+            return Response({
+                "status": True,
+                "data": serializer.data
+            }, status=status.HTTP_200_OK)
+        except ValidationError as e:
+            return Response({
+                "status": False,
+                "error": e.detail if hasattr(e, 'detail') else str(e)
+            }, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({
+                "status": False,
+                "error": str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    # PATCH - Partial Update
+    def partial_update(self, request, *args, **kwargs):
+        try:
+            instance = self.get_object()
+            if instance.recycler != request.user:
+                return Response({
+                    "status": False,
+                    "error": "You are not authorized to update this record."
+                }, status=status.HTTP_403_FORBIDDEN)
+
+            serializer = self.get_serializer(instance, data=request.data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            self.perform_update(serializer)
+            return Response({
+                "status": True,
+                "data": serializer.data
+            }, status=status.HTTP_200_OK)
+        except ValidationError as e:
+            return Response({
+                "status": False,
+                "error": e.detail if hasattr(e, 'detail') else str(e)
+            }, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({
+                "status": False,
+                "error": str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def get_serializer(self, *args, **kwargs):
         try:
@@ -358,12 +545,38 @@ class CreditOfferViewSet(viewsets.ModelViewSet):
                 })
 
                 kwargs["data"] = request_data
+              # Handle PATCH requests with special care for JSONField
+            elif self.request.method == "PATCH" and "supporting_doc" in self.request.data:
+                # Get original data
+                instance = self.get_object()
+                # Create a separate data dictionary for patch
+                patch_data = dict(self.request.data)
+                
+                # Special handling for supporting_doc if it's coming in as a string
+                if "supporting_doc" in patch_data:
+                    supporting_doc_value = patch_data["supporting_doc"]
+                    # If it's a string representation of JSON, parse it
+                    if isinstance(supporting_doc_value, list) and supporting_doc_value:
+                        import json
+                        try:
+                            # Strip any whitespace/newlines and parse
+                            cleaned_string = supporting_doc_value[0].strip()
+                            patch_data["supporting_doc"] = json.loads(cleaned_string)
+                        except json.JSONDecodeError:
+                            raise ValidationError({"error": "Invalid JSON format for supporting_doc"})
+                print(patch_data)
+
+                
+                kwargs["data"] = patch_data
+                kwargs["partial"] = True
+        
 
             return super().get_serializer(*args, **kwargs)
 
         except Exception as e:
             raise ValidationError({"error": str(e)})
 
+    
     def perform_create(self, serializer):
         try:
             epr_account_id = self.request.query_params.get("epr_id")
@@ -385,91 +598,296 @@ class CreditOfferViewSet(viewsets.ModelViewSet):
         except Exception as e:
             raise ValidationError({"error": str(e)})
 
-    def update(self, request, *args, **kwargs):
-        try:
-            instance = self.get_object()
 
-            if instance.recycler != request.user:
-                return Response({"error": "You are not authorized to update this record."}, status=status.HTTP_403_FORBIDDEN)
-
-            return super().update(request, *args, **kwargs)
-
-        except Exception as e:
-            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-    def partial_update(self, request, *args, **kwargs):
-        try:
-            kwargs['partial'] = True
-            return self.update(request, *args, **kwargs)
-
-        except Exception as e:
-            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
-
-# PRODUCER -> CREATE EPR ACCOUNT 
+# PRODUCER -> CREATE EPR ACCOUNT ✅ 
 class ProducerEPRViewSet(viewsets.ModelViewSet):
-    
     serializer_class = ProducerEPRSerializer
     authentication_classes = [CustomJWTAuthentication]
-    permission_classes = [permissions.IsAuthenticated,IsProducer]
-    parser_classes = (MultiPartParser, FormParser)
+    permission_classes = [permissions.IsAuthenticated, IsProducer]
+    parser_classes = (MultiPartParser, FormParser,JSONParser)
 
     def get_queryset(self):
         return ProducerEPR.objects.filter(producer=self.request.user)
 
-    def update(self, request, *args, **kwargs):
-        instance = self.get_object()
-        if instance.producer != request.user:
-            return Response({"error": "You are not authorized to update this record."}, status=status.HTTP_403_FORBIDDEN)
+    # GET - List
+    def list(self, request, *args, **kwargs):
+        try:
+            queryset = self.get_queryset()
+            serializer = self.get_serializer(queryset, many=True)
+            return Response({
+                "status": True,
+                "data": serializer.data
+            }, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({
+                "status": False,
+                "error": str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-        return super().update(request, *args, **kwargs)
-    
+    # GET - Retrieve
+    def retrieve(self, request, *args, **kwargs):
+        try:
+            instance = self.get_object()
+            serializer = self.get_serializer(instance)
+            return Response({
+                "status": True,
+                "data": serializer.data
+            }, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({
+                "status": False,
+                "error": str(e)
+            }, status=status.HTTP_404_NOT_FOUND if "DoesNotExist" in str(e) else status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    # POST - Create with Profile Completion Check
+    def create(self, request, *args, **kwargs):
+        try:
+            # Check if the user's profile is complete
+            producer = request.user  # Assuming Producer is your user model
+            if not self.is_profile_complete(producer):
+                return Response({
+                    "status": False,
+                    "error": "You must complete your profile before creating an EPR record."
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+            serializer = self.get_serializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            self.perform_create(serializer)
+            return Response({
+                "status": True,
+                "data": serializer.data
+            }, status=status.HTTP_201_CREATED)
+        except serializers.ValidationError as e:
+            return Response({
+                "status": False,
+                "error": e.detail if hasattr(e, 'detail') else str(e)
+            }, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({
+                "status": False,
+                "error": str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    # PUT - Update
+    def update(self, request, *args, **kwargs):
+        try:
+            instance = self.get_object()
+            if instance.producer != request.user:
+                return Response({
+                    "status": False,
+                    "error": "You are not authorized to update this record."
+                }, status=status.HTTP_403_FORBIDDEN)
+
+            serializer = self.get_serializer(instance, data=request.data, partial=False)
+            serializer.is_valid(raise_exception=True)
+            self.perform_update(serializer)
+            return Response({
+                "status": True,
+                "data": serializer.data
+            }, status=status.HTTP_200_OK)
+        except serializers.ValidationError as e:
+            return Response({
+                "status": False,
+                "error": e.detail if hasattr(e, 'detail') else str(e)
+            }, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({
+                "status": False,
+                "error": str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    # PATCH - Partial Update
     def partial_update(self, request, *args, **kwargs):
-        print('pathc method called')
-        kwargs['partial'] = True
-        return self.update(request, *args, **kwargs)
-    
+        try:
+            instance = self.get_object()
+            if instance.producer != request.user:
+                return Response({
+                    "status": False,
+                    "error": "You are not authorized to update this record."
+                }, status=status.HTTP_403_FORBIDDEN)
+
+            serializer = self.get_serializer(instance, data=request.data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            self.perform_update(serializer)
+            return Response({
+                "status": True,
+                "data": serializer.data
+            }, status=status.HTTP_200_OK)
+        except serializers.ValidationError as e:
+            return Response({
+                "status": False,
+                "error": e.detail if hasattr(e, 'detail') else str(e)
+            }, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({
+                "status": False,
+                "error": str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
     def perform_create(self, serializer):
-        # serializer.save(producer=self.request.user)
+        instance = None
+
         try:
             instance = serializer.save(producer=self.request.user)
-            # Call full_clean to trigger model validation
-            try:
-                instance.full_clean()
-            except DjangoValidationError as e:
-                # Delete the instance since it's invalid
+            if instance is None:
+              raise ValueError("Serializer.save() returned None, expected an instance.")
+            instance.full_clean()  
+        except DjangoValidationError as e:
+            if instance is not None: 
                 instance.delete()
-                # Re-raise as a DRF ValidationError
-                raise serializers.ValidationError(e.message_dict if hasattr(e, 'message_dict') else {'error': str(e)})
+            raise serializers.ValidationError(e.message_dict if hasattr(e, 'message_dict') else {'error': str(e)})
         except Exception as e:
-            # Handle other exceptions
+            if instance is not None:  # Only delete if instance was created
+               instance.delete()
             raise serializers.ValidationError({"error": str(e)})
 
+    def is_profile_complete(self, producer):
+
+        required_fields = [
+            'email', 'full_name', 'mobile_no', 'designation', 'password',
+            'company_name', 'city', 'state', 'gst_number', 'pcb_number', 'address',
+            'company_logo', 'pcb_doc','registration_date'
+        ]
+        for field in required_fields:
+            value = getattr(producer, field, None)
+            if value is None or value == "":
+                return False
+        return True
 
 
-    
-# PRODUCER -> ADD TARGET
+# PRODUCER -> ADD TARGET  ✅ 
 class EPRTargetViewSet(viewsets.ModelViewSet):
     serializer_class = EPRTargetSerializer
     authentication_classes = [CustomJWTAuthentication]
-    permission_classes = [permissions.IsAuthenticated,IsProducer]
-    parser_classes = (MultiPartParser, FormParser)
+    permission_classes = [permissions.IsAuthenticated, IsProducer]
+    parser_classes = (MultiPartParser, FormParser,JSONParser)
+
     def get_queryset(self):
         epr_account_id = self.request.query_params.get("epr_id")
         if epr_account_id:
             try:
-               get_epr_account = ProducerEPR.objects.get(id=epr_account_id, producer=self.request.user)
+                get_epr_account = ProducerEPR.objects.get(id=epr_account_id, producer=self.request.user)
+                return EPRTarget.objects.filter(producer=self.request.user, epr_account=get_epr_account)
             except ProducerEPR.DoesNotExist:
                 raise serializers.ValidationError({"error": "Invalid epr_id or not authorized."})
-            if get_epr_account:
-                return EPRTarget.objects.filter(producer=self.request.user,epr_account=get_epr_account)
         return EPRTarget.objects.filter(producer=self.request.user)
- 
+
+    # GET - List
+    def list(self, request, *args, **kwargs):
+        try:
+            queryset = self.get_queryset()
+            serializer = self.get_serializer(queryset, many=True)
+            return Response({
+                "status": True,
+                "data": serializer.data
+            }, status=status.HTTP_200_OK)
+        except serializers.ValidationError as e:
+            return Response({
+                "status": False,
+                "error": e.detail if hasattr(e, 'detail') else str(e)
+            }, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({
+                "status": False,
+                "error": str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    # GET - Retrieve
+    def retrieve(self, request, *args, **kwargs):
+        try:
+            instance = self.get_object()
+            serializer = self.get_serializer(instance)
+            return Response({
+                "status": True,
+                "data": serializer.data
+            }, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({
+                "status": False,
+                "error": str(e)
+            }, status=status.HTTP_404_NOT_FOUND if "DoesNotExist" in str(e) else status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    # POST - Create with Profile Completion Check
+    def create(self, request, *args, **kwargs):
+        try:
+
+            serializer = self.get_serializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            self.perform_create(serializer)
+            return Response({
+                "status": True,
+                "data": serializer.data
+            }, status=status.HTTP_201_CREATED)
+        except serializers.ValidationError as e:
+            return Response({
+                "status": False,
+                "error": e.detail if hasattr(e, 'detail') else str(e)
+            }, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({
+                "status": False,
+                "error": str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    # PUT - Update
+    def update(self, request, *args, **kwargs):
+        try:
+            instance = self.get_object()
+            if instance.producer != request.user:
+                return Response({
+                    "status": False,
+                    "error": "You are not authorized to update this record."
+                }, status=status.HTTP_403_FORBIDDEN)
+
+            serializer = self.get_serializer(instance, data=request.data, partial=False)
+            serializer.is_valid(raise_exception=True)
+            self.perform_update(serializer)
+            return Response({
+                "status": True,
+                "data": serializer.data
+            }, status=status.HTTP_200_OK)
+        except serializers.ValidationError as e:
+            return Response({
+                "status": False,
+                "error": e.detail if hasattr(e, 'detail') else str(e)
+            }, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({
+                "status": False,
+                "error": str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    # PATCH - Partial Update
+    def partial_update(self, request, *args, **kwargs):
+        try:
+            instance = self.get_object()
+            if instance.producer != request.user:
+                return Response({
+                    "status": False,
+                    "error": "You are not authorized to update this record."
+                }, status=status.HTTP_403_FORBIDDEN)
+
+            serializer = self.get_serializer(instance, data=request.data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            self.perform_update(serializer)
+            return Response({
+                "status": True,
+                "data": serializer.data
+            }, status=status.HTTP_200_OK)
+        except serializers.ValidationError as e:
+            return Response({
+                "status": False,
+                "error": e.detail if hasattr(e, 'detail') else str(e)
+            }, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({
+                "status": False,
+                "error": str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
     def get_serializer(self, *args, **kwargs):
         if self.request.method == "POST":
             epr_account_id = self.request.query_params.get("epr_id")
-
             if not epr_account_id:
                 raise serializers.ValidationError({"error": "epr_id is required in query parameters."})
 
@@ -478,68 +896,47 @@ class EPRTargetViewSet(viewsets.ModelViewSet):
             except ProducerEPR.DoesNotExist:
                 raise serializers.ValidationError({"error": "Invalid epr_id or not authorized."})
 
-            # kwargs["data"] = {
-            #     **self.request.data,  # Preserve request data
-            #     "epr_account": epr_account.id,  
-            #     "epr_registration_number": epr_account.epr_registration_number,
-            #     "waste_type": epr_account.waste_type,
-            # }
-
-
             request_data = {}
             for key, value in self.request.data.items():
-                    if isinstance(value, list) and value:
-                        request_data[key] = value[0]
-                    else:
-                        request_data[key] = value
+                if isinstance(value, list) and value:
+                    request_data[key] = value[0]
+                else:
+                    request_data[key] = value
 
             request_data.update({
-                    "epr_account":epr_account.id,
-                    "recycler": epr_account.id,
-                    "epr_registration_number": epr_account.epr_registration_number,
-                    "waste_type": epr_account.waste_type,
-                })
+                "epr_account": epr_account.id,
+                "recycler": epr_account.id,  # Note: This might be a typo; should it be producer?
+                "epr_registration_number": epr_account.epr_registration_number,
+                "waste_type": epr_account.waste_type,
+            })
 
             kwargs["data"] = request_data
         return super().get_serializer(*args, **kwargs)
 
     def perform_create(self, serializer):
-        # serializer.save(producer=self.request.user)
+        instance = None
+
         try:
             instance = serializer.save(producer=self.request.user)
-            # Call full_clean to trigger model validation
-            try:
-                instance.full_clean()
-            except DjangoValidationError as e:
-                # Delete the instance since it's invalid
+            if instance is None:
+              raise ValueError("Serializer.save() returned None, expected an instance.")
+            instance.full_clean()  
+        except DjangoValidationError as e:
+            if instance is not None: 
                 instance.delete()
-                # Re-raise as a DRF ValidationError
-                raise serializers.ValidationError(e.message_dict if hasattr(e, 'message_dict') else {'error': str(e)})
+            raise serializers.ValidationError(e.message_dict if hasattr(e, 'message_dict') else {'error': str(e)})
         except Exception as e:
-            # Handle other exceptions
+            if instance is not None:  
+               instance.delete()
             raise serializers.ValidationError({"error": str(e)})
 
-    def update(self, request, *args, **kwargs):
-        instance = self.get_object()
-
-        if instance.producer != request.user:
-            return Response({"error": "You are not authorized to update this record."}, status=status.HTTP_403_FORBIDDEN)
-
-        return super().update(request, *args, **kwargs)
-
-    def partial_update(self, request, *args, **kwargs):
-        kwargs['partial'] = True
-        return self.update(request, *args, **kwargs)
-    
-
-    
-# PRODUCER -> CREATE COUNTER CREDIT OFFER
+# PRODUCER -> CREATE COUNTER CREDIT OFFER | RECYCLER APPROVE OR REJECT IT
 class CounterCreditOfferViewSet(viewsets.ModelViewSet):
     serializer_class = CounterCreditOfferSerializer
     authentication_classes = [CustomJWTAuthentication]
-   
+    parser_classes = (MultiPartParser, FormParser,JSONParser)  
+
     def get_permissions(self):
-        """Assigns permissions based on action type."""
         try:
             if self.action == 'create':
                 permission_classes = [permissions.IsAuthenticated, IsProducer]
@@ -579,8 +976,101 @@ class CounterCreditOfferViewSet(viewsets.ModelViewSet):
         except Exception as e:
             raise ValidationError({"error": f"Queryset error: {str(e)}"})
 
+    # GET - List
+    def list(self, request, *args, **kwargs):
+        try:
+            queryset = self.get_queryset()
+            serializer = self.get_serializer(queryset, many=True)
+            return Response({
+                "status": True,
+                "data": serializer.data
+            }, status=status.HTTP_200_OK)
+        except ValidationError as e:
+            return Response({
+                "status": False,
+                "error": e.detail if hasattr(e, 'detail') else str(e)
+            }, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({
+                "status": False,
+                "error": str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    # GET - Retrieve
+    def retrieve(self, request, *args, **kwargs):
+        try:
+            instance = self.get_object()
+            serializer = self.get_serializer(instance)
+            return Response({
+                "status": True,
+                "data": serializer.data
+            }, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({
+                "status": False,
+                "error": str(e)
+            }, status=status.HTTP_404_NOT_FOUND if "DoesNotExist" in str(e) else status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+    # PUT - Update
+    def update(self, request, *args, **kwargs):
+        try:
+            instance = self.get_object()
+            if instance.recycler != request.user:
+                return Response({
+                    "status": False,
+                    "error": "You are not authorized to update this record."
+                }, status=status.HTTP_403_FORBIDDEN)
+
+            serializer = self.get_serializer(instance, data=request.data, partial=False)
+            serializer.is_valid(raise_exception=True)
+            self.perform_update(serializer)
+            return Response({
+                "status": True,
+                "data": serializer.data
+            }, status=status.HTTP_200_OK)
+        except ValidationError as e:
+            return Response({
+                "status": False,
+                "error": e.detail if hasattr(e, 'detail') else str(e)
+            }, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({
+                "status": False,
+                "error": str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    # PATCH - Partial Update
+    def partial_update(self, request, *args, **kwargs):
+        try:
+            instance = self.get_object()
+            if instance.recycler != request.user:
+                return Response({
+                    "status": False,
+                    "error": "You are not authorized to update this record."
+                }, status=status.HTTP_403_FORBIDDEN)
+            
+            print(request.data)
+
+            serializer = self.get_serializer(instance, data=request.data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            self.perform_update(serializer)
+            return Response({
+                "status": True,
+                "data": serializer.data
+            }, status=status.HTTP_200_OK)
+        except ValidationError as e:
+            return Response({
+                "status": False,
+                "error": e.detail if hasattr(e, 'detail') else str(e)
+            }, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({
+                "status": False,
+                "error": str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
     def get_serializer(self, *args, **kwargs):
-        """Custom serializer method to include additional fields."""
         try:
             if self.request.method == "POST":
                 credit_offer_id = self.request.query_params.get("credit_offer_id")
@@ -613,13 +1103,34 @@ class CounterCreditOfferViewSet(viewsets.ModelViewSet):
 
         except Exception as e:
             raise ValidationError({"error": f"Serializer error: {str(e)}"})
+        
+    # POST - Create with Profile Completion Check (Producer only)
+    def create(self, request, *args, **kwargs):
+        try:
+
+            serializer = self.get_serializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            self.perform_create(serializer)
+            return Response({
+                "status": True,
+                "data": serializer.data
+            }, status=status.HTTP_201_CREATED)
+        except ValidationError as e:
+            return Response({
+                "status": False,
+                "error": e.detail if hasattr(e, 'detail') else str(e)
+            }, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({
+                "status": False,
+                "error": str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def perform_create(self, serializer):
         """Handles object creation and assigns producer, recycler, and offer details."""
         try:
             if isinstance(self.request.user, Producer):
                 credit_offer_id = self.request.query_params.get("credit_offer_id")
-
                 try:
                     get_credit_offer = CreditOffer.objects.get(id=credit_offer_id)
                 except CreditOffer.DoesNotExist:
@@ -638,68 +1149,22 @@ class CounterCreditOfferViewSet(viewsets.ModelViewSet):
         except Exception as e:
             raise ValidationError({"error": f"Creation error: {str(e)}"})
 
-    def update(self, request, *args, **kwargs):
-        try:
-            instance = self.get_object()
-
-            if instance.recycler != request.user:
-                return Response(
-                    {"error": "You are not authorized to update this record."},
-                    status=status.HTTP_403_FORBIDDEN
-                )
-
-            return super().update(request, *args, **kwargs)
-
-        except Exception as e:
-            return Response({"error": f"Update error: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-    def partial_update(self, request, *args, **kwargs):
-        """Handles partial updates."""
-        try:
-            kwargs['partial'] = True
-            return self.update(request, *args, **kwargs)
-        except Exception as e:
-            return Response({"error": f"Partial update error: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
-    
-    serializer_class = CounterCreditOfferSerializer
-    authentication_classes = [CustomJWTAuthentication]
-    permission_classes = [permissions.IsAuthenticated,IsRecycler]
-
-    def get(self, request):
-            # Get the Recycler instance for the authenticated user
-        recycler = request.user
-            
-            # Get all counter credit offers related to this recycler
-        counter_offers = recycler.recycler_counter_credit_offers.all().values(
-                "id", "producer__company_name", "quantity", "offer_price"
-            )
-
-        credit_offers = recycler.recycler_epr_credits.all().values(
-            "epr_account","epr_registration_number","waste_type","producer_type","credit_type","year","processing_capacity","comulative_certificate_potential","available_certificate_value"
-        )
-
-        response_data = {
-                "recycler": {
-                    "id": recycler.id,
-                    "company_name": recycler.company_name,
-                },
-                "counter_offers": list(counter_offers),
-                "credit_offers": list(credit_offers),
-            }
-
-        return Response(response_data, status=200)
-    
-
-# TRANSACTION 
-
-
 # PUBLIC VIEW FOR LISTING CREDIT OFFERS
 class PublicCreditOfferListView(generics.ListAPIView):
-    try:
-        queryset = CreditOffer.objects.filter(is_approved=True)
-        serializer_class = CreditOfferSerializer
-        permission_classes = [permissions.AllowAny]  
-    except Exception as e:
-            raise ValidationError({"error": f"Permission error: {str(e)}"})
+    queryset = CreditOffer.objects.filter(is_approved=True)
+    serializer_class = CreditOfferSerializer
+    permission_classes = [permissions.AllowAny]
+
+    def list(self, request, *args, **kwargs):
+        try:
+            queryset = self.get_queryset()
+            serializer = self.get_serializer(queryset, many=True)
+            return Response({
+                "status": True,
+                "data": serializer.data
+            }, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({
+                "status": False,
+                "error": str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

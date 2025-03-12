@@ -8,7 +8,7 @@ from .views import (
     send_verification_email,
     verify_email,
     GetProfileView,
-    UpdateUserProfileView
+    UpdateUserProfileView,
 )
 
 urlpatterns = [

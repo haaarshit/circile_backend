@@ -2,6 +2,8 @@ from django.db import models
 import uuid
 from django.core.exceptions import ValidationError
 from cloudinary.models import CloudinaryField
+from django.core.validators import MinLengthValidator
+from django.utils import timezone
 
 class CustomCloudinaryField(CloudinaryField):
      pass
@@ -133,6 +135,7 @@ class ProducerEPR(models.Model):
     
     producer = models.ForeignKey('users.Producer', on_delete=models.CASCADE, related_name='epr_accounts')
     id = models.UUIDField(default=uuid.uuid4, primary_key=True, editable=False)
+    
     epr_registration_number = models.CharField(max_length=50, unique=True)
     company_name = models.CharField(max_length=255)
     epr_registration_date = models.DateField()
@@ -220,6 +223,41 @@ class EPRTarget(models.Model):
         self.clean()
         super().save(*args, **kwargs)
 
+def validate_doc_choices(value):
+    allowed_docs = [
+        "Tax Invoice",
+        "E-wayBIll",
+        "Loading slip",
+        "Unloading Slip",
+        "Lorry Receipt copy",
+        "DL",
+        "Recycling Certificate Copy",
+        "Co-Processing Certificate",
+        "Lorry Photographs",
+        "Municipality Endorsement"
+    ]
+    
+    # Check if all values are in allowed_docs
+    invalid_docs = [doc for doc in value if doc not in allowed_docs]
+    if invalid_docs:
+        raise ValidationError(
+            f"Invalid document types: {', '.join(invalid_docs)}. "
+            f"Must be from: {', '.join(allowed_docs)}"
+        )
+
+def get_default_supporting_docs():
+    return [
+        "Tax Invoice",
+        "E-wayBIll",
+        "Lorry Receipt copy",
+        "Recycling Certificate Copy",
+        "Co-Processing Certificate",
+        "Lorry Photographs",
+    ]
+
+def get_default_year():
+    return timezone.now().year
+
 # CREDIT OFFER BY RECYLER
 class CreditOffer(models.Model):
     id = models.UUIDField(default=uuid.uuid4, primary_key=True, editable=False)
@@ -232,16 +270,22 @@ class CreditOffer(models.Model):
     # approved super admin
     is_approved = models.BooleanField(default=False)  
     
-    # hard entry from user
-    FY = models.IntegerField()
-    offer_title = models.CharField(max_length=255)
-    credit_available = models.FloatField() # in kgs
-    minimum_purchase = models.FloatField()
-    price_per_credit = models.FloatField()
-    documents = CloudinaryField('raw', resource_type='raw')
 
-
-    
+    FY = models.IntegerField(default=get_default_year)
+    offer_title = models.CharField(max_length=255, default="Default Offer")
+    credit_available = models.FloatField(default=0.0)  # in kgs
+    minimum_purchase = models.FloatField(default=0.0)
+    price_per_credit = models.FloatField(default=0.0)
+    product_image = CloudinaryField('image', resource_type='image', default="")
+    availability_proof = CloudinaryField('image', resource_type='image', default="")
+    is_sold = models.BooleanField(default=False)
+    supporting_doc = models.JSONField(
+        default=get_default_supporting_docs,
+        validators=[
+            MinLengthValidator(5),
+            validate_doc_choices
+        ]
+    )
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
 
@@ -259,13 +303,11 @@ class CounterCreditOffer(models.Model):
     credit_offer = models.ForeignKey(CreditOffer, on_delete=models.CASCADE, related_name='counter_credit_offers')
     
     # hard entry from user
-    quantity = models.FloatField(blank=False) # in kgs
+    producer_epr = models.ForeignKey(ProducerEPR,on_delete=models.CASCADE,related_name="counter_credit_offers")
+    quantity = models.FloatField(blank=False) 
     offer_price = models.FloatField(blank=False)
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default="pending")  
     is_approved = models.BooleanField(default=False)  
-
-
-
 
     def clean(self):
         pass

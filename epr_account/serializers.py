@@ -2,6 +2,7 @@ from rest_framework import serializers
 from .models import RecyclerEPR, ProducerEPR, EPRCredit, EPRTarget, CreditOffer,CounterCreditOffer
 from decouple import config
 from users.models import Recycler
+import json
 cloud_name = config('CLOUDINARY_CLOUD_NAME')
 
 class RecyclerEPRSerializer(serializers.ModelSerializer):
@@ -30,6 +31,7 @@ class RecyclerEPRSerializer(serializers.ModelSerializer):
         """
         request = self.context.get('request')
         if request and request.method in ['POST', 'PUT']:
+            print(request.FILES)
             if 'epr_certificate' not in request.FILES:
                 raise serializers.ValidationError({"epr_certificate": "EPR certificate file is required."})
         return data
@@ -99,40 +101,107 @@ class EPRCreditSerializer(serializers.ModelSerializer):
         fields = '__all__'
         read_only_fields = ['id', 'recycler','erp_account'] 
 
+
 class EPRTargetSerializer(serializers.ModelSerializer):
     class Meta:
         model = EPRTarget
         fields = '__all__'
         read_only_fields = ['id', 'producer','erp_account'] 
 
+
 class CreditOfferSerializer(serializers.ModelSerializer):
-    documents = serializers.SerializerMethodField()
+    
+    product_image = serializers.SerializerMethodField()
 
-
+    availability_proof = serializers.SerializerMethodField()
+    
     class Meta:
         model = CreditOffer
         fields = '__all__'
         read_only_fields = ['id', 'recycler','erp_account','epr_credit'] 
+
+    def to_internal_value(self, data):
+        # Handle case where supporting_doc is a string
+        if 'supporting_doc' in data and isinstance(data['supporting_doc'], str):
+            try:
+                data['supporting_doc'] = json.loads(data['supporting_doc'])
+            except json.JSONDecodeError:
+                raise serializers.ValidationError({"supporting_doc": "Invalid JSON format"})
+        return super().to_internal_value(data)
+
     
-    def get_documents(self, obj):
+    def get_product_image(self, obj):
         print("entered ProducerEPRSerializer - return erp cetificate =====================> ")
-        if obj.documents:
-            if obj.documents.url.startswith('http'):
-                return obj.documents.url
+        if obj.product_image:
+            if obj.product_image.url.startswith('http'):
+                return obj.product_image.url
             else:
                 # Only add the domain if it's not already there
-                return f'https://res.cloudinary.com/{cloud_name}/{obj.documents.url}'
+                return f'https://res.cloudinary.com/{cloud_name}/{obj.product_image.url}'
                 
         return None
     
+    def get_availability_proof(self, obj):
+        print("entered ProducerEPRSerializer - return erp cetificate =====================> ")
+        if obj.availability_proof:
+            if obj.availability_proof.url.startswith('http'):
+                return obj.availability_proof.url
+            else:
+                # Only add the domain if it's not already there
+                return f'https://res.cloudinary.com/{cloud_name}/{obj.availability_proof.url}'
+                
+        return None
+    
+    
     def validate(self, data):
-        """
-        Check that the documents file is provided.
-        """
+  
         request = self.context.get('request')
+        
         if request and request.method in ['POST', 'PUT']:
-            if 'documents' not in request.FILES:
-                raise serializers.ValidationError({"error": "documents file is required."})
+            # Check for required image files
+            if 'product_image' not in request.FILES:
+                raise serializers.ValidationError({"error": "Product image file is required."})
+            
+            if 'availability_proof' not in request.FILES:
+                raise serializers.ValidationError({"error": "Availability proof image file is required."})
+            
+            # Check supporting_doc in data
+            if 'supporting_doc' not in data:
+                raise serializers.ValidationError({"error": "Supporting documents list is required."})
+            
+            # Validate supporting_doc contents
+            supporting_docs = data.get('supporting_doc', [])
+            print(supporting_docs)
+            
+            # Check minimum length
+            if len(supporting_docs) < 5:
+                raise serializers.ValidationError({
+                    "error": "At least 5 supporting documents are required."
+                })
+            
+            # Valid document choices
+            allowed_docs = {
+                "Tax Invoice",
+                "E-wayBIll",
+                "Loading slip",
+                "Unloading Slip",
+                "Lorry Receipt copy",
+                "DL",
+                "Recycling Certificate Copy",
+                "Co-Processing Certificate",
+                "Lorry Photographs",
+                "Municipality Endorsement"
+            }
+            
+            # Check for invalid document types
+            invalid_docs = [doc for doc in supporting_docs if doc not in allowed_docs]
+
+            if invalid_docs:
+                raise serializers.ValidationError({
+                    "error": f"Invalid document types found: {', '.join(invalid_docs)}. "
+                            f"Must be from: {', '.join(allowed_docs)}"
+                })
+
         return data
     
     def create(self, validated_data): 
@@ -142,8 +211,11 @@ class CreditOfferSerializer(serializers.ModelSerializer):
         request = self.context['request']
         validated_data['recycler'] = request.user
         
-        documents = request.FILES.get('documents')
-        validated_data['documents'] = documents
+        product_image = request.FILES.get('product_image')
+        validated_data['product_image'] = product_image
+
+        availability_proof = request.FILES.get('availability_proof')
+        validated_data['availability_proof'] = availability_proof
         
         return super().create(validated_data)
     
@@ -157,15 +229,12 @@ class CounterCreditOfferSerializer(serializers.ModelSerializer):
 
         request = self.context['request']
         validated_data['producer'] = request.user
-        
         return super().create(validated_data)
     
     def update(self, instance, validated_data):
         request = self.context["request"]
 
-        # If Recycler is updating, only allow status change
-        if isinstance(request.user,Recycler):  # Replace with your actual role-checking logic
-            
+        if isinstance(request.user,Recycler):  
             if "status" in validated_data and len(validated_data) == 1:
                 if request.user == instance.recycler:
                     instance.status = validated_data["status"]
