@@ -402,7 +402,7 @@ class ResetPasswordView(APIView):
                     return Response({"error": "Invalid user type."}, status=status.HTTP_400_BAD_REQUEST)
 
                 if user and user.reset_password(token, new_password):
-                    return Response({"message": "Password reset successfully."}, status=status.HTTP_200_OK)
+                    return Response({"message": "Password reset successfully.","status":True}, status=status.HTTP_200_OK)
                 return Response({"error": "Invalid or expired token."}, status=status.HTTP_400_BAD_REQUEST)
             
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
