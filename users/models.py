@@ -37,6 +37,10 @@ class BaseUserModel(AbstractBaseUser):
     company_logo = CloudinaryField('image', null=True, blank=True)
     pcb_doc = CloudinaryField('raw', resource_type='raw', null=True, blank=True)
 
+
+    password_reset_token = models.CharField(max_length=100, null=True, blank=True)
+    reset_token_created_at = models.DateTimeField(null=True, blank=True)
+
     USERNAME_FIELD = 'email'
     # REQUIRED_FIELDS = []
 
@@ -179,6 +183,120 @@ class BaseUserModel(AbstractBaseUser):
     def __str__(self):
         return f"{self.full_name} - {self.email}"
 
+
+    def generate_password_reset_token(self):
+        """
+        Generate a unique password reset token
+        """
+        self.password_reset_token = get_random_string(length=50)
+        self.reset_token_created_at = timezone.now()
+        self.save()
+        return self.password_reset_token
+
+    def send_password_reset_email(self):
+        """
+        Send password reset email with a reset link
+        """
+        base_url = os.getenv('FRONTEND_URL')  # Ensure this is set in your environment
+        reset_link = f"{base_url}/reset-password/{self.__class__.__name__.lower()}/{self.password_reset_token}/" # frontend
+
+        subject = "Reset Your Password"
+        message = f"""
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="UTF-8">
+                <title>Reset Your Password</title>
+                <style>
+                    body {{
+                        font-family: Arial, sans-serif;
+                        background-color: #f4f4f4;
+                        margin: 0;
+                        padding: 0;
+                    }}
+                    .container {{
+                        max-width: 600px;
+                        background: #ffffff;
+                        margin: 20px auto;
+                        padding: 20px;
+                        border-radius: 10px;
+                        box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+                    }}
+                    .header {{
+                        background: #dc3545;
+                        color: white;
+                        text-align: center;
+                        padding: 20px;
+                        font-size: 22px;
+                        border-radius: 10px 10px 0 0;
+                    }}
+                    .content {{
+                        padding: 20px;
+                        font-size: 16px;
+                        color: #333;
+                        text-align: center;
+                    }}
+                    .reset-btn {{
+                        display: inline-block;
+                        background: #007bff;
+                        color: white;
+                        text-decoration: none;
+                        padding: 12px 20px;
+                        font-size: 18px;
+                        border-radius: 5px;
+                        margin-top: 20px;
+                    }}
+                    .footer {{
+                        text-align: center;
+                        font-size: 14px;
+                        color: #777;
+                        margin-top: 20px;
+                    }}
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <div class="header">
+                        Password Reset Request
+                    </div>
+                    <div class="content">
+                        <p>Hello <strong>{self.full_name}</strong>,</p>
+                        <p>We received a request to reset your password. Click the button below to reset it:</p>
+                        <a href="{reset_link}" class="reset-btn">Reset Password</a>
+                        <p>If the button doesn't work, copy and paste this link into your browser:</p>
+                        <p>{reset_link}</p>
+                        <p>This link will expire in 24 hours. If you didn’t request this, please ignore this email.</p>
+                    </div>
+                    <div class="footer">
+                        © {timezone.now().year} CIRCILE. All rights reserved.
+                    </div>
+                </div>
+            </body>
+            </html>
+            """
+
+        send_mail(
+            subject,
+            "",
+            settings.DEFAULT_FROM_EMAIL,
+            [self.email],
+            fail_silently=False,
+            html_message=message
+        )
+
+    def reset_password(self, token, new_password):
+        """
+        Reset the password if the token is valid
+        """
+        if (self.password_reset_token == token and 
+            self.reset_token_created_at and 
+            timezone.now() - self.reset_token_created_at < timedelta(hours=24)):
+            self.set_password(new_password)
+            self.password_reset_token = None
+            self.reset_token_created_at = None
+            self.save()
+            return True
+        return False
     class Meta:
         abstract = True
 

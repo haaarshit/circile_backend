@@ -9,6 +9,8 @@ from .views import (
     verify_email,
     GetProfileView,
     UpdateUserProfileView,
+    ForgotPasswordView,
+    ResetPasswordView
 )
 
 urlpatterns = [
@@ -20,6 +22,10 @@ urlpatterns = [
     path('login/', LoginView.as_view(), name='token_obtain_pair'),
     # /api/users/token/refresh
     path('token/refresh/',  CustomRefreshTokenAuthentication.as_view(), name='token_refresh'),
+
+    # password reset
+    path('forgot-password/', ForgotPasswordView.as_view(), name='forgot-password'),
+    path('reset-password/<str:user_type>/<str:token>/', ResetPasswordView.as_view(), name='reset-password'),
 
     path('update/', UpdateUserProfileView.as_view(), name='udpate_view'),
     path('profile/', GetProfileView.as_view(), name='profile_view'),

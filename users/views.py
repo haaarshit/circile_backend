@@ -16,6 +16,13 @@ from django.contrib.auth.hashers import check_password
 from rest_framework_simplejwt.tokens import RefreshToken
 
 
+from rest_framework.views import APIView
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework import status
+from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.exceptions import TokenError
+
 import jwt
 from django.conf import settings
 from django.core.mail import send_mail
@@ -23,7 +30,7 @@ from django.utils import timezone
 from datetime import timedelta
 from .utils import validate_unique_email
 from .models import Recycler, Producer
-from .serializers import RecyclerSerializer, ProducerSerializer,RecyclerUpdateSerializer,ProducerUpdateSerializer,RecyclerDetailSerializer,ProducerDetailSerializer
+from .serializers import RecyclerSerializer, ProducerSerializer,RecyclerUpdateSerializer,ProducerUpdateSerializer,RecyclerDetailSerializer,ProducerDetailSerializer,ForgotPasswordSerializer,ResetPasswordSerializer
 from .authentication import CustomJWTAuthentication
 
 class RegisterRecyclerView(generics.CreateAPIView):
@@ -213,7 +220,7 @@ class UpdateUserProfileView(APIView):
     def update_profile(self, request, partial):
             try:
                 user = request.user  # Authenticated user
-                protected_fields = ['email', 'mobile_no','password']
+                protected_fields = ['email', 'mobile_no']
                 for field in protected_fields:
                     if field in request.data:
                         print(field)
@@ -282,6 +289,44 @@ class UpdateUserProfileView(APIView):
         # else:
         #     data = request.data
 
+
+class LogoutView(APIView):
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, *args, **kwargs):
+        try:
+            # Get the refresh token from the request data
+            refresh_token = request.data.get("refresh")
+            
+            if not refresh_token:
+                return Response(
+                    {"error": "Refresh token is required", "status": False},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # Blacklist the refresh token
+            try:
+                token = RefreshToken(refresh_token)
+                token.blacklist()
+            except TokenError as e:
+                return Response(
+                    {"error": "Invalid refresh token", "status": False},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            return Response(
+                {"message": "Successfully logged out", "status": True},
+                status=status.HTTP_200_OK
+            )
+
+        except Exception as e:
+            return Response(
+                {"error": f"{str(e)}", "status": False},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
 class GetProfileView(APIView):
     authentication_classes = [CustomJWTAuthentication]
     permission_classes = [IsAuthenticated]
@@ -315,6 +360,56 @@ class GetProfileView(APIView):
                         status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
     
+class ForgotPasswordView(APIView):
+    def post(self, request):
+        try:
+            serializer = ForgotPasswordSerializer(data=request.data)
+            if serializer.is_valid():
+                email = serializer.validated_data['email']
+                user = Recycler.objects.filter(email=email).first() or Producer.objects.filter(email=email).first()
+                
+                if not user:
+                    return Response(
+                    {"error": f"user not found with this email", "status": False},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+                     
+                if user and user.is_active:
+                    user.generate_password_reset_token()
+                    user.send_password_reset_email()
+                    return Response({"message": "Password reset email sent.","status":True}, status=status.HTTP_200_OK)
+                return Response({"error": "User not found or inactive."}, status=status.HTTP_404_NOT_FOUND)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        
+        except Exception as e:
+            return Response(
+                {"error": f"{str(e)}", "status": False},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+class ResetPasswordView(APIView):
+    def post(self, request, user_type, token):
+        
+        try:
+            serializer = ResetPasswordSerializer(data=request.data)
+            if serializer.is_valid():
+                new_password = serializer.validated_data['new_password']
+                if user_type.lower() == "recycler":
+                    user = Recycler.objects.filter(password_reset_token=token).first()
+                elif user_type.lower() == "producer":
+                    user = Producer.objects.filter(password_reset_token=token).first()
+                else:
+                    return Response({"error": "Invalid user type."}, status=status.HTTP_400_BAD_REQUEST)
+
+                if user and user.reset_password(token, new_password):
+                    return Response({"message": "Password reset successfully."}, status=status.HTTP_200_OK)
+                return Response({"error": "Invalid or expired token."}, status=status.HTTP_400_BAD_REQUEST)
+            
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 
 @api_view(['POST'])
@@ -340,6 +435,7 @@ def send_verification_email(request):
     return Response({
         'message': 'Verification email resent successfully',"status":True
     }, status=status.HTTP_200_OK)
+
 
 @api_view(['GET'])
 def verify_email(request, user_type, token):

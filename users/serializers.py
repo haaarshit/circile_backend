@@ -124,3 +124,12 @@ class ProducerDetailSerializer(serializers.ModelSerializer):
             'address', 'company_logo', 'pcb_doc', 'is_active', 'is_verified'
         ]
         # Password is intentionally excluded for security reasons
+
+
+
+class ForgotPasswordSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+
+class ResetPasswordSerializer(serializers.Serializer):
+    token = serializers.CharField(max_length=100)
+    new_password = serializers.CharField(min_length=8)
