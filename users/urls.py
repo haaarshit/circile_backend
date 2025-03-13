@@ -17,12 +17,10 @@ urlpatterns = [
     # Registration Routes
     path('register/recycler/', RegisterRecyclerView.as_view(), name='register-recycler'),
     path('register/producer/', RegisterProducerView.as_view(), name='register-producer'),
-
     # Authentication Routes
     path('login/', LoginView.as_view(), name='token_obtain_pair'),
     # /api/users/token/refresh
     path('token/refresh/',  CustomRefreshTokenAuthentication.as_view(), name='token_refresh'),
-
     # password reset
     path('forgot-password/', ForgotPasswordView.as_view(), name='forgot-password'),
     path('reset-password/<str:user_type>/<str:token>/', ResetPasswordView.as_view(), name='reset-password'),

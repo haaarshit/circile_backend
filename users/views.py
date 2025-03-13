@@ -45,28 +45,6 @@ class RegisterRecyclerView(generics.CreateAPIView):
 
     def create(self, request, *args, **kwargs):
 
-        # existing_user =  validate_unique_email(request.data.get("email"))
-        # print('---------------------------------------------------------------------------')
-        # print(existing_user)
-        # print('---------------------------------------------------------------------------')
-        # if existing_user:
-        #     return Response(
-        #         {"error": "User already exist."}, 
-        #         status=status.HTTP_400_BAD_REQUEST
-        #     )
-
-        # serializer = self.get_serializer(data=request.data)
-        # serializer.is_valid(raise_exception=True)
-        
-        # # Create user but keep is_verified as False
-        # user = serializer.save()
-        # user.generate_verification_token()
-        # user.send_verification_email()
-        
-        # return Response({
-        #     "message": "Registration successful. Please check your email to verify your account.",
-        #     "user": serializer.data
-        # }, status=status.HTTP_201_CREATED)
         try:
             existing_user = validate_unique_email(request.data.get("email"))
             print('---------------------------------------------------------------------------')

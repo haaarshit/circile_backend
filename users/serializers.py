@@ -6,7 +6,7 @@ cloud_name = config('CLOUDINARY_CLOUD_NAME')
 class RecyclerSerializer(serializers.ModelSerializer):
     class Meta:
         model = Recycler
-        fields = ['email', 'full_name', 'mobile_no', 'designation', 'password']
+        fields = ['email', 'full_name', 'mobile_no', 'designation', 'password','company_name']
         extra_kwargs = {'password': {'write_only': True}}
 
     def create(self, validated_data):
@@ -17,7 +17,7 @@ class RecyclerSerializer(serializers.ModelSerializer):
 class ProducerSerializer(serializers.ModelSerializer):
     class Meta:
         model = Producer
-        fields = ['email', 'full_name', 'mobile_no', 'designation', 'password']
+        fields = ['email', 'full_name', 'mobile_no', 'designation', 'password','company_name']
         extra_kwargs = {'password': {'write_only': True}}
 
 
