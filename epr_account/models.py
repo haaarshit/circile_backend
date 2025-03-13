@@ -316,4 +316,9 @@ class CounterCreditOffer(models.Model):
         self.clean()
         super().save(*args, **kwargs)
 
+# # TRANSACTION  
+# class Transaction(models.Model):
+#       id = models.UUIDField(default=uuid.uuid4, primary_key=True, editable=False)
+#       recycler = models.ForeignKey('users.Recycler', on_delete=models.CASCADE, related_name='recycler_transactions')
+#       producer = models.ForeignKey('users.Producer', on_delete=models.CASCADE, related_name='producer_transactions')
 

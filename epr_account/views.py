@@ -6,6 +6,7 @@ from .serializers import RecyclerEPRSerializer, ProducerEPRSerializer, EPRCredit
 from users.models import Recycler, Producer
 from rest_framework.exceptions import ValidationError
 from django.core.exceptions import ValidationError as DjangoValidationError
+from django.db.models import Q
 
 from rest_framework.views import APIView
 from rest_framework.parsers import MultiPartParser, FormParser,JSONParser
@@ -51,10 +52,15 @@ class RecyclerEPRViewSet(viewsets.ModelViewSet):
                 "status": True,
                 "data": serializer.data
             }, status=status.HTTP_200_OK)
+        except serializers.ValidationError as e:
+            return Response({
+            "status": False,
+            "error": e.detail if hasattr(e, 'detail') else str(e)
+            }, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             return Response({
                 "status": False,
-                "error": str(e)
+                "error": e.detail if hasattr(e, 'detail') else str(e)
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
     def retrieve(self, request, *args, **kwargs):
@@ -126,29 +132,25 @@ class RecyclerEPRViewSet(viewsets.ModelViewSet):
                 "status": False,
                 "error": str(e)
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-    
-
 
     def perform_create(self, serializer):
         # serializer.save(producer=self.request.user)
         try:
             instance = serializer.save(recycler=self.request.user)
-            print(instance)
-            # Call full_clean to trigger model validation
             try:
                 instance.full_clean()
             except DjangoValidationError as e:
                 # Delete the instance since it's invalid
                 instance.delete()
                 # Re-raise as a DRF ValidationError
-                raise serializers.ValidationError({"error": str(e), "status": False})
+                raise serializers.ValidationError({"error":  e.detail if hasattr(e, 'detail') else str(e), "status": False})
 
         except Exception as e:
             raise serializers.ValidationError({"error": str(e),"status":False})
     
     def create(self, request, *args, **kwargs):
         try:
-            recycler = request.user  # Assuming Recycler is your user model
+            recycler = request.user  
             if not self.is_profile_complete(recycler):
                 return Response({
                     "status": False,
@@ -162,7 +164,7 @@ class RecyclerEPRViewSet(viewsets.ModelViewSet):
                 "data": serializer.data
             }, status=status.HTTP_201_CREATED)
         except serializers.ValidationError as e:
-             raise serializers.ValidationError({"error": str(e),"status":False}) 
+             raise serializers.ValidationError({"error": e.detail if hasattr(e, 'detail') else str(e),"status":False}) 
         except Exception as e:
             return Response({
                 "status": False,
@@ -352,7 +354,7 @@ class EPRCreditViewSet(viewsets.ModelViewSet):
 
                 request_data.update({
                     "epr_account": epr_account.id,
-                    "recycler": epr_account.id,  # Note: This might be a typo; should it be self.request.user.id?
+                    "recycler": self.request.user.id,  # Note: This might be a typo; should it be self.request.user.id?
                     "epr_registration_number": epr_account.epr_registration_number,
                     "waste_type": epr_account.waste_type,
                 })
@@ -370,40 +372,28 @@ class CreditOfferViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated, IsRecycler]
     parser_classes = (MultiPartParser, FormParser,JSONParser)
 
+
     def get_queryset(self):
-        try:
-            epr_account_id = self.request.query_params.get("epr_id")
-            epr_credit_id = self.request.query_params.get("epr_credit_id")
-
-            # Case 1: Only epr_credit_id is provided
-            if epr_credit_id and not epr_account_id:
-                get_epr_credit = EPRCredit.objects.get(id=epr_credit_id, recycler=self.request.user)
-                return CreditOffer.objects.filter(
-                    recycler=self.request.user,
-                    epr_credit=get_epr_credit
-                )
-
-            if epr_account_id:
+        epr_account_id = self.request.query_params.get("epr_id")
+        epr_credit_id = self.request.query_params.get("epr_credit_id")
+        
+        queryset = CreditOffer.objects.filter(recycler=self.request.user)
+        
+        if epr_account_id:
+            try:
                 get_epr_account = RecyclerEPR.objects.get(id=epr_account_id, recycler=self.request.user)
-
-                if epr_credit_id:
-                    get_epr_credit = EPRCredit.objects.get(id=epr_credit_id, recycler=self.request.user, epr_account=get_epr_account)
-                    return CreditOffer.objects.filter(
-                        recycler=self.request.user,
-                        epr_account=get_epr_account,
-                        epr_credit=get_epr_credit
-                    )
-
-                return CreditOffer.objects.filter(recycler=self.request.user, epr_account=get_epr_account)
-
-            return CreditOffer.objects.filter(recycler=self.request.user)
-
-        except RecyclerEPR.DoesNotExist:    
-            raise ValidationError({"error": "Invalid epr_account_id or not authorized."})
-        except EPRCredit.DoesNotExist:
-            raise ValidationError({"error": "No record found for credit with the given EPR account."})
-        except Exception as e:
-            raise ValidationError({"error": str(e)})
+                queryset = queryset.filter(epr_account=get_epr_account)
+            except RecyclerEPR.DoesNotExist:
+                raise serializers.ValidationError({"error": "Invalid epr_account_id or not authorized."})
+            
+            if epr_credit_id:
+                try:
+                    get_epr_credit = EPRCredit.objects.get(id=epr_credit_id, recycler=self.request.user)
+                    queryset = queryset.filter(epr_credit=get_epr_credit)
+                except EPRCredit.DoesNotExist:
+                    raise serializers.ValidationError({"error": "No record found for credit with the given EPR account."})
+            
+        return queryset
 
     # GET - List
     def list(self, request, *args, **kwargs):
@@ -461,6 +451,33 @@ class CreditOfferViewSet(viewsets.ModelViewSet):
                 "error": str(e)
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+        
+    def perform_create(self, serializer):
+        try:
+            epr_account_id = self.request.query_params.get("epr_id")
+            epr_credit_id = self.request.query_params.get("epr_credit_id")
+
+            get_epr_account = RecyclerEPR.objects.get(id=epr_account_id)
+            get_epr_credit = EPRCredit.objects.get(id=epr_credit_id)
+
+            serializer.save(
+                recycler=self.request.user,
+                epr_account=get_epr_account,
+                epr_credit=get_epr_credit
+            )
+
+        except RecyclerEPR.DoesNotExist:
+            raise ValidationError({"error": "Invalid epr_account_id or not authorized."})
+        except EPRCredit.DoesNotExist:
+            raise ValidationError({"error": "Invalid epr_credit_id or not authorized."})
+        except serializers.ValidationError as e:
+            return Response({
+                "status": False,
+                "error": e.detail if hasattr(e, 'detail') else str(e)
+            }, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            raise ValidationError({"error": str(e)})
+
     # PUT - Update
     def update(self, request, *args, **kwargs):
         try:
@@ -506,7 +523,7 @@ class CreditOfferViewSet(viewsets.ModelViewSet):
                 "status": True,
                 "data": serializer.data
             }, status=status.HTTP_200_OK)
-        except ValidationError as e:
+        except serializers.ValidationError as e:
             return Response({
                 "status": False,
                 "error": e.detail if hasattr(e, 'detail') else str(e)
@@ -514,7 +531,7 @@ class CreditOfferViewSet(viewsets.ModelViewSet):
         except Exception as e:
             return Response({
                 "status": False,
-                "error": str(e)
+                "error": e.detail if hasattr(e, 'detail') else str(e)
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def get_serializer(self, *args, **kwargs):
@@ -573,28 +590,6 @@ class CreditOfferViewSet(viewsets.ModelViewSet):
 
             return super().get_serializer(*args, **kwargs)
 
-        except Exception as e:
-            raise ValidationError({"error": str(e)})
-
-    
-    def perform_create(self, serializer):
-        try:
-            epr_account_id = self.request.query_params.get("epr_id")
-            epr_credit_id = self.request.query_params.get("epr_credit_id")
-
-            get_epr_account = RecyclerEPR.objects.get(id=epr_account_id)
-            get_epr_credit = EPRCredit.objects.get(id=epr_credit_id)
-
-            serializer.save(
-                recycler=self.request.user,
-                epr_account=get_epr_account,
-                epr_credit=get_epr_credit
-            )
-
-        except RecyclerEPR.DoesNotExist:
-            raise ValidationError({"error": "Invalid epr_account_id or not authorized."})
-        except EPRCredit.DoesNotExist:
-            raise ValidationError({"error": "Invalid epr_credit_id or not authorized."})
         except Exception as e:
             raise ValidationError({"error": str(e)})
 
@@ -905,7 +900,7 @@ class EPRTargetViewSet(viewsets.ModelViewSet):
 
             request_data.update({
                 "epr_account": epr_account.id,
-                "recycler": epr_account.id,  # Note: This might be a typo; should it be producer?
+                "producer": self.request.user.id,  
                 "epr_registration_number": epr_account.epr_registration_number,
                 "waste_type": epr_account.waste_type,
             })
@@ -949,32 +944,38 @@ class CounterCreditOfferViewSet(viewsets.ModelViewSet):
             raise ValidationError({"error": f"Permission error: {str(e)}"})
 
     def get_queryset(self):
-        """Filters queryset based on user type and query parameters."""
-        try:
-            credit_offer_id = self.request.query_params.get("credit_offer_id")
+        user = self.request.user
+        credit_offer_id = self.request.query_params.get("credit_offer_id")
+        queryset = CounterCreditOffer.objects.none() 
 
-            if isinstance(self.request.user, Producer):
-                if credit_offer_id:
-                    try:
-                        get_credit_offer = CreditOffer.objects.get(id=credit_offer_id)
-                        return CounterCreditOffer.objects.filter(credit_offer=get_credit_offer, producer=self.request.user)
-                    except CreditOffer.DoesNotExist:
-                        raise ValidationError({"error": "Credit offer not found."})
-                return CounterCreditOffer.objects.filter(producer=self.request.user)
+        # Determine user type and filter field
+        if isinstance(user, Producer):
+            filter_field = "producer"
+        elif isinstance(user, Recycler):
+            filter_field = "recycler"
+        else:
+            return queryset  # Return empty queryset for unsupported user types
 
-            elif isinstance(self.request.user, Recycler):
-                if credit_offer_id:
-                    try:
-                        get_credit_offer = CreditOffer.objects.get(id=credit_offer_id, recycler=self.request.user)
-                        return CounterCreditOffer.objects.filter(credit_offer=get_credit_offer, recycler=self.request.user)
-                    except CreditOffer.DoesNotExist:
-                        raise ValidationError({"error": "Credit offer not found or not authorized."})
-                return CounterCreditOffer.objects.filter(recycler=self.request.user)
+        # Base queryset for the user
+        queryset = CounterCreditOffer.objects.filter(**{filter_field: user})
 
-            return CounterCreditOffer.objects.none()
+        if credit_offer_id:
+            try:
+                # For Recycler, ensure they own the CreditOffer; Producers don't need this check
+                credit_offer_filter = (
+                    Q(id=credit_offer_id, recycler=user) if isinstance(user, Recycler)
+                    else Q(id=credit_offer_id)
+                )
+                get_credit_offer = CreditOffer.objects.get(credit_offer_filter)
+                queryset = queryset.filter(credit_offer=get_credit_offer)
+            except CreditOffer.DoesNotExist:
+                error_msg = (
+                    "Credit offer not found or not authorized." if isinstance(user, Recycler)
+                    else "Credit offer not found."
+                )
+                raise ValidationError({"error": error_msg})
 
-        except Exception as e:
-            raise ValidationError({"error": f"Queryset error: {str(e)}"})
+        return queryset
 
     # GET - List
     def list(self, request, *args, **kwargs):
@@ -1011,7 +1012,6 @@ class CounterCreditOfferViewSet(viewsets.ModelViewSet):
                 "error": str(e)
             }, status=status.HTTP_404_NOT_FOUND if "DoesNotExist" in str(e) else status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-
     # PUT - Update
     def update(self, request, *args, **kwargs):
         try:
@@ -1019,7 +1019,7 @@ class CounterCreditOfferViewSet(viewsets.ModelViewSet):
             if instance.recycler != request.user:
                 return Response({
                     "status": False,
-                    "error": "You are not authorized to update this record."
+                    "error": "Only authorized recycler can update record."
                 }, status=status.HTTP_403_FORBIDDEN)
 
             serializer = self.get_serializer(instance, data=request.data, partial=False)
