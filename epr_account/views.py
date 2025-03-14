@@ -1154,24 +1154,24 @@ class CounterCreditOfferViewSet(viewsets.ModelViewSet):
             raise ValidationError({"error": f"Creation error: {str(e)}"})
 
 # PUBLIC VIEW FOR LISTING CREDIT OFFERS
-class PublicCreditOfferListView(generics.ListAPIView):
-    queryset = CreditOffer.objects.filter(is_approved=True)
-    serializer_class = CreditOfferSerializer
-    permission_classes = [permissions.AllowAny]
+# class PublicCreditOfferListView(generics.ListAPIView):
+    # queryset = CreditOffer.objects.filter(is_approved=True)
+    # serializer_class = CreditOfferSerializer
+    # permission_classes = [permissions.AllowAny]
 
-    def list(self, request, *args, **kwargs):
-        try:
-            queryset = self.get_queryset()
-            serializer = self.get_serializer(queryset, many=True)
-            return Response({
-                "status": True,
-                "data": serializer.data
-            }, status=status.HTTP_200_OK)
-        except Exception as e:
-            return Response({
-                "status": False,
-                "error": str(e)
-            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    # def list(self, request, *args, **kwargs):
+    #     try:
+    #         queryset = self.get_queryset()
+    #         serializer = self.get_serializer(queryset, many=True)
+    #         return Response({
+    #             "status": True,
+    #             "data": serializer.data
+    #         }, status=status.HTTP_200_OK)
+    #     except Exception as e:
+    #         return Response({
+    #             "status": False,
+    #             "error": str(e)
+    #         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class PublicCreditOfferListView(generics.ListAPIView):
     queryset = CreditOffer.objects.filter(is_approved=True).select_related('epr_account', 'epr_credit')

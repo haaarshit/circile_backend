@@ -198,7 +198,7 @@ class UpdateUserProfileView(APIView):
     def update_profile(self, request, partial):
             try:
                 user = request.user  # Authenticated user
-                protected_fields = ['email', 'mobile_no']
+                protected_fields = ['email', 'mobile_no','password']
                 for field in protected_fields:
                     if field in request.data:
                         print(field)
