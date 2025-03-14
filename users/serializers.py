@@ -106,6 +106,8 @@ class ProducerUpdateSerializer(serializers.ModelSerializer):
         return representation
     
 class RecyclerDetailSerializer(serializers.ModelSerializer):
+    company_logo = serializers.SerializerMethodField()
+    pcb_doc = serializers.SerializerMethodField()
     class Meta:
         model = Recycler
         fields = [
@@ -113,17 +115,75 @@ class RecyclerDetailSerializer(serializers.ModelSerializer):
             'company_name', 'city', 'state', 'gst_number', 'pcb_number', 
             'address', 'company_logo', 'pcb_doc', 'is_active', 'is_verified'
         ]
-        # Password is intentionally excluded for security reasons
+    def get_company_logo(self, obj):
+        """
+        Handle company_logo image URL generation
+        """
+        if obj.company_logo:
+            try:
+                url = obj.company_logo.url
+                if url.startswith('http'):
+                    return url
+                return f'https://res.cloudinary.com/{cloud_name}/{url}'
+            except Exception as e:
+                print(f"Error getting company_logo URL: {str(e)}")
+                return None
+        return None
+
+    def get_pcb_doc(self, obj):
+        """
+        Handle pcb_doc URL generation
+        """
+        if obj.pcb_doc:
+            try:
+                url = obj.pcb_doc.url
+                if url.startswith('http'):
+                    return url
+                return f'https://res.cloudinary.com/{cloud_name}/{url}'
+            except Exception as e:
+                print(f"Error getting pcb_doc URL: {str(e)}")
+                return None
+        return None
     
 class ProducerDetailSerializer(serializers.ModelSerializer):
+    company_logo = serializers.SerializerMethodField()
+    pcb_doc = serializers.SerializerMethodField()
     class Meta:
-        model = Producer
+        model = Recycler
         fields = [
             'id', 'email', 'full_name', 'mobile_no', 'designation', 
             'company_name', 'city', 'state', 'gst_number', 'pcb_number', 
             'address', 'company_logo', 'pcb_doc', 'is_active', 'is_verified'
         ]
-        # Password is intentionally excluded for security reasons
+    def get_company_logo(self, obj):
+        """
+        Handle company_logo image URL generation
+        """
+        if obj.company_logo:
+            try:
+                url = obj.company_logo.url
+                if url.startswith('http'):
+                    return url
+                return f'https://res.cloudinary.com/{cloud_name}/{url}'
+            except Exception as e:
+                print(f"Error getting company_logo URL: {str(e)}")
+                return None
+        return None
+
+    def get_pcb_doc(self, obj):
+        """
+        Handle pcb_doc URL generation
+        """
+        if obj.pcb_doc:
+            try:
+                url = obj.pcb_doc.url
+                if url.startswith('http'):
+                    return url
+                return f'https://res.cloudinary.com/{cloud_name}/{url}'
+            except Exception as e:
+                print(f"Error getting pcb_doc URL: {str(e)}")
+                return None
+        return None
 
 
 
