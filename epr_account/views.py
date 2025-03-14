@@ -1,13 +1,15 @@
 from rest_framework import viewsets, permissions, status, serializers,generics
 from rest_framework.response import Response
 from users.authentication import CustomJWTAuthentication
-from .models import RecyclerEPR, ProducerEPR,EPRCredit,EPRTarget,CreditOffer,CounterCreditOffer
-from .serializers import RecyclerEPRSerializer, ProducerEPRSerializer, EPRCreditSerializer,EPRTargetSerializer, CreditOfferSerializer,CounterCreditOfferSerializer
+from .models import RecyclerEPR, ProducerEPR,EPRCredit,EPRTarget,CreditOffer,CounterCreditOffer,Transaction
+from .serializers import RecyclerEPRSerializer, ProducerEPRSerializer, EPRCreditSerializer,EPRTargetSerializer, CreditOfferSerializer,CounterCreditOfferSerializer,TransactionSerializer
 from users.models import Recycler, Producer
 from rest_framework.exceptions import ValidationError
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db.models import Q
+from django.core.mail import send_mail
 
+from django.db.models.functions import ExtractYear
 from rest_framework.views import APIView
 from rest_framework.parsers import MultiPartParser, FormParser,JSONParser
 from rest_framework.exceptions import PermissionDenied, NotFound
@@ -15,6 +17,9 @@ from django.shortcuts import get_object_or_404
 from .filters import CreditOfferFilter
 from rest_framework.filters import OrderingFilter
 from django_filters.rest_framework import DjangoFilterBackend
+
+from django.conf import settings
+
 
 
 class IsRecycler(permissions.BasePermission):
@@ -199,14 +204,28 @@ class EPRCreditViewSet(viewsets.ModelViewSet):
     parser_classes = (MultiPartParser, FormParser,JSONParser)
 
     def get_queryset(self):
+       
+        queryset = EPRCredit.objects.filter(recycler=self.request.user)
+
+        # Filter by epr_account_id if provided
         epr_account_id = self.request.query_params.get("epr_id")
         if epr_account_id:
             try:
                 get_epr_account = RecyclerEPR.objects.get(id=epr_account_id, recycler=self.request.user)
-                return EPRCredit.objects.filter(recycler=self.request.user, epr_account=get_epr_account)
+                queryset = queryset.filter(epr_account=get_epr_account)
             except RecyclerEPR.DoesNotExist:
                 raise serializers.ValidationError({"error": "Invalid epr_id or not authorized."})
-        return EPRCredit.objects.filter(recycler=self.request.user)
+
+        # Filter by year only if provided in query
+        year = self.request.query_params.get("year")
+        if year:  # Only apply filter if year is given
+            try:
+                year = int(year)  # Convert to integer to validate
+                queryset = queryset.annotate(year_extracted=ExtractYear('year')).filter(year_extracted=year)
+            except ValueError:
+                raise serializers.ValidationError({"error": "Invalid year format. Please provide a valid 4-digit year (e.g., 2023)."})
+
+        return queryset
 
     # GET - List
     def list(self, request, *args, **kwargs):
@@ -368,6 +387,25 @@ class EPRCreditViewSet(viewsets.ModelViewSet):
         except Exception as e:
             raise serializers.ValidationError({"error": str(e)})
 
+    def destroy(self, request, *args, **kwargs):
+        try:
+            instance = self.get_object()
+            if instance.recycler != request.user:
+                return Response({
+                    "status": False,
+                    "error": "You are not authorized to delete this record."
+                }, status=status.HTTP_403_FORBIDDEN)
+
+            self.perform_destroy(instance)
+            return Response({
+                "status": True,
+                "message": "EPR account deleted successfully."
+            }, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({
+                "status": False,
+                "error": str(e)
+            }, status=status.HTTP_404_NOT_FOUND if "DoesNotExist" in str(e) else status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 # RECYLER -> CREATE CREDIT OFFER ✅ 
 class CreditOfferViewSet(viewsets.ModelViewSet):
@@ -597,6 +635,25 @@ class CreditOfferViewSet(viewsets.ModelViewSet):
         except Exception as e:
             raise ValidationError({"error": str(e)})
 
+    def destroy(self, request, *args, **kwargs):
+        try:
+            instance = self.get_object()
+            if instance.recycler != request.user:
+                return Response({
+                    "status": False,
+                    "error": "You are not authorized to delete this record."
+                }, status=status.HTTP_403_FORBIDDEN)
+
+            self.perform_destroy(instance)
+            return Response({
+                "status": True,
+                "message": "Credit record deleted successfully."
+            }, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({
+                "status": False,
+                "error": str(e)
+            }, status=status.HTTP_404_NOT_FOUND if "DoesNotExist" in str(e) else status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 # PRODUCER -> CREATE EPR ACCOUNT ✅ 
 class ProducerEPRViewSet(viewsets.ModelViewSet):
@@ -753,6 +810,25 @@ class ProducerEPRViewSet(viewsets.ModelViewSet):
                 return False
         return True
 
+    def destroy(self, request, *args, **kwargs):
+        try:
+            instance = self.get_object()
+            if instance.producer != request.user:
+                return Response({
+                    "status": False,
+                    "error": "You are not authorized to delete this record."
+                }, status=status.HTTP_403_FORBIDDEN)
+
+            self.perform_destroy(instance)
+            return Response({
+                "status": True,
+                "message": "EPR account deleted successfully."
+            }, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({
+                "status": False,
+                "error": str(e)
+            }, status=status.HTTP_404_NOT_FOUND if "DoesNotExist" in str(e) else status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 # PRODUCER -> ADD TARGET  ✅ 
 class EPRTargetViewSet(viewsets.ModelViewSet):
@@ -928,6 +1004,27 @@ class EPRTargetViewSet(viewsets.ModelViewSet):
             if instance is not None:  
                instance.delete()
             raise serializers.ValidationError({"error": str(e)})
+
+    def destroy(self, request, *args, **kwargs):
+        try:
+            instance = self.get_object()
+            if instance.producer != request.user:
+                return Response({
+                    "status": False,
+                    "error": "You are not authorized to delete this record."
+                }, status=status.HTTP_403_FORBIDDEN)
+
+            self.perform_destroy(instance)
+            return Response({
+                "status": True,
+                "message": "Target record deleted successfully."
+            }, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({
+                "status": False,
+                "error": str(e)
+            }, status=status.HTTP_404_NOT_FOUND if "DoesNotExist" in str(e) else status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 # PRODUCER -> CREATE COUNTER CREDIT OFFER | RECYCLER APPROVE OR REJECT IT
 class CounterCreditOfferViewSet(viewsets.ModelViewSet):
@@ -1153,8 +1250,29 @@ class CounterCreditOfferViewSet(viewsets.ModelViewSet):
         except Exception as e:
             raise ValidationError({"error": f"Creation error: {str(e)}"})
 
-# PUBLIC VIEW FOR LISTING CREDIT OFFERS
+    def destroy(self, request, *args, **kwargs):
+        try:
+            instance = self.get_object()
+            # Check if user is either the producer or recycler associated with the record
+            if instance.producer != request.user:
+                return Response({
+                    "status": False,
+                    "error": "You are not authorized to delete this record."
+                }, status=status.HTTP_403_FORBIDDEN)
 
+            self.perform_destroy(instance)
+            return Response({
+                "status": True,
+                "message": "Counter credit offer deleted successfully."
+            }, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({
+                "status": False,
+                "error": str(e)
+            }, status=status.HTTP_404_NOT_FOUND if "DoesNotExist" in str(e) else status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+# PUBLIC VIEW FOR LISTING CREDIT OFFERS
 class PublicCreditOfferListView(generics.ListAPIView):
     queryset = CreditOffer.objects.filter(is_approved=True).select_related('epr_account', 'epr_credit')
     serializer_class = CreditOfferSerializer
@@ -1183,3 +1301,277 @@ class PublicCreditOfferListView(generics.ListAPIView):
                 "status": False,
                 "error": str(e)
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+
+
+class TransactionViewSet(viewsets.ModelViewSet):
+    queryset = Transaction.objects.all()
+    serializer_class = TransactionSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    authentication_classes = [CustomJWTAuthentication]
+    
+    def get_permissions(self):
+        try:
+            if self.action == 'create':
+                permission_classes = [permissions.IsAuthenticated, IsProducer]
+            elif self.action in ['update', 'partial_update']:
+                permission_classes = [permissions.IsAuthenticated, IsRecycler]
+            else:  # list, retrieve
+                permission_classes = [permissions.IsAuthenticated]
+            return [permission() for permission in permission_classes]
+        except Exception as e:
+            raise ValidationError({"error": f"Permission error: {str(e)}"})
+
+    def get_queryset(self):
+        user = self.request.user
+        if isinstance(user, Recycler):
+            return Transaction.objects.filter(recycler=user)
+        elif isinstance(user, Producer):
+            return Transaction.objects.filter(producer=user)
+        return Transaction.objects.none()
+ 
+        # GET - List
+    
+    def list(self, request, *args, **kwargs):
+        try:
+            queryset = self.get_queryset()
+            serializer = self.get_serializer(queryset, many=True)
+            return Response({
+                "status": True,
+                "data": serializer.data
+            }, status=status.HTTP_200_OK)
+        except ValidationError as e:
+            return Response({
+                "status": False,
+                "error": e.detail if hasattr(e, 'detail') else str(e)
+            }, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({
+                "status": False,
+                "error": str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def retrieve(self, request, *args, **kwargs):
+        try:
+            instance = self.get_object()
+            serializer = self.get_serializer(instance)
+            return Response({
+                "status": True,
+                "data": serializer.data
+            }, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({
+                "status": False,
+                "error": str(e)
+            }, status=status.HTTP_404_NOT_FOUND if "DoesNotExist" in str(e) else status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+   
+    def create(self, request, *args, **kwargs):
+        try:
+            credit_offer_id = request.query_params.get('credit_offer_id')
+            counter_credit_offer_id = request.query_params.get('counter_credit_offer_id')
+
+            # Validate query parameters
+            if not credit_offer_id and not counter_credit_offer_id:
+                return Response({
+                    "status": False,
+                    "error": "Provide either credit_offer_id or counter_credit_offer_id"
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+            if credit_offer_id and counter_credit_offer_id:
+                return Response({
+                    "status": False,
+                    "error": "Provide only one of credit_offer_id or counter_credit_offer_id"
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+            # Prepare data 
+            data = request.data.copy()
+            data['producer'] = request.user.id
+
+            data.pop('is_complete', None)
+            data.pop('transaction_proof', None)
+            data.pop('status', None)
+
+
+            # Populate data from CreditOffer
+            if credit_offer_id:
+                try:
+                    credit_offer = CreditOffer.objects.get(id=credit_offer_id)
+                    data['credit_offer'] = credit_offer.id
+                    data['recycler'] = credit_offer.recycler.id
+                    data['credit_quantity'] = credit_offer.credit_available
+                    data['total_price'] = float(data['credit_quantity']) * credit_offer.price_per_credit
+                    data['price_per_credit'] = credit_offer.price_per_credit
+                    data['credit_type'] = credit_offer.epr_credit.credit_type
+                    data['product_type'] = credit_offer.epr_credit.product_type
+                    data['producer_type'] = request.user.epr_accounts.first().producer_type
+                    data['offered_by'] = 'recycler'
+                except CreditOffer.DoesNotExist:
+                    return Response({
+                        "status": False,
+                        "error": "Credit offer not found"
+                    }, status=status.HTTP_404_NOT_FOUND)
+
+            # Populate data from CounterCreditOffer
+            else:
+                try:
+                    counter_credit_offer = CounterCreditOffer.objects.get(id=counter_credit_offer_id)
+                    if counter_credit_offer.status != 'approved':
+                        return Response({
+                            "status": False,
+                            "error": "Counter credit offer must be approved"
+                        }, status=status.HTTP_400_BAD_REQUEST)
+                    data['counter_credit_offer'] = counter_credit_offer.id
+                    data['credit_offer'] = counter_credit_offer.credit_offer.id
+                    data['recycler'] = counter_credit_offer.recycler.id
+                    data['credit_quantity'] = counter_credit_offer.quantity  # Force quantity match
+                    data['total_price'] = float(data['credit_quantity']) * counter_credit_offer.offer_price
+                    data['price_per_credit'] = counter_credit_offer.offer_price
+                    data['credit_type'] = counter_credit_offer.credit_offer.epr_credit.credit_type
+                    data['product_type'] = counter_credit_offer.credit_offer.epr_credit.product_type
+                    data['producer_type'] = request.user.epr_accounts.first().producer_type
+                    data['offered_by'] = 'producer'
+                except CounterCreditOffer.DoesNotExist:
+                    return Response({
+                        "status": False,
+                        "error": "Counter credit offer not found"
+                    }, status=status.HTTP_404_NOT_FOUND)
+
+            # Serialize and save the data
+            serializer = self.get_serializer(data=data)
+            serializer.is_valid(raise_exception=True)
+            transaction = serializer.save()
+
+   
+            # Fetch producer and recycler details
+            producer = Producer.objects.get(id=request.user.id)
+            recycler = Recycler.objects.get(id=data['recycler'])
+
+            # Email to Recycler (HTML)
+            recycler_subject = "New Transaction Created"
+            recycler_html_message = (
+                f"<!DOCTYPE html>"
+                f"<html>"
+                f"<body style='font-family: Arial, sans-serif; margin: 0; padding: 20px; background-color: #f4f4f4;'>"
+                f"<div style='max-width: 600px; margin: auto; background: #ffffff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);'>"
+                f"<h2 style='color: #2c3e50; text-align: center;'>New Transaction Notification</h2>"
+                f"<p style='color: #34495e;'>Dear <strong>{recycler.full_name}</strong>,</p>"
+                f"<p style='color: #34495e;'>A new transaction has been created by <strong>{producer.full_name}</strong>. Below are the details:</p>"
+                f"<table style='width: 100%; border-collapse: collapse; margin: 20px 0;'>"
+                f"<tr style='background-color: #ecf0f1;'><td style='padding: 10px;'><strong>Total Price</strong></td><td style='padding: 10px;'>{transaction.total_price}</td></tr>"
+                f"<tr><td style='padding: 10px;'><strong>Credit Type</strong></td><td style='padding: 10px;'>{transaction.credit_type}</td></tr>"
+                f"<tr style='background-color: #ecf0f1;'><td style='padding: 10px;'><strong>Price per Credit</strong></td><td style='padding: 10px;'>{transaction.price_per_credit}</td></tr>"
+                f"<tr><td style='padding: 10px;'><strong>Product Type</strong></td><td style='padding: 10px;'>{transaction.product_type}</td></tr>"
+                f"<tr style='background-color: #ecf0f1;'><td style='padding: 10px;'><strong>Producer Type</strong></td><td style='padding: 10px;'>{transaction.producer_type}</td></tr>"
+                f"<tr><td style='padding: 10px;'><strong>Credit Quantity</strong></td><td style='padding: 10px;'>{transaction.credit_quantity}</td></tr>"
+                f"<tr style='background-color: #ecf0f1;'><td style='padding: 10px;'><strong>Offered By</strong></td><td style='padding: 10px;'>{transaction.offered_by}</td></tr>"
+                f"<tr><td style='padding: 10px;'><strong>Work Order Date</strong></td><td style='padding: 10px;'>{transaction.work_order_date}</td></tr>"
+                f"<tr style='background-color: #ecf0f1;'><td style='padding: 10px;'><strong>Is Complete</strong></td><td style='padding: 10px;'>{transaction.is_complete}</td></tr>"
+                f"<tr><td style='padding: 10px;'><strong>Status</strong></td><td style='padding: 10px;'>{transaction.status}</td></tr>"
+                f"</table>"
+                f"<h3 style='color: #2980b9;'>Producer Details</h3>"
+                f"<p style='color: #34495e;'><strong>Name:</strong> {producer.full_name}<br>"
+                f"<strong>Email:</strong> {producer.email}<br>"
+                f"<strong>Phone:</strong> {producer.mobile_no}</p>"
+                f"<p style='color: #34495e; text-align: center;'>Please review and update the transaction status as needed.</p>"
+                f"<div style='text-align: center; margin-top: 20px;'>"
+                f"</div>"
+                f"<p style='color: #7f8c8d; font-size: 12px; text-align: center; margin-top: 20px;'>This is an automated message. Please do not reply directly to this email.</p>"
+                f"</div>"
+                f"</body>"
+                f"</html>"
+            )
+            send_mail(
+                subject=recycler_subject,
+                message="",
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[recycler.email],
+                fail_silently=False,
+                html_message=recycler_html_message
+            )
+
+            # Email to Producer (Stylish HTML)
+            producer_subject = "Transaction Request Sent to Recycler"
+            producer_html_message = (
+                f"<!DOCTYPE html>"
+                f"<html>"
+                f"<body style='font-family: Arial, sans-serif; margin: 0; padding: 20px; background-color: #f4f4f4;'>"
+                f"<div style='max-width: 600px; margin: auto; background: #ffffff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);'>"
+                f"<h2 style='color: #2c3e50; text-align: center;'>Transaction Request Confirmation</h2>"
+                f"<p style='color: #34495e;'>Dear <strong>{producer.full_name}</strong>,</p>"
+                f"<p style='color: #34495e;'>Your transaction request has been successfully sent to <strong>{recycler.full_name}</strong>. Below are the details:</p>"
+                f"<table style='width: 100%; border-collapse: collapse; margin: 20px 0;'>"
+                f"<tr style='background-color: #ecf0f1;'><td style='padding: 10px;'><strong>Total Price</strong></td><td style='padding: 10px;'>{transaction.total_price}</td></tr>"
+                f"<tr><td style='padding: 10px;'><strong>Credit Type</strong></td><td style='padding: 10px;'>{transaction.credit_type}</td></tr>"
+                f"<tr style='background-color: #ecf0f1;'><td style='padding: 10px;'><strong>Price per Credit</strong></td><td style='padding: 10px;'>{transaction.price_per_credit}</td></tr>"
+                f"<tr><td style='padding: 10px;'><strong>Product Type</strong></td><td style='padding: 10px;'>{transaction.product_type}</td></tr>"
+                f"<tr style='background-color: #ecf0f1;'><td style='padding: 10px;'><strong>Producer Type</strong></td><td style='padding: 10px;'>{transaction.producer_type}</td></tr>"
+                f"<tr><td style='padding: 10px;'><strong>Credit Quantity</strong></td><td style='padding: 10px;'>{transaction.credit_quantity}</td></tr>"
+                f"<tr style='background-color: #ecf0f1;'><td style='padding: 10px;'><strong>Offered By</strong></td><td style='padding: 10px;'>{transaction.offered_by}</td></tr>"
+                f"<tr><td style='padding: 10px;'><strong>Work Order Date</strong></td><td style='padding: 10px;'>{transaction.work_order_date}</td></tr>"
+                f"<tr style='background-color: #ecf0f1;'><td style='padding: 10px;'><strong>Is Complete</strong></td><td style='padding: 10px;'>{transaction.is_complete}</td></tr>"
+                f"<tr><td style='padding: 10px;'><strong>Status</strong></td><td style='padding: 10px;'>{transaction.status}</td></tr>"
+                f"</table>"
+                f"<h3 style='color: #2980b9;'>Recycler Details</h3>"
+                f"<p style='color: #34495e;'><strong>Name:</strong> {recycler.full_name}<br>"
+                f"<strong>Email:</strong> {recycler.email}<br>"
+                f"<strong>Phone:</strong> {recycler.mobile_no}</p>"
+                f"<p style='color: #34495e; text-align: center;'>You will be notified once the recycler updates the transaction.</p>"
+                f"<div style='text-align: center; margin-top: 20px;'>"
+                f"</div>"
+                f"<p style='color: #7f8c8d; font-size: 12px; text-align: center; margin-top: 20px;'>This is an automated message. Please do not reply directly to this email.</p>"
+                f"</div>"
+                f"</body>"
+                f"</html>"
+            )
+            send_mail(
+                subject=producer_subject,
+                message="",  # Empty plain text message
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[producer.email],
+                fail_silently=False,
+                html_message=producer_html_message
+            )
+            return Response({
+                "status": True,
+                "data": serializer.data
+            }, status=status.HTTP_201_CREATED)
+
+        except serializers.ValidationError as e:
+            return Response({
+                "status": False,
+                "error": e.detail if hasattr(e, 'detail') else str(e)
+            }, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({
+                "status": False,
+                "error": str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def update(self, request, *args, **kwargs):
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        transaction = serializer.save()
+        
+        if transaction.status == 'approved':
+            if transaction.counter_credit_offer:
+                transaction.credit_offer.credit_available -= transaction.credit_quantity # minus the credit quantity from the credit_offer
+                transaction.credit_offer.save()
+            else:
+                transaction.credit_offer.is_sold = True
+                transaction.credit_offer.credit_available = 0
+                transaction.credit_offer.save()
+        
+        return Response({"data":serializer.data,"status":True})
+
+    def partial_update(self, request, *args, **kwargs):
+        return self.update(request, *args, **kwargs)
+    
+     # Block DELETE method
+ 
+    def destroy(self, request, *args, **kwargs):
+        return Response({
+            "status": False,
+            "error": "Deletion of transactions is not allowed."
+        }, status=status.HTTP_405_METHOD_NOT_ALLOWED)

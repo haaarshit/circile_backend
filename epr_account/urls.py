@@ -7,7 +7,8 @@ from .views import (
     EPRTargetViewSet,
     CreditOfferViewSet,
     CounterCreditOfferViewSet,
-    PublicCreditOfferListView
+    PublicCreditOfferListView,
+    TransactionViewSet
 )
 from rest_framework.routers import DefaultRouter
 
@@ -22,6 +23,9 @@ router.register(r'target', EPRTargetViewSet, basename='producer-target')
 # Offer related endpoints
 router.register(r'credit-offers', CreditOfferViewSet, basename='credit-offers')
 router.register(r'counter-credit-offers', CounterCreditOfferViewSet, basename='counter-credit-offers')
+
+# transactions
+router.register(r'transactions', TransactionViewSet, basename='transaction')
 
 
 urlpatterns = [

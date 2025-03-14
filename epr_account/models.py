@@ -314,9 +314,81 @@ class CounterCreditOffer(models.Model):
         self.clean()
         super().save(*args, **kwargs)
 
-# # TRANSACTION  
-# class Transaction(models.Model):
-#       id = models.UUIDField(default=uuid.uuid4, primary_key=True, editable=False)
-#       recycler = models.ForeignKey('users.Recycler', on_delete=models.CASCADE, related_name='recycler_transactions')
-#       producer = models.ForeignKey('users.Producer', on_delete=models.CASCADE, related_name='producer_transactions')
+# TRANSACTION  
+
+class Transaction(models.Model):
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('approved', 'Approved'),
+        ('rejected', 'Rejected'),
+    ]
+
+    id = models.UUIDField(default=uuid.uuid4, primary_key=True, editable=False)
+    order_id = models.CharField(max_length=100, unique=True, default=uuid.uuid4)
+    
+    recycler = models.ForeignKey(
+        'users.Recycler', 
+        on_delete=models.CASCADE, 
+        related_name='recycler_transactions'
+    )
+    producer = models.ForeignKey(
+        'users.Producer', 
+        on_delete=models.CASCADE, 
+        related_name='producer_transactions'
+    )
+    
+    credit_offer = models.ForeignKey(
+        CreditOffer,
+        on_delete=models.CASCADE,
+        related_name='transactions'
+    )
+    counter_credit_offer = models.ForeignKey(
+        CounterCreditOffer,
+        on_delete=models.CASCADE,
+        related_name='transactions',
+        null=True,
+        blank=True
+    )
+
+    total_price = models.FloatField()
+    credit_type = models.CharField(max_length=100)
+    price_per_credit = models.FloatField()
+    product_type = models.CharField(max_length=100)
+    producer_type = models.CharField(max_length=100)
+    credit_quantity = models.FloatField()
+    offered_by = models.CharField(max_length=20)
+    
+    work_order_date = models.DateTimeField(auto_now_add=True)
+    is_complete = models.BooleanField(default=False)
+    status = models.CharField(
+        max_length=10,
+        choices=STATUS_CHOICES,
+        default='pending'
+    )
+    transaction_proof = CloudinaryField(
+        'transaction_proof',
+        resource_type='raw',  
+        blank=True,
+        null=True
+    )
+
+
+    def clean(self):
+        if (self.credit_offer and self.counter_credit_offer) or (not self.credit_offer and not self.counter_credit_offer):
+            raise ValidationError("Transaction must be linked to either a CreditOffer or CounterCreditOffer")
+        
+        if self.credit_quantity > self.credit_offer.credit_available:
+            raise ValidationError(
+                f"Credit quantity ({self.credit_quantity}) exceeds available credits ({self.credit_offer.credit_available})"
+            )
+        
+        if self.counter_credit_offer and self.credit_quantity != self.counter_credit_offer.quantity:
+            raise ValidationError(
+                f"Credit quantity ({self.credit_quantity}) must equal counter credit offer quantity ({self.counter_credit_offer.quantity})"
+            )
+
+    def save(self, *args, **kwargs):
+        self.clean()
+        super().save(*args, **kwargs)
+
 

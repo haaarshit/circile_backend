@@ -1,7 +1,7 @@
 from rest_framework import serializers
-from .models import RecyclerEPR, ProducerEPR, EPRCredit, EPRTarget, CreditOffer,CounterCreditOffer
+from .models import RecyclerEPR, ProducerEPR, EPRCredit, EPRTarget, CreditOffer,CounterCreditOffer,Transaction
 from decouple import config
-from users.models import Recycler
+from users.models import Recycler,Producer
 import json
 cloud_name = config('CLOUDINARY_CLOUD_NAME')
 
@@ -249,4 +249,68 @@ class CounterCreditOfferSerializer(serializers.ModelSerializer):
 
         # Producer can update all fields
         return super().update(instance, validated_data)
-    
+
+
+# TRANSACTION
+
+class TransactionSerializer(serializers.ModelSerializer):
+    transaction_proof = serializers.SerializerMethodField()
+
+    def get_transaction_proof(self, obj):
+        if obj.transaction_proof:
+            if obj.transaction_proof.url.startswith('http'):
+                return obj.transaction_proof.url
+            else:
+                # Only add the domain if it's not already there
+                return f'https://res.cloudinary.com/{cloud_name}/{obj.transaction_proof.url}'
+                
+        return None
+
+
+    class Meta:
+        model = Transaction
+        fields = [
+            'id', 'order_id', 'recycler', 'producer', 'credit_offer',
+            'counter_credit_offer', 'total_price', 'credit_type',
+            'price_per_credit', 'product_type', 'producer_type',
+            'credit_quantity', 'offered_by', 'work_order_date',
+            'is_complete', 'status', 'transaction_proof'
+        ]
+        read_only_fields = [
+            'id'
+        ]
+
+    def validate(self, data):
+        request = self.context.get('request')
+        print(request.data)
+        print(request.FILES)
+        
+        if self.instance:  # Update
+            if not isinstance(request.user, Recycler):
+                raise serializers.ValidationError("Only recycler can update transaction")
+            if any(k not in ['is_complete', 'status', 'transaction_proof'] for k in data.keys()):
+                raise serializers.ValidationError("Only is_complete, status, and transaction_proof can be updated")
+            if data.get('status') == 'approved' and  'transaction_proof' not in request.FILES:
+                raise serializers.ValidationError("Transaction proof required for approval")
+            if data.get('status') == 'approved':
+                data['is_complete'] = True
+        
+        else:  # Create
+            if not isinstance(request.user, Producer):
+                raise serializers.ValidationError("Only producer can create transaction")
+        
+        return data
+
+       
+    def update(self, instance, validated_data):
+        request = self.context["request"]
+
+        if isinstance(request.user,Recycler):  
+            request = self.context['request']
+            
+            transaction_proof = request.FILES.get('transaction_proof')
+            validated_data['transaction_proof'] = transaction_proof
+
+          
+        # Producer can update all fields
+        return super().update(instance, validated_data)
