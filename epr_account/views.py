@@ -12,6 +12,10 @@ from rest_framework.views import APIView
 from rest_framework.parsers import MultiPartParser, FormParser,JSONParser
 from rest_framework.exceptions import PermissionDenied, NotFound
 from django.shortcuts import get_object_or_404
+from .filters import CreditOfferFilter
+from rest_framework.filters import OrderingFilter
+from django_filters.rest_framework import DjangoFilterBackend
+
 
 class IsRecycler(permissions.BasePermission):
     """Custom permission to allow only recycler users"""
@@ -1158,6 +1162,35 @@ class PublicCreditOfferListView(generics.ListAPIView):
     def list(self, request, *args, **kwargs):
         try:
             queryset = self.get_queryset()
+            serializer = self.get_serializer(queryset, many=True)
+            return Response({
+                "status": True,
+                "data": serializer.data
+            }, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({
+                "status": False,
+                "error": str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+class PublicCreditOfferListView(generics.ListAPIView):
+    queryset = CreditOffer.objects.filter(is_approved=True).select_related('epr_account', 'epr_credit')
+    serializer_class = CreditOfferSerializer
+    permission_classes = [permissions.AllowAny]
+    filter_backends = [DjangoFilterBackend, OrderingFilter]
+    filterset_class = CreditOfferFilter
+    ordering_fields = [
+        'price_per_credit',  
+        'FY',
+        'credit_available',
+        'waste_type',
+        'epr_credit__credit_type',
+    ]
+    ordering = ['price_per_credit']  
+
+    def list(self, request, *args, **kwargs):
+        try:
+            queryset = self.filter_queryset(self.get_queryset())  
             serializer = self.get_serializer(queryset, many=True)
             return Response({
                 "status": True,

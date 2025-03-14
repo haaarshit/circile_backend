@@ -267,7 +267,6 @@ class UpdateUserProfileView(APIView):
         # else:
         #     data = request.data
 
-
 class LogoutView(APIView):
 
     permission_classes = [IsAuthenticated]
@@ -303,7 +302,6 @@ class LogoutView(APIView):
                 {"error": f"{str(e)}", "status": False},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
-
 
 class GetProfileView(APIView):
     authentication_classes = [CustomJWTAuthentication]
@@ -387,8 +385,6 @@ class ResetPasswordView(APIView):
 
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
 
 @api_view(['POST'])
 def send_verification_email(request):

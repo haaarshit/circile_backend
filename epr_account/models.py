@@ -107,14 +107,12 @@ class RecyclerEPR(models.Model):
     city = models.CharField(max_length=100)
     state = models.CharField(max_length=100)
     created_at = models.DateTimeField(auto_now_add=True)
-
     
     def clean(self):
         if self.waste_type in WASTE_CHOICES:
             valid_recycler_types = WASTE_CHOICES[self.waste_type]['recycler_types']
             if self.recycler_type not in valid_recycler_types:
                 raise ValidationError(f"Invalid Recycler Type '{self.recycler_type}' for Waste Type '{self.waste_type}'")
-            
             pass
         else:
             raise ValidationError(f"Waste TYpe can be only tyoe type of {WASTE_CHOICES}")

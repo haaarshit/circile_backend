@@ -52,6 +52,7 @@ INSTALLED_APPS = [
     'users',  
     'epr_account',
     'corsheaders',
+    'django_filters'
 ]
 
 MIDDLEWARE = [
