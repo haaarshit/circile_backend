@@ -1,9 +1,11 @@
 import uuid 
-from django.db import models
+from django.db import models, transaction
 from django.contrib.auth.hashers import make_password
 from django.utils.crypto import get_random_string
 from django.core.mail import send_mail
 from django.conf import settings
+from django.db.models import Max
+
 from django.utils import timezone
 from datetime import timedelta
 from django.contrib.auth.models import AbstractBaseUser, UserManager,PermissionsMixin
@@ -11,7 +13,6 @@ from .managers import CustomUserManager
 import re
 import os
 from cloudinary.models import CloudinaryField
-
 
 class BaseUserModel(AbstractBaseUser):
 
@@ -312,17 +313,33 @@ class Recycler(BaseUserModel):
         null=False,  
         blank=False
     )
+
+    def generate_unique_id(self):
+        # Get the highest existing ID with 'R' prefix
+        last_recycler = Recycler.objects.aggregate(Max('unique_id'))['unique_id__max']
+        if last_recycler:
+            # Extract the numeric part (e.g., 'R0000012' -> '0000012')
+            last_number = int(last_recycler[1:])  # Skip the 'R' prefix
+            new_number = last_number + 1
+        else:
+            new_number = 1  # Start at 1 if no records exist
+        
+        # Format the new ID with 'R' prefix and padded zeros
+        return f'R{new_number:07d}'  # e.g., R0000001, R0000002, etc.
+
     def save(self, *args, **kwargs):
         if not self.unique_id:
-            while True:
-                new_id = f'R{str(uuid.uuid4().int)[:7]}'
-                if not Recycler.objects.filter(unique_id=new_id).exists():
-                    self.unique_id = new_id
-                    break
+            # Use a transaction to avoid race conditions
+            with transaction.atomic():
+                # Lock the table to ensure uniqueness in concurrent scenarios
+                locked_recyclers = Recycler.objects.select_for_update().all()
+                self.unique_id = self.generate_unique_id()
         super().save(*args, **kwargs)
+
     class Meta:
         verbose_name = 'Recycler'
         verbose_name_plural = 'Recyclers'
+
 
 class Producer(BaseUserModel):
     """
@@ -334,16 +351,26 @@ class Producer(BaseUserModel):
         editable=False,
         null=False,  
         blank=False
-
     )
+
+    def generate_unique_id(self):
+        # Get the highest existing ID with 'P' prefix
+        last_producer = Producer.objects.aggregate(Max('unique_id'))['unique_id__max']
+        if last_producer:
+            # Extract the numeric part (e.g., 'P0000012' -> '0000012')
+            last_number = int(last_producer[1:])  # Skip the 'P' prefix
+            new_number = last_number + 1
+        else:
+            new_number = 1  # Start at 1 if no records exist
+        
+        return f'P{new_number:07d}' 
 
     def save(self, *args, **kwargs):
         if not self.unique_id:
-            while True:
-                new_id = f'P{str(uuid.uuid4().int)[:7]}'
-                if not Producer.objects.filter(unique_id=new_id).exists():
-                    self.unique_id = new_id
-                    break
+            # Use a transaction to avoid race conditions
+            with transaction.atomic():
+                locked_producers = Producer.objects.select_for_update().all()
+                self.unique_id = self.generate_unique_id()
         super().save(*args, **kwargs)
 
     class Meta:

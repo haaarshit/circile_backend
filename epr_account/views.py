@@ -605,24 +605,24 @@ class CreditOfferViewSet(viewsets.ModelViewSet):
 
                 kwargs["data"] = request_data
               # Handle PATCH requests with special care for JSONField
-            elif self.request.method == "PATCH" and "supporting_doc" in self.request.data:
+            elif self.request.method == "PATCH" and "" in self.request.data:
                 # Get original data
                 instance = self.get_object()
                 # Create a separate data dictionary for patch
                 patch_data = dict(self.request.data)
                 
-                # Special handling for supporting_doc if it's coming in as a string
-                if "supporting_doc" in patch_data:
-                    supporting_doc_value = patch_data["supporting_doc"]
+                # Special handling for trail_documents if it's coming in as a string
+                if "trail_documents" in patch_data:
+                    trail_documents_value = patch_data["trail_documents"]
                     # If it's a string representation of JSON, parse it
-                    if isinstance(supporting_doc_value, list) and supporting_doc_value:
+                    if isinstance(trail_documents_value, list) and trail_documents_value:
                         import json
                         try:
                             # Strip any whitespace/newlines and parse
-                            cleaned_string = supporting_doc_value[0].strip()
-                            patch_data["supporting_doc"] = json.loads(cleaned_string)
+                            cleaned_string = trail_documents_value[0].strip()
+                            patch_data["trail_documents"] = json.loads(cleaned_string)
                         except json.JSONDecodeError:
-                            raise ValidationError({"error": "Invalid JSON format for supporting_doc"})
+                            raise ValidationError({"error": "Invalid JSON format for trail_documents"})
                 print(patch_data)
 
                 
@@ -1400,6 +1400,8 @@ class TransactionViewSet(viewsets.ModelViewSet):
                     data['credit_offer'] = credit_offer.id
                     data['recycler'] = credit_offer.recycler.id
                     data['credit_quantity'] = credit_offer.credit_available
+                    data['waste_type'] = credit_offer.waste_type
+                    data['recycler_type'] = credit_offer.epr_account.recycler_type
                     data['total_price'] = float(data['credit_quantity']) * credit_offer.price_per_credit
                     data['price_per_credit'] = credit_offer.price_per_credit
                     data['credit_type'] = credit_offer.epr_credit.credit_type
@@ -1424,7 +1426,9 @@ class TransactionViewSet(viewsets.ModelViewSet):
                     data['counter_credit_offer'] = counter_credit_offer.id
                     data['credit_offer'] = counter_credit_offer.credit_offer.id
                     data['recycler'] = counter_credit_offer.recycler.id
-                    data['credit_quantity'] = counter_credit_offer.quantity  # Force quantity match
+                    data['credit_quantity'] = counter_credit_offer.quantity  
+                    data['waste_type'] = counter_credit_offer.credit_offer.waste_type
+                    data['recycler_type'] = counter_credit_offer.credit_offer.epr_account.recycler_type
                     data['total_price'] = float(data['credit_quantity']) * counter_credit_offer.offer_price
                     data['price_per_credit'] = counter_credit_offer.offer_price
                     data['credit_type'] = counter_credit_offer.credit_offer.epr_credit.credit_type
@@ -1447,6 +1451,11 @@ class TransactionViewSet(viewsets.ModelViewSet):
             producer = Producer.objects.get(id=request.user.id)
             recycler = Recycler.objects.get(id=data['recycler'])
 
+
+            # comman field
+            email ='support@circle8.in'
+            contact_number = '+91 9620220013'
+
             # Email to Recycler (HTML)
             recycler_subject = "New Transaction Created"
             recycler_html_message = (
@@ -1457,20 +1466,46 @@ class TransactionViewSet(viewsets.ModelViewSet):
                 f"<h2 style='color: #2c3e50; text-align: center;'>New Transaction Notification</h2>"
                 f"<p style='color: #34495e;'>Dear <strong>{recycler.full_name}</strong>,</p>"
                 f"<p style='color: #34495e;'>A new transaction has been created by <strong>{producer.full_name}</strong>. Below are the details:</p>"
+              
                 f"<table style='width: 100%; border-collapse: collapse; margin: 20px 0;'>"
-                f"<tr style='background-color: #ecf0f1;'><td style='padding: 10px;'><strong>Total Price</strong></td><td style='padding: 10px;'>{transaction.total_price}</td></tr>"
-                f"<tr><td style='padding: 10px;'><strong>Credit Type</strong></td><td style='padding: 10px;'>{transaction.credit_type}</td></tr>"
-                f"<tr style='background-color: #ecf0f1;'><td style='padding: 10px;'><strong>Price per Credit</strong></td><td style='padding: 10px;'>{transaction.price_per_credit}</td></tr>"
-                f"<tr><td style='padding: 10px;'><strong>Product Type</strong></td><td style='padding: 10px;'>{transaction.product_type}</td></tr>"
-                f"<tr style='background-color: #ecf0f1;'><td style='padding: 10px;'><strong>Producer Type</strong></td><td style='padding: 10px;'>{transaction.producer_type}</td></tr>"
-                f"<tr><td style='padding: 10px;'><strong>Credit Quantity</strong></td><td style='padding: 10px;'>{transaction.credit_quantity}</td></tr>"
-                f"<tr style='background-color: #ecf0f1;'><td style='padding: 10px;'><strong>Offered By</strong></td><td style='padding: 10px;'>{transaction.offered_by}</td></tr>"
+
+                f"<tr><td style='padding: 10px;'><strong>Request By: </strong></td><td style='padding: 10px;'>{transaction.producer.unique_id}</td></tr>"
+              
+                f"<tr style='background-color: #ecf0f1;'><td style='padding: 10px;'><strong>Work Order ID</strong></td><td style='padding: 10px;'>{transaction.order_id}</td></tr>"
+              
                 f"<tr><td style='padding: 10px;'><strong>Work Order Date</strong></td><td style='padding: 10px;'>{transaction.work_order_date}</td></tr>"
-                f"<tr style='background-color: #ecf0f1;'><td style='padding: 10px;'><strong>Is Complete</strong></td><td style='padding: 10px;'>{transaction.is_complete}</td></tr>"
+                
+                f"<tr style='background-color: #ecf0f1;'><td style='padding: 10px;'><strong>Waste Type</strong></td><td style='padding: 10px;'>{transaction.waste_type}</td></tr>"
+
+                f"<tr><td style='padding: 10px;'><strong>Credit Type</strong></td><td style='padding: 10px;'>{transaction.credit_type}</td></tr>"
+              
+                f"<tr style='background-color: #ecf0f1;'><td style='padding: 10px;'><strong>Price per Credit</strong></td><td style='padding: 10px;'>{transaction.price_per_credit}</td></tr>"
+              
+                f"<tr><td style='padding: 10px;'><strong>Product Type</strong></td><td style='padding: 10px;'>{transaction.product_type}</td></tr>"
+              
+                f"<tr style='background-color: #ecf0f1;'><td style='padding: 10px;'><strong>Producer Type</strong></td><td style='padding: 10px;'>{transaction.producer_type}</td></tr>"
+
+                f"<tr style='background-color: #ecf0f1;'><td style='padding: 10px;'><strong>Total Price</strong></td><td style='padding: 10px;'>{transaction.total_price}</td></tr>"
+              
+              
+                f"<tr><td style='padding: 10px;'><strong>Credit Quantity</strong></td><td style='padding: 10px;'>{transaction.credit_quantity}</td></tr>"
+
+              
+                f"<tr><td style='padding: 10px;'><strong>Price Per Credit</strong></td><td style='padding: 10px;'>{transaction.price_per_credit}</td></tr>"
+
+                              
+                f"<tr><td style='padding: 10px;'><strong>Trail Documents</strong></td><td style='padding: 10px;'>{transaction.credit_offer.trail_documents}</td></tr>"
+
+
                 f"<tr><td style='padding: 10px;'><strong>Status</strong></td><td style='padding: 10px;'>{transaction.status}</td></tr>"
+              
                 f"</table>"
+
                 f"<h3 style='color: #2980b9;'>Producer Details</h3>"
-                f"<strong>Email:</strong> {producer.email}<br>"
+                f"<strong>EPR Registration No:</strong> {transaction.credit_offer.epr_account.epr_registration_number} <br>"
+                f"<strong>EPR Registered Name:</strong> {transaction.credit_offer.epr_account.epr_registered_name}<br>"
+                f"<strong>Email:</strong> {email}<br>"
+                f"<strong>Contact Number:</strong> {contact_number}<br>"
                 f"<p style='color: #34495e; text-align: center;'>Please review and update the transaction status as needed.</p>"
                 f"<div style='text-align: center; margin-top: 20px;'>"
                 f"</div>"
@@ -1499,20 +1534,44 @@ class TransactionViewSet(viewsets.ModelViewSet):
                 f"<p style='color: #34495e;'>Dear <strong>{producer.full_name}</strong>,</p>"
                 f"<p style='color: #34495e;'>Your transaction request has been successfully sent to <strong>{recycler.full_name}</strong>. Below are the details:</p>"
                 f"<table style='width: 100%; border-collapse: collapse; margin: 20px 0;'>"
-                f"<tr style='background-color: #ecf0f1;'><td style='padding: 10px;'><strong>Total Price</strong></td><td style='padding: 10px;'>{transaction.total_price}</td></tr>"
-                f"<tr><td style='padding: 10px;'><strong>Credit Type</strong></td><td style='padding: 10px;'>{transaction.credit_type}</td></tr>"
-                f"<tr style='background-color: #ecf0f1;'><td style='padding: 10px;'><strong>Price per Credit</strong></td><td style='padding: 10px;'>{transaction.price_per_credit}</td></tr>"
-                f"<tr><td style='padding: 10px;'><strong>Product Type</strong></td><td style='padding: 10px;'>{transaction.product_type}</td></tr>"
-                f"<tr style='background-color: #ecf0f1;'><td style='padding: 10px;'><strong>Producer Type</strong></td><td style='padding: 10px;'>{transaction.producer_type}</td></tr>"
-                f"<tr><td style='padding: 10px;'><strong>Credit Quantity</strong></td><td style='padding: 10px;'>{transaction.credit_quantity}</td></tr>"
-                f"<tr style='background-color: #ecf0f1;'><td style='padding: 10px;'><strong>Offered By</strong></td><td style='padding: 10px;'>{transaction.offered_by}</td></tr>"
+
+                f"<tr><td style='padding: 10px;'><strong>Offered By: </strong></td><td style='padding: 10px;'>{transaction.recycler.unique_id}</td></tr>"
+              
+                f"<tr style='background-color: #ecf0f1;'><td style='padding: 10px;'><strong>Work Order ID</strong></td><td style='padding: 10px;'>{transaction.order_id}</td></tr>"
+              
                 f"<tr><td style='padding: 10px;'><strong>Work Order Date</strong></td><td style='padding: 10px;'>{transaction.work_order_date}</td></tr>"
-                f"<tr style='background-color: #ecf0f1;'><td style='padding: 10px;'><strong>Is Complete</strong></td><td style='padding: 10px;'>{transaction.is_complete}</td></tr>"
+                
+                f"<tr style='background-color: #ecf0f1;'><td style='padding: 10px;'><strong>Waste Type</strong></td><td style='padding: 10px;'>{transaction.waste_type}</td></tr>"
+
+                f"<tr><td style='padding: 10px;'><strong>Credit Type</strong></td><td style='padding: 10px;'>{transaction.credit_type}</td></tr>"
+              
+                f"<tr style='background-color: #ecf0f1;'><td style='padding: 10px;'><strong>Price per Credit</strong></td><td style='padding: 10px;'>{transaction.price_per_credit}</td></tr>"
+              
+                f"<tr><td style='padding: 10px;'><strong>Product Type</strong></td><td style='padding: 10px;'>{transaction.product_type}</td></tr>"
+              
+                f"<tr style='background-color: #ecf0f1;'><td style='padding: 10px;'><strong>Producer Type</strong></td><td style='padding: 10px;'>{transaction.producer_type}</td></tr>"
+              
+                f"<tr><td style='padding: 10px;'><strong>Credit Quantity</strong></td><td style='padding: 10px;'>{transaction.credit_quantity}</td></tr>"
+
+              
+                f"<tr><td style='padding: 10px;'><strong>Price Per Credit</strong></td><td style='padding: 10px;'>{transaction.price_per_credit}</td></tr>"
+                f"<tr style='background-color: #ecf0f1;'><td style='padding: 10px;'><strong>Total Price</strong></td><td style='padding: 10px;'>{transaction.total_price}</td></tr>"
+
+                f"<tr><td style='padding: 10px;'><strong>Recycler Type</strong></td><td style='padding: 10px;'>{transaction.recycler_type}</td></tr>"
+
+
+                f"<tr><td style='padding: 10px;'><strong>Trail Documents</strong></td><td style='padding: 10px;'>{transaction.credit_offer.trail_documents}</td></tr>"
+
                 f"<tr><td style='padding: 10px;'><strong>Status</strong></td><td style='padding: 10px;'>{transaction.status}</td></tr>"
+              
                 f"</table>"
+
                 f"<h3 style='color: #2980b9;'>Recycler Details</h3>"
-                f"<strong>Email:</strong> {recycler.email}<br>"
-                f"<p style='color: #34495e; text-align: center;'>You will be notified once the recycler updates the transaction.</p>"
+                f"<strong>EPR Registration No:</strong> {transaction.credit_offer.epr_account.epr_registration_number} <br>"
+                f"<strong>EPR Registered Name:</strong> {transaction.credit_offer.epr_account.epr_registered_name}<br>"
+                f"<strong>Email:</strong> {email}<br>"
+                f"<strong>Contact Number:</strong> {contact_number}<br>"
+                f"<p style='color: #34495e; text-align: center;'>Please review and update the transaction status as needed.</p>"
                 f"<div style='text-align: center; margin-top: 20px;'>"
                 f"</div>"
                 f"<p style='color: #7f8c8d; font-size: 12px; text-align: center; margin-top: 20px;'>This is an automated message. Please do not reply directly to this email.</p>"
@@ -1522,7 +1581,7 @@ class TransactionViewSet(viewsets.ModelViewSet):
             )
             send_mail(
                 subject=producer_subject,
-                message="",  # Empty plain text message
+                message="",  
                 from_email=settings.DEFAULT_FROM_EMAIL,
                 recipient_list=[producer.email],
                 fail_silently=False,

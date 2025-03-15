@@ -121,12 +121,12 @@ class CreditOfferSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'recycler','erp_account','epr_credit'] 
 
     def to_internal_value(self, data):
-        # Handle case where supporting_doc is a string
-        if 'supporting_doc' in data and isinstance(data['supporting_doc'], str):
+        # Handle case where trail_documents is a string
+        if 'trail_documents' in data and isinstance(data['trail_documents'], str):
             try:
-                data['supporting_doc'] = json.loads(data['supporting_doc'])
+                data['trail_documents'] = json.loads(data['trail_documents'])
             except json.JSONDecodeError:
-                raise serializers.ValidationError({"supporting_doc": "Invalid JSON format"})
+                raise serializers.ValidationError({"trail_documents": "Invalid JSON format"})
         return super().to_internal_value(data)
 
     
@@ -152,7 +152,6 @@ class CreditOfferSerializer(serializers.ModelSerializer):
                 
         return None
     
-    
     def validate(self, data):
   
         request = self.context.get('request')
@@ -165,19 +164,14 @@ class CreditOfferSerializer(serializers.ModelSerializer):
             if 'availability_proof' not in request.FILES:
                 raise serializers.ValidationError({"error": "Availability proof image file is required."})
             
-            # Check supporting_doc in data
-            if 'supporting_doc' not in data:
+            # Check trail_documents in data
+            if 'trail_documents' not in data:
                 raise serializers.ValidationError({"error": "Supporting documents list is required."})
             
-            # Validate supporting_doc contents
-            supporting_docs = data.get('supporting_doc', [])
-            print(supporting_docs)
-            
-            # Check minimum length
-            if len(supporting_docs) < 5:
-                raise serializers.ValidationError({
-                    "error": "At least 5 supporting documents are required."
-                })
+            # Validate trail_documents contents
+            trail_documents = data.get('trail_documents', [])
+            print(trail_documents)
+
             
             # Valid document choices
             allowed_docs = {
@@ -186,15 +180,15 @@ class CreditOfferSerializer(serializers.ModelSerializer):
                 "Loading slip",
                 "Unloading Slip",
                 "Lorry Receipt copy",
-                "DL",
                 "Recycling Certificate Copy",
                 "Co-Processing Certificate",
                 "Lorry Photographs",
-                "Municipality Endorsement"
+                "Credit Transfer Proof",
+                "EPR Registration Certificate"
             }
             
             # Check for invalid document types
-            invalid_docs = [doc for doc in supporting_docs if doc not in allowed_docs]
+            invalid_docs = [doc for doc in trail_documents if doc not in allowed_docs]
 
             if invalid_docs:
                 raise serializers.ValidationError({
@@ -273,7 +267,7 @@ class TransactionSerializer(serializers.ModelSerializer):
             'counter_credit_offer', 'total_price', 'credit_type',
             'price_per_credit', 'product_type', 'producer_type',
             'credit_quantity', 'offered_by', 'work_order_date',
-            'is_complete', 'status', 'transaction_proof'
+            'is_complete', 'status', 'transaction_proof','waste_type','recycler_type'
         ]
         read_only_fields = [
             'id'

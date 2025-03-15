@@ -1,6 +1,8 @@
-from django.db import models
+from django.db import models,transaction
 import uuid
 from django.core.exceptions import ValidationError
+from django.db.models import Max
+
 from cloudinary.models import CloudinaryField
 from django.core.validators import MinLengthValidator
 from django.utils import timezone
@@ -97,6 +99,7 @@ class RecyclerEPR(models.Model):
 
     epr_registration_number = models.CharField(max_length=50, unique=True)
     epr_registration_date = models.DateField()
+    epr_registered_name = models.CharField(max_length=50)
 
     waste_type = models.CharField(max_length=20, choices=[(wt, wt) for wt in WASTE_CHOICES.keys()])
     recycler_type = models.CharField(max_length=100)
@@ -137,6 +140,7 @@ class ProducerEPR(models.Model):
     epr_registration_number = models.CharField(max_length=50, unique=True)
     company_name = models.CharField(max_length=255)
     epr_registration_date = models.DateField()
+    epr_registered_name = models.CharField(max_length=50)
 
     waste_type = models.CharField(max_length=20, choices=[(wt, wt) for wt in PRODUCER_CHOICES.keys()])
     producer_type = models.CharField(max_length=100)
@@ -166,13 +170,12 @@ class EPRCredit(models.Model):
     epr_account = models.ForeignKey(RecyclerEPR, on_delete=models.CASCADE, related_name='epr_account_credits')
     epr_registration_number = models.CharField(max_length=50)
     waste_type = models.CharField(max_length=20, choices=[(wt, wt) for wt in WASTE_CHOICES.keys()])
-
     product_type = models.CharField(max_length=100)
     credit_type = models.CharField(max_length=100)
     year = models.DateTimeField()
     processing_capacity =models.DecimalField(max_digits=10, decimal_places=2)
-    comulative_certificate_potential = models.CharField(max_length=250)
-    available_certificate_value = models.CharField(max_length=250)
+    comulative_certificate_potential = models.FloatField()
+    available_certificate_value = models.FloatField()
 
     def clean(self):
         if self.waste_type in WASTE_CHOICES:
@@ -228,11 +231,11 @@ def validate_doc_choices(value):
         "Loading slip",
         "Unloading Slip",
         "Lorry Receipt copy",
-        "DL",
         "Recycling Certificate Copy",
         "Co-Processing Certificate",
         "Lorry Photographs",
-        "Municipality Endorsement"
+        "Credit Transfer Proof",
+        "EPR Registration Certificate"
     ]
     
     # Check if all values are in allowed_docs
@@ -246,11 +249,10 @@ def validate_doc_choices(value):
 def get_default_supporting_docs():
     return [
         "Tax Invoice",
-        "E-wayBIll",
-        "Lorry Receipt copy",
         "Recycling Certificate Copy",
         "Co-Processing Certificate",
-        "Lorry Photographs",
+        "Credit Transfer Proof",
+        "EPR Registration Certificate"
     ]
 
 def get_default_year():
@@ -278,10 +280,9 @@ class CreditOffer(models.Model):
     availability_proof = CloudinaryField('image', resource_type='image', default="")
     is_sold = models.BooleanField(default=False)
     # TODO -> TRAIL DOCUMENT
-    supporting_doc = models.JSONField(
+    trail_documents = models.JSONField(
         default=get_default_supporting_docs,
         validators=[
-            MinLengthValidator(5),
             validate_doc_choices
         ]
     )
@@ -315,7 +316,7 @@ class CounterCreditOffer(models.Model):
         self.clean()
         super().save(*args, **kwargs)
 
-# TRANSACTION  
+
 class Transaction(models.Model):
     STATUS_CHOICES = [
         ('pending', 'Pending'),
@@ -324,7 +325,13 @@ class Transaction(models.Model):
     ]
 
     id = models.UUIDField(default=uuid.uuid4, primary_key=True, editable=False)
-    order_id = models.CharField(max_length=100, unique=True, default=uuid.uuid4)
+    order_id = models.CharField(
+        max_length=8,  
+        unique=True,
+        editable=False,
+        null=False,
+        blank=False
+    )
     
     recycler = models.ForeignKey(
         'users.Recycler', 
@@ -338,12 +345,12 @@ class Transaction(models.Model):
     )
     
     credit_offer = models.ForeignKey(
-        CreditOffer,
+        CreditOffer,  
         on_delete=models.CASCADE,
         related_name='transactions'
     )
     counter_credit_offer = models.ForeignKey(
-        CounterCreditOffer,
+        CounterCreditOffer,  
         on_delete=models.CASCADE,
         related_name='transactions',
         null=True,
@@ -352,6 +359,8 @@ class Transaction(models.Model):
 
     total_price = models.FloatField()
     credit_type = models.CharField(max_length=100)
+    waste_type = models.CharField(max_length=20)
+    recycler_type = models.CharField(max_length=50)
     price_per_credit = models.FloatField()
     product_type = models.CharField(max_length=100)
     producer_type = models.CharField(max_length=100)
@@ -372,6 +381,27 @@ class Transaction(models.Model):
         null=True
     )
 
+    def generate_order_id(self):
+        # Get the highest existing order_id with 'O' prefix
+        last_transaction = Transaction.objects.aggregate(Max('order_id'))['order_id__max']
+        if last_transaction:
+            # Extract the numeric part (e.g., 'O0000012' -> '0000012')
+            last_number = int(last_transaction[1:])  # Skip the 'O' prefix
+            new_number = last_number + 1
+        else:
+            new_number = 1  # Start at 1 if no records exist
+        
+        # Format the new ID with 'O' prefix and padded zeros
+        return f'O{new_number:07d}'  # e.g., O0000001, O0000002, etc.
+
+    def save(self, *args, **kwargs):
+        if not self.order_id:
+            with transaction.atomic():
+                # Lock the table to ensure uniqueness in concurrent scenarios
+                locked_transactions = Transaction.objects.select_for_update().all()
+                self.order_id = self.generate_order_id()
+        self.clean()
+        super().save(*args, **kwargs)
 
     def clean(self):
         if (not self.credit_offer and self.counter_credit_offer) or (not self.credit_offer and not self.counter_credit_offer):
@@ -386,9 +416,3 @@ class Transaction(models.Model):
             raise ValidationError(
                 f"Credit quantity ({self.credit_quantity}) must equal counter credit offer quantity ({self.counter_credit_offer.quantity})"
             )
-
-    def save(self, *args, **kwargs):
-        self.clean()
-        super().save(*args, **kwargs)
-
-
