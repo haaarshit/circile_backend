@@ -15,9 +15,9 @@ WASTE_CHOICES = {
     "recycler_types": ["Recycler", "Co-processor (Cement)", "Co-processor (WtE)", "Co-processor (WtO)", "Industrial Composting"],
     "product_types": ["Category I", "Category II", "Category III", "Category IV"],
     "credit_types": [
-      "Recycling (Cat I, II, III)",
-      "EoL (Cat I, II, III, IV)",
-      "EoL (Cat IV)"
+      "Recycling ",
+      "EoL ",
+      "EoL "
     ]
   },
   "E-waste": {
@@ -277,6 +277,7 @@ class CreditOffer(models.Model):
     product_image = CloudinaryField('image', resource_type='image', default="")
     availability_proof = CloudinaryField('image', resource_type='image', default="")
     is_sold = models.BooleanField(default=False)
+    # TODO -> TRAIL DOCUMENT
     supporting_doc = models.JSONField(
         default=get_default_supporting_docs,
         validators=[
@@ -315,7 +316,6 @@ class CounterCreditOffer(models.Model):
         super().save(*args, **kwargs)
 
 # TRANSACTION  
-
 class Transaction(models.Model):
     STATUS_CHOICES = [
         ('pending', 'Pending'),
@@ -374,7 +374,7 @@ class Transaction(models.Model):
 
 
     def clean(self):
-        if (self.credit_offer and self.counter_credit_offer) or (not self.credit_offer and not self.counter_credit_offer):
+        if (not self.credit_offer and self.counter_credit_offer) or (not self.credit_offer and not self.counter_credit_offer):
             raise ValidationError("Transaction must be linked to either a CreditOffer or CounterCreditOffer")
         
         if self.credit_quantity > self.credit_offer.credit_available:

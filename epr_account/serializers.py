@@ -252,7 +252,6 @@ class CounterCreditOfferSerializer(serializers.ModelSerializer):
 
 
 # TRANSACTION
-
 class TransactionSerializer(serializers.ModelSerializer):
     transaction_proof = serializers.SerializerMethodField()
 

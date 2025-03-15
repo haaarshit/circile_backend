@@ -12,6 +12,7 @@ import re
 import os
 from cloudinary.models import CloudinaryField
 
+
 class BaseUserModel(AbstractBaseUser):
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)  # UUID primary key
@@ -23,6 +24,7 @@ class BaseUserModel(AbstractBaseUser):
     password = models.CharField(max_length=255)
     
      # New fields (optional at registration)
+    social_links = models.JSONField(default=list, blank=True) 
 
 
 
@@ -36,7 +38,6 @@ class BaseUserModel(AbstractBaseUser):
 
     company_logo = CloudinaryField('image', null=True, blank=True)
     pcb_doc = CloudinaryField('raw', resource_type='raw', null=True, blank=True)
-
 
     password_reset_token = models.CharField(max_length=100, null=True, blank=True)
     reset_token_created_at = models.DateTimeField(null=True, blank=True)
@@ -304,6 +305,21 @@ class Recycler(BaseUserModel):
     """
     Recycler user model
     """
+    unique_id = models.CharField(
+        max_length=8,  
+        unique=True, 
+        editable=False,
+        null=False,  
+        blank=False
+    )
+    def save(self, *args, **kwargs):
+        if not self.unique_id:
+            while True:
+                new_id = f'R{str(uuid.uuid4().int)[:7]}'
+                if not Recycler.objects.filter(unique_id=new_id).exists():
+                    self.unique_id = new_id
+                    break
+        super().save(*args, **kwargs)
     class Meta:
         verbose_name = 'Recycler'
         verbose_name_plural = 'Recyclers'
@@ -312,6 +328,24 @@ class Producer(BaseUserModel):
     """
     Producer user model
     """
+    unique_id = models.CharField(
+        max_length=8,  
+        unique=True, 
+        editable=False,
+        null=False,  
+        blank=False
+
+    )
+
+    def save(self, *args, **kwargs):
+        if not self.unique_id:
+            while True:
+                new_id = f'P{str(uuid.uuid4().int)[:7]}'
+                if not Producer.objects.filter(unique_id=new_id).exists():
+                    self.unique_id = new_id
+                    break
+        super().save(*args, **kwargs)
+
     class Meta:
         verbose_name = 'Producer'
         verbose_name_plural = 'Producers'

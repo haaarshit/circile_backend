@@ -1303,7 +1303,7 @@ class PublicCreditOfferListView(generics.ListAPIView):
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
 
-
+# CREATED BY PRODUCER ONLY | UPDATED BY RECYCLER
 class TransactionViewSet(viewsets.ModelViewSet):
     queryset = Transaction.objects.all()
     serializer_class = TransactionSerializer
@@ -1377,7 +1377,7 @@ class TransactionViewSet(viewsets.ModelViewSet):
                     "status": False,
                     "error": "Provide either credit_offer_id or counter_credit_offer_id"
                 }, status=status.HTTP_400_BAD_REQUEST)
-
+    
             if credit_offer_id and counter_credit_offer_id:
                 return Response({
                     "status": False,
@@ -1405,7 +1405,7 @@ class TransactionViewSet(viewsets.ModelViewSet):
                     data['credit_type'] = credit_offer.epr_credit.credit_type
                     data['product_type'] = credit_offer.epr_credit.product_type
                     data['producer_type'] = request.user.epr_accounts.first().producer_type
-                    data['offered_by'] = 'recycler'
+                    data['offered_by'] = credit_offer.recycler.unique_id
                 except CreditOffer.DoesNotExist:
                     return Response({
                         "status": False,
@@ -1430,7 +1430,7 @@ class TransactionViewSet(viewsets.ModelViewSet):
                     data['credit_type'] = counter_credit_offer.credit_offer.epr_credit.credit_type
                     data['product_type'] = counter_credit_offer.credit_offer.epr_credit.product_type
                     data['producer_type'] = request.user.epr_accounts.first().producer_type
-                    data['offered_by'] = 'producer'
+                    data['offered_by'] = request.user.unique_id
                 except CounterCreditOffer.DoesNotExist:
                     return Response({
                         "status": False,
@@ -1470,9 +1470,7 @@ class TransactionViewSet(viewsets.ModelViewSet):
                 f"<tr><td style='padding: 10px;'><strong>Status</strong></td><td style='padding: 10px;'>{transaction.status}</td></tr>"
                 f"</table>"
                 f"<h3 style='color: #2980b9;'>Producer Details</h3>"
-                f"<p style='color: #34495e;'><strong>Name:</strong> {producer.full_name}<br>"
                 f"<strong>Email:</strong> {producer.email}<br>"
-                f"<strong>Phone:</strong> {producer.mobile_no}</p>"
                 f"<p style='color: #34495e; text-align: center;'>Please review and update the transaction status as needed.</p>"
                 f"<div style='text-align: center; margin-top: 20px;'>"
                 f"</div>"
@@ -1513,9 +1511,7 @@ class TransactionViewSet(viewsets.ModelViewSet):
                 f"<tr><td style='padding: 10px;'><strong>Status</strong></td><td style='padding: 10px;'>{transaction.status}</td></tr>"
                 f"</table>"
                 f"<h3 style='color: #2980b9;'>Recycler Details</h3>"
-                f"<p style='color: #34495e;'><strong>Name:</strong> {recycler.full_name}<br>"
                 f"<strong>Email:</strong> {recycler.email}<br>"
-                f"<strong>Phone:</strong> {recycler.mobile_no}</p>"
                 f"<p style='color: #34495e; text-align: center;'>You will be notified once the recycler updates the transaction.</p>"
                 f"<div style='text-align: center; margin-top: 20px;'>"
                 f"</div>"
@@ -1556,7 +1552,7 @@ class TransactionViewSet(viewsets.ModelViewSet):
         
         if transaction.status == 'approved':
             if transaction.counter_credit_offer:
-                transaction.credit_offer.credit_available -= transaction.credit_quantity # minus the credit quantity from the credit_offer
+                transaction.credit_offer.credit_available -= transaction.credit_quantity 
                 transaction.credit_offer.save()
             else:
                 transaction.credit_offer.is_sold = True
