@@ -267,7 +267,7 @@ class TransactionSerializer(serializers.ModelSerializer):
             'counter_credit_offer', 'total_price', 'credit_type',
             'price_per_credit', 'product_type', 'producer_type',
             'credit_quantity', 'offered_by', 'work_order_date',
-            'is_complete', 'status', 'transaction_proof','waste_type','recycler_type'
+            'is_complete', 'status', 'transaction_proof','waste_type','recycler_type','producer_epr'
         ]
         read_only_fields = [
             'id'

@@ -344,6 +344,14 @@ class Transaction(models.Model):
         related_name='producer_transactions'
     )
     
+    producer_epr = models.ForeignKey(
+        ProducerEPR, 
+        on_delete=models.CASCADE, 
+        related_name='epr_transactions',
+         null=True,  # Uncomment this temporarily for debugging if needed
+         blank=True  # Uncomment this temporarily for debugging if needed
+    )
+
     credit_offer = models.ForeignKey(
         CreditOffer,  
         on_delete=models.CASCADE,
@@ -389,9 +397,8 @@ class Transaction(models.Model):
             last_number = int(last_transaction[1:])  # Skip the 'O' prefix
             new_number = last_number + 1
         else:
-            new_number = 1  # Start at 1 if no records exist
+            new_number = 1  # Start at 1 if no 
         
-        # Format the new ID with 'O' prefix and padded zeros
         return f'O{new_number:07d}'  # e.g., O0000001, O0000002, etc.
 
     def save(self, *args, **kwargs):

@@ -21,7 +21,6 @@ from django_filters.rest_framework import DjangoFilterBackend
 from django.conf import settings
 
 
-
 class IsRecycler(permissions.BasePermission):
     """Custom permission to allow only recycler users"""
     def has_permission(self, request, view):
@@ -29,7 +28,6 @@ class IsRecycler(permissions.BasePermission):
 
     def has_object_permission(self, request, view, obj):
         return obj.recycler == request.user 
-
 
 
 class IsProducer(permissions.BasePermission):
@@ -1407,6 +1405,43 @@ class TransactionViewSet(viewsets.ModelViewSet):
             data.pop('transaction_proof', None)
             data.pop('status', None)
 
+            producer_epr = None
+            if counter_credit_offer_id:
+                # Fetch producer_epr from CounterCreditOffer
+                try:
+                    counter_credit_offer = CounterCreditOffer.objects.get(id=counter_credit_offer_id)
+                    if counter_credit_offer.status != 'approved':
+                        return Response({
+                            "status": False,
+                            "error": "Counter credit offer must be approved"
+                        }, status=status.HTTP_400_BAD_REQUEST)
+                    producer_epr = counter_credit_offer.producer_epr
+                    if not producer_epr:
+                        return Response({
+                            "status": False,
+                            "error": "Counter credit offer does not have an associated producer EPR account"
+                        }, status=status.HTTP_400_BAD_REQUEST)
+                except CounterCreditOffer.DoesNotExist:
+                    return Response({
+                        "status": False,
+                        "error": "Counter credit offer not found"
+                    }, status=status.HTTP_404_NOT_FOUND)
+            else:
+                # Fetch producer_epr from request body
+                producer_epr_id = data.get('producer_epr_id')
+                if not producer_epr_id:
+                    return Response({
+                        "status": False,
+                        "error": "producer_epr_id is required in the request body when creating a transaction from a credit offer"
+                    }, status=status.HTTP_400_BAD_REQUEST)
+                try:
+                     producer_epr = ProducerEPR.objects.get(id=producer_epr_id, producer=request.user)
+                except ProducerEPR.DoesNotExist:
+                    return Response({
+                        "status": False,
+                        "error": "Invalid producer_epr_id or not authorized"
+                    }, status=status.HTTP_400_BAD_REQUEST)
+
 
             # Populate data from CreditOffer
             if credit_offer_id:
@@ -1455,6 +1490,10 @@ class TransactionViewSet(viewsets.ModelViewSet):
                         "status": False,
                         "error": "Counter credit offer not found"
                     }, status=status.HTTP_404_NOT_FOUND)
+            
+            # Add producer_epr to data
+            data['producer_epr'] = producer_epr.id
+            print(data['producer_epr'])
 
             # Serialize and save the data
             serializer = self.get_serializer(data=data)
@@ -1517,8 +1556,8 @@ class TransactionViewSet(viewsets.ModelViewSet):
                 f"</table>"
 
                 f"<h3 style='color: #2980b9;'>Producer Details</h3>"
-                f"<strong>EPR Registration No:</strong> {transaction.credit_offer.epr_account.epr_registration_number} <br>"
-                f"<strong>EPR Registered Name:</strong> {transaction.credit_offer.epr_account.epr_registered_name}<br>"
+                f"<strong>EPR Registration No:</strong> {transaction.producer_epr.epr_registration_number} <br>"
+                f"<strong>EPR Registered Name:</strong> {transaction.producer_epr.epr_registered_name}<br>"
                 f"<strong>Email:</strong> {email}<br>"
                 f"<strong>Contact Number:</strong> {contact_number}<br>"
                 f"<p style='color: #34495e; text-align: center;'>Please review and update the transaction status as needed.</p>"
