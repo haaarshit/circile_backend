@@ -32,6 +32,10 @@ from .utils import validate_unique_email
 from .models import Recycler, Producer
 from .serializers import RecyclerSerializer, ProducerSerializer,RecyclerUpdateSerializer,ProducerUpdateSerializer,RecyclerDetailSerializer,ProducerDetailSerializer,ForgotPasswordSerializer,ResetPasswordSerializer
 from .authentication import CustomJWTAuthentication
+from epr_account.models import RecyclerEPR, ProducerEPR, EPRCredit, EPRTarget, CreditOffer, CounterCreditOffer, Transaction
+
+
+
 
 class RegisterRecyclerView(generics.CreateAPIView):
     """
@@ -385,6 +389,62 @@ class ResetPasswordView(APIView):
 
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class UserCountStatsView(APIView):
+    authentication_classes = [CustomJWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        try:
+            user = request.user  # Authenticated user
+            stats = {
+                "user_type": None,
+                "epr_accounts": 0,
+                "epr_credits": 0,  # For Recycler only
+                "epr_targets": 0,  # For Producer only
+                "credit_offers": 0,  # For Recycler only
+                "counter_credit_offers_made": 0,  # For Producer only
+                "counter_credit_offers_received": 0,  # For Recycler only
+                "transactions": 0,
+            }
+
+            if isinstance(user, Recycler):
+                stats["user_type"] = "recycler"
+                # Count Recycler-specific records
+                stats["epr_accounts"] = RecyclerEPR.objects.filter(recycler=user).count()
+                stats["epr_credits"] = EPRCredit.objects.filter(recycler=user).count()
+                stats["credit_offers"] = CreditOffer.objects.filter(recycler=user).count()
+                stats["counter_credit_offers_received"] = CounterCreditOffer.objects.filter(recycler=user).count()
+                stats["transactions"] = Transaction.objects.filter(recycler=user).count()
+
+            elif isinstance(user, Producer):
+                stats["user_type"] = "producer"
+                stats["epr_accounts"] = ProducerEPR.objects.filter(producer=user).count()
+                stats["epr_targets"] = EPRTarget.objects.filter(producer=user).count()
+                stats["counter_credit_offers_made"] = CounterCreditOffer.objects.filter(producer=user).count()
+                stats["transactions"] = Transaction.objects.filter(producer=user).count()
+
+            else:
+                return Response(
+                    {"error": "Invalid user type", "status": False},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            return Response(
+                {
+                    "status": True,
+                    "message": "EPR statistics retrieved successfully",
+                    "data": stats
+                },
+                status=status.HTTP_200_OK
+            )
+
+        except Exception as e:
+            return Response(
+                {"error": str(e), "status": False},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
 @api_view(['POST'])
 def send_verification_email(request):

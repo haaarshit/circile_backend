@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import RecyclerEPR, ProducerEPR, EPRCredit, EPRTarget, CreditOffer,CounterCreditOffer,Transaction
+from .models import RecyclerEPR, ProducerEPR, EPRCredit, EPRTarget, CreditOffer,CounterCreditOffer,Transaction,WasteType, ProducerType, RecyclerType, ProductType, CreditType
 from decouple import config
 from users.models import Recycler,Producer
 import json
@@ -307,3 +307,46 @@ class TransactionSerializer(serializers.ModelSerializer):
           
         # Producer can update all fields
         return super().update(instance, validated_data)
+    
+
+
+
+
+
+
+# WASTE FILTER 
+class ProducerTypeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ProducerType
+        fields = ['name']
+
+class RecyclerTypeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = RecyclerType
+        fields = ['name']
+
+class ProductTypeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ProductType
+        fields = ['name']
+
+class CreditTypeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CreditType
+        fields = ['name']
+
+class WasteTypeSerializer(serializers.ModelSerializer):
+    producer_types = ProducerTypeSerializer(many=True)
+    recycler_types = RecyclerTypeSerializer(many=True)
+    product_types = ProductTypeSerializer(many=True)
+    credit_types = CreditTypeSerializer(many=True)
+
+    class Meta:
+        model = WasteType
+        fields = ['name', 'producer_types', 'recycler_types', 'product_types', 'credit_types']
+
+
+class WasteTypeNameSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = WasteType
+        fields = ['name']

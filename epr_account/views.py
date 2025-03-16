@@ -1,8 +1,8 @@
 from rest_framework import viewsets, permissions, status, serializers,generics
 from rest_framework.response import Response
 from users.authentication import CustomJWTAuthentication
-from .models import RecyclerEPR, ProducerEPR,EPRCredit,EPRTarget,CreditOffer,CounterCreditOffer,Transaction
-from .serializers import RecyclerEPRSerializer, ProducerEPRSerializer, EPRCreditSerializer,EPRTargetSerializer, CreditOfferSerializer,CounterCreditOfferSerializer,TransactionSerializer
+from .models import RecyclerEPR, ProducerEPR,EPRCredit,EPRTarget,CreditOffer,CounterCreditOffer,Transaction,WasteType
+from .serializers import RecyclerEPRSerializer, ProducerEPRSerializer, EPRCreditSerializer,EPRTargetSerializer, CreditOfferSerializer,CounterCreditOfferSerializer,TransactionSerializer, WasteTypeSerializer, WasteTypeNameSerializer
 from users.models import Recycler, Producer
 from rest_framework.exceptions import ValidationError
 from django.core.exceptions import ValidationError as DjangoValidationError
@@ -1314,7 +1314,6 @@ class PublicCreditOfferListView(generics.ListAPIView):
                 "status": False,
                 "error": str(e)
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        
 
 # CREATED BY PRODUCER ONLY | UPDATED BY RECYCLER
 class TransactionViewSet(viewsets.ModelViewSet):
@@ -1684,3 +1683,44 @@ class TransactionViewSet(viewsets.ModelViewSet):
             "status": False,
             "error": "Deletion of transactions is not allowed."
         }, status=status.HTTP_405_METHOD_NOT_ALLOWED)
+    
+
+
+# WASTE FILTERS
+class WasteTypeDetailView(APIView):
+    def get(self, request, waste_type_name):
+        try:
+            # Case-insensitive lookup
+            waste_type = WasteType.objects.get(name__iexact=waste_type_name)
+            serializer = WasteTypeSerializer(waste_type)
+            response_data = {
+                "status": True,
+                "data": serializer.data
+            }
+            return Response(response_data, status=status.HTTP_200_OK)
+        except WasteType.DoesNotExist:
+            response_data = {
+                "status": False,
+                "error": f"Waste type '{waste_type_name}' not found"
+            }
+            return Response(response_data, status=status.HTTP_404_NOT_FOUND)
+
+class WasteTypeListView(APIView):
+    def get(self, request):
+        waste_types = WasteType.objects.all()
+        serializer = WasteTypeSerializer(waste_types, many=True)
+        response_data = {
+            "status": True,
+            "data": serializer.data
+        }
+        return Response(response_data, status=status.HTTP_200_OK)
+
+class WasteTypeNamesView(APIView):
+    def get(self, request):
+        waste_types = WasteType.objects.all()
+        serializer = WasteTypeNameSerializer(waste_types, many=True)
+        response_data = {
+            "status": True,
+            "data": serializer.data
+        }
+        return Response(response_data, status=status.HTTP_200_OK)

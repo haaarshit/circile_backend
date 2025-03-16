@@ -423,3 +423,51 @@ class Transaction(models.Model):
             raise ValidationError(
                 f"Credit quantity ({self.credit_quantity}) must equal counter credit offer quantity ({self.counter_credit_offer.quantity})"
             )
+        
+
+
+
+
+
+
+
+
+
+
+
+
+# WASTE FILTER API
+
+class WasteType(models.Model):
+    name = models.CharField(max_length=50, unique=True)  # Plastic, E-waste, Battery, etc.
+
+    def __str__(self):
+        return self.name
+
+class ProducerType(models.Model):
+    waste_type = models.ForeignKey(WasteType, on_delete=models.CASCADE, related_name='producer_types')
+    name = models.CharField(max_length=100)
+
+    def __str__(self):
+        return f"{self.name} ({self.waste_type.name})"
+
+class RecyclerType(models.Model):
+    waste_type = models.ForeignKey(WasteType, on_delete=models.CASCADE, related_name='recycler_types')
+    name = models.CharField(max_length=100)
+
+    def __str__(self):
+        return f"{self.name} ({self.waste_type.name})"
+
+class ProductType(models.Model):
+    waste_type = models.ForeignKey(WasteType, on_delete=models.CASCADE, related_name='product_types')
+    name = models.CharField(max_length=100)
+
+    def __str__(self):
+        return f"{self.name} ({self.waste_type.name})"
+
+class CreditType(models.Model):
+    waste_type = models.ForeignKey(WasteType, on_delete=models.CASCADE, related_name='credit_types')
+    name = models.CharField(max_length=100)
+
+    def __str__(self):
+        return f"{self.name} ({self.waste_type.name})"

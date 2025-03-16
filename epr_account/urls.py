@@ -8,7 +8,7 @@ from .views import (
     CreditOfferViewSet,
     CounterCreditOfferViewSet,
     PublicCreditOfferListView,
-    TransactionViewSet
+    TransactionViewSet,WasteTypeDetailView, WasteTypeListView,WasteTypeNamesView
 )
 from rest_framework.routers import DefaultRouter
 
@@ -30,6 +30,10 @@ router.register(r'transactions', TransactionViewSet, basename='transaction')
 
 urlpatterns = [
     path('', include(router.urls)),
-      path('public-credit-offers/', PublicCreditOfferListView.as_view(), name='public-credit-offers'),
+    path('public-credit-offers/', PublicCreditOfferListView.as_view(), name='public-credit-offers'),
+    path('waste-types/<str:waste_type_name>/', WasteTypeDetailView.as_view(), name='waste-type-detail'),
+    path('waste-types/', WasteTypeListView.as_view(), name='waste-type-list'),
+    path('waste-type-names/', WasteTypeNamesView.as_view(), name='waste-type-names'),  # New route
+
 ]
 
