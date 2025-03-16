@@ -25,7 +25,7 @@ class BaseUserModel(AbstractBaseUser):
     password = models.CharField(max_length=255)
     
      # New fields (optional at registration)
-    social_links = models.JSONField(default=list, blank=True) 
+    social_links = models.JSONField(default=dict, blank=True) 
 
     registration_date = models.DateTimeField(null=True, blank=True)
     company_name = models.CharField(max_length=255, null=True, blank=True)
