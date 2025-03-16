@@ -306,9 +306,9 @@ class CounterCreditOffer(models.Model):
     producer_epr = models.ForeignKey(ProducerEPR,on_delete=models.CASCADE,related_name="counter_credit_offers")
     quantity = models.FloatField(blank=False) 
     offer_price = models.FloatField(blank=False)
-    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default="pending")  
-    is_approved = models.BooleanField(default=False)  
 
+    is_approved = models.BooleanField(default=False)  
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default="pending")  
     def clean(self):
         pass
     

@@ -4,7 +4,8 @@ from django.urls import path,include
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/users/',include('users.urls'),name='users'),
-    path('api/epr/',include('epr_account.urls'),name='epr_account')
+    path('api/epr/',include('epr_account.urls'),name='epr_account'),
+    path('api/superadmin/',include('superadmin.urls'),name='super_admin'),
 ]
 
 

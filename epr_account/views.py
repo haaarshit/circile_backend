@@ -1052,13 +1052,14 @@ class CounterCreditOfferViewSet(viewsets.ModelViewSet):
         # Determine user type and filter field
         if isinstance(user, Producer):
             filter_field = "producer"
+            queryset = CounterCreditOffer.objects.filter(**{filter_field: user})
         elif isinstance(user, Recycler):
             filter_field = "recycler"
+            queryset = CounterCreditOffer.objects.filter(**{filter_field: user}).exclude(status="rejected")
         else:
             return queryset  # Return empty queryset for unsupported user types
 
         # Base queryset for the user
-        queryset = CounterCreditOffer.objects.filter(**{filter_field: user})
 
         if credit_offer_id:
             try:
@@ -1224,7 +1225,7 @@ class CounterCreditOfferViewSet(viewsets.ModelViewSet):
         except Exception as e:
             return Response({
                 "status": False,
-                "error": str(e)
+                "error": e.detail if hasattr(e, 'detail') else str(e)
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def perform_create(self, serializer):
@@ -1236,6 +1237,20 @@ class CounterCreditOfferViewSet(viewsets.ModelViewSet):
                     get_credit_offer = CreditOffer.objects.get(id=credit_offer_id)
                 except CreditOffer.DoesNotExist:
                     raise ValidationError({"error": "Invalid credit_offer_id or not authorized."})
+                
+
+                 # Validate quantity against credit_available
+                validated_data = serializer.validated_data
+                quantity = validated_data.get("quantity")
+                credit_available = get_credit_offer.credit_available
+
+                if quantity is None:
+                    raise ValidationError({"error": "Quantity is required to create a counter credit offer."})
+
+                if quantity > credit_available:
+                    raise ValidationError({
+                        "error": f"Quantity ({quantity}) exceeds available credits ({credit_available}) in the credit offer."
+                    })
 
                 serializer.save(
                     producer=self.request.user,
@@ -1248,7 +1263,7 @@ class CounterCreditOfferViewSet(viewsets.ModelViewSet):
                 raise ValidationError({"error": "Only producers can create counter credit offers."})
 
         except Exception as e:
-            raise ValidationError({"error": f"Creation error: {str(e)}"})
+            raise ValidationError({"error": e.detail if hasattr(e, 'detail') else str(e)})
 
     def destroy(self, request, *args, **kwargs):
         try:

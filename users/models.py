@@ -27,8 +27,6 @@ class BaseUserModel(AbstractBaseUser):
      # New fields (optional at registration)
     social_links = models.JSONField(default=list, blank=True) 
 
-
-
     registration_date = models.DateTimeField(null=True, blank=True)
     company_name = models.CharField(max_length=255, null=True, blank=True)
     city = models.CharField(max_length=100, null=True, blank=True)

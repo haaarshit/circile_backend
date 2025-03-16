@@ -52,6 +52,7 @@ INSTALLED_APPS = [
     'users',  
     'epr_account',
     'corsheaders',
+    'superadmin',
     'django_filters'
 ]
 
@@ -155,6 +156,8 @@ REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         # 'rest_framework_simplejwt.authentication.JWTAuthentication',
         'users.authentication.CustomJWTAuthentication',  # Use the custom authentication class
+        'superadmin.authentication.SuperAdminJWTAuthentication',  # For SuperAdmin
+
 
     ),
         'EXCEPTION_HANDLER': 'epr_account.exceptions.custom_exception_handler',
