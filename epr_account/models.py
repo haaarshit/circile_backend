@@ -18,8 +18,8 @@ WASTE_CHOICES = {
     "product_types": ["Category I", "Category II", "Category III", "Category IV"],
     "credit_types": [
       "Recycling ",
-      "EoL ",
-      "EoL "
+      "EoL",
+      "EoL"
     ]
   },
   "E-waste": {
