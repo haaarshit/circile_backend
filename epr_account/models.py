@@ -105,7 +105,6 @@ class RecyclerEPR(models.Model):
     recycler_type = models.CharField(max_length=100)
     epr_certificate = CustomCloudinaryField('file')
     company_name = models.CharField(max_length=255)
-    gst_number = models.CharField(max_length=15)
     address = models.TextField()
     city = models.CharField(max_length=100)
     state = models.CharField(max_length=100)
@@ -145,7 +144,6 @@ class ProducerEPR(models.Model):
     waste_type = models.CharField(max_length=20, choices=[(wt, wt) for wt in PRODUCER_CHOICES.keys()])
     producer_type = models.CharField(max_length=100)
     epr_certificate = CustomCloudinaryField('file')
-    gst_number = models.CharField(max_length=15)
     address = models.TextField()
     city = models.CharField(max_length=100)
     state = models.CharField(max_length=100)
@@ -169,6 +167,7 @@ class EPRCredit(models.Model):
     recycler = models.ForeignKey('users.Recycler', on_delete=models.CASCADE, related_name='recycler_epr_credits')
     epr_account = models.ForeignKey(RecyclerEPR, on_delete=models.CASCADE, related_name='epr_account_credits')
     epr_registration_number = models.CharField(max_length=50)
+    
     waste_type = models.CharField(max_length=20, choices=[(wt, wt) for wt in WASTE_CHOICES.keys()])
     product_type = models.CharField(max_length=100)
     credit_type = models.CharField(max_length=100)
@@ -176,6 +175,7 @@ class EPRCredit(models.Model):
     processing_capacity =models.DecimalField(max_digits=10, decimal_places=2)
     comulative_certificate_potential = models.FloatField()
     available_certificate_value = models.FloatField()
+    state = models.CharField(max_length=100)
 
     def clean(self):
         if self.waste_type in WASTE_CHOICES:
@@ -207,6 +207,8 @@ class EPRTarget(models.Model):
     credit_type = models.CharField(max_length=100)
     FY = models.IntegerField()
     target_quantity = models.IntegerField() # in kgs
+    achieved_quantity = models.IntegerField(default=0)  # New field
+    is_achieved = models.BooleanField(default=False)  # New field
     
     def clean(self):
         if self.waste_type in WASTE_CHOICES:
@@ -266,19 +268,23 @@ class CreditOffer(models.Model):
     epr_credit = models.ForeignKey(EPRCredit, on_delete=models.CASCADE, related_name='epr_credit_offers')
     # populate from credit record
     epr_registration_number = models.CharField(max_length=50)
-    waste_type = models.CharField(max_length=20, choices=[(wt, wt) for wt in WASTE_CHOICES.keys()])
     # approved super admin
     is_approved = models.BooleanField(default=False)  
     
 
+    waste_type = models.CharField(max_length=20, choices=[(wt, wt) for wt in WASTE_CHOICES.keys()])
     FY = models.IntegerField(default=get_default_year)
     offer_title = models.CharField(max_length=255, default="Default Offer")
-    credit_available = models.FloatField(default=0.0)  # in kgs
+    credit_available = models.FloatField(default=0.0)  
     minimum_purchase = models.FloatField(default=0.0)
     price_per_credit = models.FloatField(default=0.0)
     product_image = CloudinaryField('image', resource_type='image', default="")
     availability_proof = CloudinaryField('image', resource_type='image', default="")
+    credit_type = models.CharField(max_length=100)
+    product_type = models.CharField(max_length=100)
     is_sold = models.BooleanField(default=False)
+
+
     # TODO -> TRAIL DOCUMENT
     trail_documents = models.JSONField(
         default=get_default_supporting_docs,
@@ -286,7 +292,22 @@ class CreditOffer(models.Model):
             validate_doc_choices
         ]
     )
+
+    def clean(self):
+        if self.waste_type in WASTE_CHOICES:
+            valid_product_types = WASTE_CHOICES[self.waste_type]['product_types']
+            valid_credit_types = WASTE_CHOICES[self.waste_type]['credit_types']
+
+
+            if self.product_type not in valid_product_types:
+                raise ValidationError(f"Invalid Product Type '{self.product_type}' for Waste Type '{self.waste_type}'")
+
+            if self.credit_type not in valid_credit_types:
+                raise ValidationError(f"Invalid Credit Type '{self.credit_type}' for Waste Type '{self.waste_type}'")
+            
     def save(self, *args, **kwargs):
+        # if self.epr_credit and not self.credit_type:
+        #     self.credit_type = self.epr_credit.credit_type
         super().save(*args, **kwargs)
 
 # COUNTER CREDIT OFFER BY PRODUCER
@@ -424,11 +445,6 @@ class Transaction(models.Model):
                 f"Credit quantity ({self.credit_quantity}) must equal counter credit offer quantity ({self.counter_credit_offer.quantity})"
             )
         
-
-
-
-
-
 
 
 

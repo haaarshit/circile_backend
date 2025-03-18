@@ -375,7 +375,7 @@ class EPRCreditViewSet(viewsets.ModelViewSet):
 
                 request_data.update({
                     "epr_account": epr_account.id,
-                    "recycler": self.request.user.id,  # Note: This might be a typo; should it be self.request.user.id?
+                    "recycler": self.request.user.id, 
                     "epr_registration_number": epr_account.epr_registration_number,
                     "waste_type": epr_account.waste_type,
                 })
@@ -503,7 +503,7 @@ class CreditOfferViewSet(viewsets.ModelViewSet):
             serializer.save(
                 recycler=self.request.user,
                 epr_account=get_epr_account,
-                epr_credit=get_epr_credit
+                epr_credit=get_epr_credit,
             )
 
         except RecyclerEPR.DoesNotExist:
@@ -597,8 +597,11 @@ class CreditOfferViewSet(viewsets.ModelViewSet):
                 request_data.update({
                     "epr_account": get_epr_account.id,
                     "epr_registration_number": get_epr_account.epr_registration_number,
-                    "waste_type": get_epr_account.waste_type,
-                    "epr_credit": epr_credit.id
+                    "waste_type": epr_credit.waste_type,
+                    "epr_credit": epr_credit.id,
+                    "credit_type":epr_credit.credit_type,
+                    "product_type":epr_credit.product_type
+                    
                 })
 
                 kwargs["data"] = request_data
@@ -1490,6 +1493,30 @@ class TransactionViewSet(viewsets.ModelViewSet):
                         "error": "Counter credit offer not found"
                     }, status=status.HTTP_404_NOT_FOUND)
             
+             # Fetch EPRTarget for validation
+            
+            # # CHECK IF THE TRANSACTION CREDIT QUANTITY DOES NOT EXCEED THE REMAINING TARGET QUANTITY
+            # epr_target = EPRTarget.objects.filter(
+            #     epr_account=producer_epr,
+            #     waste_type=data.get('waste_type'),
+            #     product_type=data.get('product_type'),
+            #     credit_type=data.get('credit_type')
+            # ).first()
+
+            # if not epr_target:
+            #     return Response({
+            #         "status": False,
+            #         "error": "No matching EPRTarget found for this transaction"
+            #     }, status=status.HTTP_400_BAD_REQUEST)
+
+            # # Validate credit_quantity against EPRTarget
+            # remaining_quantity = epr_target.target_quantity - epr_target.achieved_quantity
+            # if float(data['credit_quantity']) > remaining_quantity:
+            #     return Response({
+            #         "status": False,
+            #         "error": f"Credit quantity ({data['credit_quantity']}) cannot exceed remaining target quantity ({remaining_quantity})"
+            #     }, status=status.HTTP_400_BAD_REQUEST)
+            
             # Add producer_epr to data
             data['producer_epr'] = producer_epr.id
             print(data['producer_epr'])
@@ -1663,6 +1690,16 @@ class TransactionViewSet(viewsets.ModelViewSet):
         transaction = serializer.save()
         
         if transaction.status == 'approved':
+            # epr_target = EPRTarget.objects.filter(
+            #     epr_account=transaction.producer_epr,
+            #     waste_type=transaction.waste_type,
+            #     product_type=transaction.product_type,
+            #     credit_type=transaction.credit_type
+            # ).first()
+
+            # if epr_target:
+            #     epr_target.achieved_quantity += int(transaction.credit_quantity)
+            #     epr_target.save()  
             if transaction.counter_credit_offer:
                 transaction.credit_offer.credit_available -= transaction.credit_quantity 
                 transaction.credit_offer.save()
