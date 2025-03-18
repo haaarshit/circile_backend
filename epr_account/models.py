@@ -6,6 +6,8 @@ from django.db.models import Max
 from cloudinary.models import CloudinaryField
 from django.core.validators import MinLengthValidator
 from django.utils import timezone
+import datetime
+
 
 class CustomCloudinaryField(CloudinaryField):
      pass
@@ -92,6 +94,9 @@ WASTE_CHOICES = {
   }
 }
 
+def get_current_year_start():
+    return datetime.date.today().replace(month=1, day=1)
+
 class RecyclerEPR(models.Model):
    
     id = models.UUIDField(default=uuid.uuid4, primary_key=True, editable=False)
@@ -104,7 +109,6 @@ class RecyclerEPR(models.Model):
     waste_type = models.CharField(max_length=20, choices=[(wt, wt) for wt in WASTE_CHOICES.keys()])
     recycler_type = models.CharField(max_length=100)
     epr_certificate = CustomCloudinaryField('file')
-    company_name = models.CharField(max_length=255)
     address = models.TextField()
     city = models.CharField(max_length=100)
     state = models.CharField(max_length=100)
@@ -137,7 +141,6 @@ class ProducerEPR(models.Model):
     id = models.UUIDField(default=uuid.uuid4, primary_key=True, editable=False)
     
     epr_registration_number = models.CharField(max_length=50, unique=True)
-    company_name = models.CharField(max_length=255)
     epr_registration_date = models.DateField()
     epr_registered_name = models.CharField(max_length=50)
 
@@ -205,7 +208,7 @@ class EPRTarget(models.Model):
 
     product_type = models.CharField(max_length=100)
     credit_type = models.CharField(max_length=100)
-    FY = models.IntegerField()
+    FY =  models.IntegerField()
     target_quantity = models.IntegerField() # in kgs
     achieved_quantity = models.IntegerField(default=0)  # New field
     is_achieved = models.BooleanField(default=False)  # New field
