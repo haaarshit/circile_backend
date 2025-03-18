@@ -592,11 +592,13 @@ class CreditOfferViewSet(viewsets.ModelViewSet):
                     raise ValidationError({"error": "No record found for credit with the given EPR account."})
 
                 request_data = {key: value[0] if isinstance(value, list) and value else value for key, value in self.request.data.items()}
+                
+                # TODO -> ADD SOME ERROR REPSONSE IF EPR's reg number != epr_credit's reg number
 
                 # Add additional fields
                 request_data.update({
                     "epr_account": get_epr_account.id,
-                    "epr_registration_number": get_epr_account.epr_registration_number,
+                    "epr_registration_number": epr_credit.epr_registration_number,
                     "waste_type": epr_credit.waste_type,
                     "epr_credit": epr_credit.id,
                     "credit_type":epr_credit.credit_type,
@@ -1257,7 +1259,7 @@ class CounterCreditOfferViewSet(viewsets.ModelViewSet):
                     producer=self.request.user,
                     recycler=get_credit_offer.recycler,
                     credit_offer=get_credit_offer,
-                    status='Pending',
+                    status='pending',
                     is_approved=False
                 )
             else:

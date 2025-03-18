@@ -209,6 +209,8 @@ class EPRTarget(models.Model):
     target_quantity = models.IntegerField() # in kgs
     achieved_quantity = models.IntegerField(default=0)  # New field
     is_achieved = models.BooleanField(default=False)  # New field
+    state = models.CharField(max_length=100)
+
     
     def clean(self):
         if self.waste_type in WASTE_CHOICES:
@@ -445,12 +447,6 @@ class Transaction(models.Model):
                 f"Credit quantity ({self.credit_quantity}) must equal counter credit offer quantity ({self.counter_credit_offer.quantity})"
             )
         
-
-
-
-
-
-
 
 # WASTE FILTER API
 
