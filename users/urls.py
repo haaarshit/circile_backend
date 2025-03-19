@@ -11,7 +11,8 @@ from .views import (
     UpdateUserProfileView,
     ForgotPasswordView,
     ResetPasswordView,
-    UserCountStatsView
+    UserCountStatsView,
+    CheckProfileCompletionView
 )
 
 urlpatterns = [
@@ -28,6 +29,9 @@ urlpatterns = [
 
     path('update/', UpdateUserProfileView.as_view(), name='udpate_view'),
     path('profile/', GetProfileView.as_view(), name='profile_view'),
+
+    # check profile completion status  
+    path('check-profile-completion/', CheckProfileCompletionView.as_view(), name='check_profile_completion'),
 
     # Email Verification Routes
     path('send-verification-email/', send_verification_email, name='send-verification-email'),

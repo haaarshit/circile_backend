@@ -446,6 +446,76 @@ class UserCountStatsView(APIView):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
+class CheckProfileCompletionView(APIView):
+    authentication_classes = [CustomJWTAuthentication]
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        try:
+            user = request.user  # Authenticated user
+            
+            # Define required fields for each user type
+            recycler_required_fields = [
+                'email', 'mobile_no', 'company_name', 'address', 'full_name',
+                'city', 'state', 
+                 'designation','gst_number','pcb_number'
+            ]
+            
+            producer_required_fields = [
+                'email', 'mobile_no', 'company_name', 'address', 'full_name',
+                'city', 'state',  
+                'designation','gst_number','pcb_number'
+            ]
+            
+            # Check user type and validate completeness
+            if isinstance(user, Recycler):
+                required_fields = recycler_required_fields
+                user_type = "recycler"
+            elif isinstance(user, Producer):
+                required_fields = producer_required_fields
+                user_type = "producer"
+            else:
+                return Response(
+                    {"status": False, "message": "Invalid user type"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Check for incomplete fields
+            incomplete_fields = []
+            for field in required_fields:
+                try:
+                    value = getattr(user, field)
+                    # Check if field is None or empty string
+                    if value is None or (isinstance(value, str) and not value.strip()):
+                        incomplete_fields.append(field)
+                except AttributeError:
+                    # Field doesn't exist in model
+                    incomplete_fields.append(field)
+            
+            if incomplete_fields:
+                return Response({
+                    "status": False,
+                    "message": "Profile is incomplete",
+                    "details": {
+                        "user_type": user_type,
+                        "incomplete_fields": incomplete_fields
+                    }
+                }, status=status.HTTP_200_OK)
+            
+            return Response({
+                "status": True,
+                "message": "Profile is complete",
+                "details": {
+                    "user_type": user_type
+                }
+            }, status=status.HTTP_200_OK)
+            
+        except Exception as e:
+            return Response(
+                {"status": False, "message": f"Error checking profile: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
 @api_view(['POST'])
 def send_verification_email(request):
     """
