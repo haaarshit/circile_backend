@@ -1497,27 +1497,36 @@ class TransactionViewSet(viewsets.ModelViewSet):
             
              # Fetch EPRTarget for validation
             
-            # # CHECK IF THE TRANSACTION CREDIT QUANTITY DOES NOT EXCEED THE REMAINING TARGET QUANTITY
-            # epr_target = EPRTarget.objects.filter(
-            #     epr_account=producer_epr,
-            #     waste_type=data.get('waste_type'),
-            #     product_type=data.get('product_type'),
-            #     credit_type=data.get('credit_type')
-            # ).first()
 
-            # if not epr_target:
-            #     return Response({
-            #         "status": False,
-            #         "error": "No matching EPRTarget found for this transaction"
-            #     }, status=status.HTTP_400_BAD_REQUEST)
+            # CHECK IF WASTE TYPE OF GIVEN EPR ID OF PRODUCER MATCHES THE WASTE TYPE OF THE CREDIT OR COUNTER CREDIT OFFER
+            if producer_epr.waste_type != data['waste_type']:
+                 return Response({
+                    "status": False,
+                    "error": f"Your EPR Account's Waste Type does not matches the the waste type of the credit offer you want to buy. Epr's waste type:{producer_epr.waste_type}"
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            # CHECK IF THE TRANSACTION CREDIT QUANTITY DOES NOT EXCEED THE REMAINING TARGET QUANTITY
+            epr_target = EPRTarget.objects.filter(
+                epr_account=producer_epr,
+                waste_type=producer_epr.waste_type,
+                product_type=data.get('product_type'),
+                credit_type=data.get('credit_type'),
+                is_achieved=False
+            ).first()
 
-            # # Validate credit_quantity against EPRTarget
-            # remaining_quantity = epr_target.target_quantity - epr_target.achieved_quantity
-            # if float(data['credit_quantity']) > remaining_quantity:
-            #     return Response({
-            #         "status": False,
-            #         "error": f"Credit quantity ({data['credit_quantity']}) cannot exceed remaining target quantity ({remaining_quantity})"
-            #     }, status=status.HTTP_400_BAD_REQUEST)
+            if not epr_target:
+                return Response({
+                    "status": False,
+                    "error": "No matching EPRTarget found for this transaction, Please make epr target for given epr account"
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+            # Validate credit_quantity against EPRTarget
+            remaining_quantity = epr_target.target_quantity - epr_target.achieved_quantity
+            if float(data['credit_quantity']) > remaining_quantity:
+                return Response({
+                    "status": False,
+                    "error": f"Credit quantity ({data['credit_quantity']}) cannot exceed remaining target quantity ({remaining_quantity})"
+                }, status=status.HTTP_400_BAD_REQUEST)
             
             # Add producer_epr to data
             data['producer_epr'] = producer_epr.id
@@ -1686,31 +1695,51 @@ class TransactionViewSet(viewsets.ModelViewSet):
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def update(self, request, *args, **kwargs):
-        instance = self.get_object()
-        serializer = self.get_serializer(instance, data=request.data, partial=True)
-        serializer.is_valid(raise_exception=True)
-        transaction = serializer.save()
-        
-        if transaction.status == 'approved':
-            # epr_target = EPRTarget.objects.filter(
-            #     epr_account=transaction.producer_epr,
-            #     waste_type=transaction.waste_type,
-            #     product_type=transaction.product_type,
-            #     credit_type=transaction.credit_type
-            # ).first()
+        try:
+            instance = self.get_object()
+            serializer = self.get_serializer(instance, data=request.data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            transaction = serializer.save()
+            
+            if transaction.status == 'approved':
+                epr_target = EPRTarget.objects.filter(
+                    epr_account=transaction.producer_epr,
+                    waste_type=transaction.waste_type,
+                    product_type=transaction.product_type,
+                    credit_type=transaction.credit_type,
+                    is_achieved=False
+                ).first()
 
-            # if epr_target:
-            #     epr_target.achieved_quantity += int(transaction.credit_quantity)
-            #     epr_target.save()  
-            if transaction.counter_credit_offer:
-                transaction.credit_offer.credit_available -= transaction.credit_quantity 
-                transaction.credit_offer.save()
-            else:
-                transaction.credit_offer.is_sold = True
-                transaction.credit_offer.credit_available = 0
-                transaction.credit_offer.save()
+                if epr_target:
+                    epr_target.achieved_quantity += int(transaction.credit_quantity)
+                    if epr_target.achieved_quantity == epr_target.target_quantity:
+                        epr_target.is_achieved = True
+                    epr_target.save()  
+                if transaction.counter_credit_offer:
+                    transaction.credit_offer.credit_available -= transaction.credit_quantity 
+                    if transaction.credit_offer.credit_available == 0:
+                        transaction.credit_offer.is_sold = True
+
+                    transaction.credit_offer.save()
+
+                else:
+                    transaction.credit_offer.is_sold = True
+                    transaction.credit_offer.credit_available = 0
+                    transaction.credit_offer.save()
+            
+            return Response({"data":serializer.data,"status":True})
         
-        return Response({"data":serializer.data,"status":True})
+        except serializers.ValidationError as e:
+            return Response({
+                "status": False,
+                "error": e.detail if hasattr(e, 'detail') else str(e)
+            }, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({
+                "status": False,
+                "error": str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
     def partial_update(self, request, *args, **kwargs):
         return self.update(request, *args, **kwargs)

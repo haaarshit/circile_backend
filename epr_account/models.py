@@ -19,7 +19,7 @@ WASTE_CHOICES = {
     "recycler_types": ["Recycler", "Co-processor (Cement)", "Co-processor (WtE)", "Co-processor (WtO)", "Industrial Composting"],
     "product_types": ["Category I", "Category II", "Category III", "Category IV"],
     "credit_types": [
-      "Recycling ",
+      "Recycling",
       "EoL",
       "EoL"
     ]

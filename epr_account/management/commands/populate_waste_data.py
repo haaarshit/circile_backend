@@ -11,7 +11,7 @@ class Command(BaseCommand):
         "recycler_types": ["Recycler", "Co-processor (Cement)", "Co-processor (WtE)", "Co-processor (WtO)", "Industrial Composting"],
         "product_types": ["Category I", "Category II", "Category III", "Category IV"],
         "credit_types": [
-        "Recycling ",
+        "Recycling",
         "EoL",
         "EoL"
         ]
@@ -20,13 +20,13 @@ class Command(BaseCommand):
         "producer_types": ["Producer (PEW)", "Manufacturer"],
         "recycler_types": ["Recycler (REW)", "Refurbisher (RfEW)"],
         "product_types": [
-        "Information technology and telecommunication equipment (ITEW)",
-        "Consumer electrical and electronics and Photovoltaic Panels (CEEW)",
-        "Large and Small Electrical and Electronic Equipment (LSEEW)",
-        "Electrical and Electronic Tools (EETW)",
-        "Toys, Leisure and Sports Equipment (TLSEW)",
-        "Medical Devices (MDW)",
-        "Laboratory Instruments (LIW)"
+            "Information technology and telecommunication equipment (ITEW)",
+            "Consumer electrical and electronics and Photovoltaic Panels (CEEW)",
+            "Large and Small Electrical and Electronic Equipment (LSEEW)",
+            "Electrical and Electronic Tools (EETW)",
+            "Toys, Leisure and Sports Equipment (TLSEW)",
+            "Medical Devices (MDW)",
+            "Laboratory Instruments (LIW)"
         ],
         "credit_types": [
         "Aluminium (Al)",
