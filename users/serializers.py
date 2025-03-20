@@ -113,7 +113,7 @@ class RecyclerDetailSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'email', 'full_name', 'mobile_no', 'designation', 
             'company_name', 'city', 'state', 'gst_number', 'pcb_number', 
-            'address', 'company_logo', 'pcb_doc', 'is_active', 'is_verified','unique_id','social_links'
+            'address', 'company_logo', 'pcb_doc', 'is_active', 'is_verified','unique_id','social_links','registration_date'
         ]
     def get_company_logo(self, obj):
         """
@@ -153,7 +153,7 @@ class ProducerDetailSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'email', 'full_name', 'mobile_no', 'designation', 
             'company_name', 'city', 'state', 'gst_number', 'pcb_number', 
-            'address', 'company_logo', 'pcb_doc', 'is_active', 'is_verified','unique_id','social_links'
+            'address', 'company_logo', 'pcb_doc', 'is_active', 'is_verified','unique_id','social_links','registration_date'
         ]
     def get_company_logo(self, obj):
         """

@@ -1213,6 +1213,7 @@ class CounterCreditOfferViewSet(viewsets.ModelViewSet):
     def create(self, request, *args, **kwargs):
         try:
 
+        
             serializer = self.get_serializer(data=request.data)
             serializer.is_valid(raise_exception=True)
             self.perform_create(serializer)
@@ -1240,6 +1241,13 @@ class CounterCreditOfferViewSet(viewsets.ModelViewSet):
                     get_credit_offer = CreditOffer.objects.get(id=credit_offer_id)
                 except CreditOffer.DoesNotExist:
                     raise ValidationError({"error": "Invalid credit_offer_id or not authorized."})
+                    
+                producer_epr_id = self.request.data['producer_epr']
+                producer_epr = ProducerEPR.objects.get(id=producer_epr_id, producer=self.request.user)
+
+                if producer_epr.waste_type !=  get_credit_offer.waste_type:
+                   raise ValidationError({  "error": f"Your EPR Account's Waste Type does not matches the the waste type of the credit offer you want to buy. Epr's waste type:{producer_epr.waste_type} Credit offer's waste type: {get_credit_offer.waste_type}", "status": False})
+              
                 
 
                  # Validate quantity against credit_available
