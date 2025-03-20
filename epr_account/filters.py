@@ -5,16 +5,16 @@ from django.db import models  # Import models explicitly for JSONField
 from .models import CreditOffer  # Ensure CreditOffer is imported
 
 allowed_docs = [
-    "Tax Invoice",
-    "E-wayBIll",
-    "Loading slip",
-    "Unloading Slip",
-    "Lorry Receipt copy",
-    "DL",
-    "Recycling Certificate Copy",
-    "Co-Processing Certificate",
-    "Lorry Photographs",
-    "Municipality Endorsement"
+        "Tax Invoice",
+        "E-wayBIll",
+        "Loading slip",
+        "Unloading Slip",
+        "Lorry Receipt copy",
+        "Recycling Certificate Copy",
+        "Co-Processing Certificate",
+        "Lorry Photographs",
+        "Credit Transfer Proof",
+        "EPR Registration Certificate"
 ]
 
 class CreditOfferFilter(filters.FilterSet):
@@ -26,10 +26,10 @@ class CreditOfferFilter(filters.FilterSet):
     price_per_credit = filters.RangeFilter(field_name='price_per_credit')
     price_per_credit_exact = filters.NumberFilter(field_name='price_per_credit', lookup_expr='exact')
     
-    # Filter for supporting_doc
-    supporting_doc = filters.MultipleChoiceFilter(
+    # Filter for trail_documents
+    trail_documents = filters.MultipleChoiceFilter(
         choices=[(doc, doc) for doc in allowed_docs],
-        method='filter_supporting_doc',
+        method='filter_trail_documents',
         label='Supporting Documents'
     )
 
@@ -40,14 +40,14 @@ class CreditOfferFilter(filters.FilterSet):
     minimum_purchase = filters.RangeFilter()
     is_sold = filters.BooleanFilter()
 
-    def filter_supporting_doc(self, queryset, name, value):
+    def filter_trail_documents(self, queryset, name, value):
         """
-        Custom filter method to filter CreditOffers where supporting_doc contains any of the selected values.
+        Custom filter method to filter CreditOffers where trail_documents contains any of the selected values.
         """
         if value:  # Only apply filter if values are provided
             query = Q()
             for doc in value:
-                query |= Q(supporting_doc__contains=[doc])  # Check if doc is in the JSON list
+                query |= Q(trail_documents__contains=[doc])  # Check if doc is in the JSON list
             return queryset.filter(query)
         return queryset
 
@@ -61,7 +61,7 @@ class CreditOfferFilter(filters.FilterSet):
             'product_type',
             'price_per_credit',
             'price_per_credit_exact',
-            'supporting_doc',
+            'trail_documents',
             'is_approved',
             'FY',
             'credit_available',
@@ -74,7 +74,7 @@ class CreditOfferFilter(filters.FilterSet):
                 'filter_class': filters.MultipleChoiceFilter,
                 'extra': lambda f: {
                     'choices': [(doc, doc) for doc in allowed_docs],
-                    'method': 'filter_supporting_doc',  # Link to custom method
+                    'method': 'filter_trail_documents',  # Link to custom method
                 },
             },
         }
