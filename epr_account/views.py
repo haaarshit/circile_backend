@@ -608,27 +608,41 @@ class CreditOfferViewSet(viewsets.ModelViewSet):
 
                 kwargs["data"] = request_data
               # Handle PATCH requests with special care for JSONField
-            elif self.request.method == "PATCH" and "" in self.request.data:
+            elif self.request.method == "PATCH" :
                 # Get original data
                 instance = self.get_object()
                 # Create a separate data dictionary for patch
                 patch_data = dict(self.request.data)
-                
+                 # Handle case where values are lists (from MultiPartParser/FormParser)
+                patch_data = {key: value[0] if isinstance(value, list) and value else value for key, value in patch_data.items()}
                 # Special handling for trail_documents if it's coming in as a string
-                if "trail_documents" in patch_data:
-                    trail_documents_value = patch_data["trail_documents"]
-                    # If it's a string representation of JSON, parse it
-                    if isinstance(trail_documents_value, list) and trail_documents_value:
-                        import json
-                        try:
-                            # Strip any whitespace/newlines and parse
-                            cleaned_string = trail_documents_value[0].strip()
-                            patch_data["trail_documents"] = json.loads(cleaned_string)
-                        except json.JSONDecodeError:
-                            raise ValidationError({"error": "Invalid JSON format for trail_documents"})
-                print(patch_data)
+                # if "trail_documents" in patch_data:
+                #     trail_documents_value = patch_data["trail_documents"]
+                #     # If it's a string representation of JSON, parse it
+                #     if isinstance(trail_documents_value, list) and trail_documents_value:
+                #         import json
+                #         try:
+                #             # Strip any whitespace/newlines and parse
+                #             cleaned_string = trail_documents_value[0].strip()
+                #             patch_data["trail_documents"] = json.loads(cleaned_string)
+                #         except json.JSONDecodeError:
+                #             raise ValidationError({"error": "Invalid JSON format for trail_documents"})
+                # print(patch_data)
 
                 
+                # kwargs["data"] = patch_data
+                # kwargs["partial"] = True
+
+                if "trail_documents" in patch_data:
+                    trail_documents_value = patch_data["trail_documents"]
+                    if isinstance(trail_documents_value, str):
+                        import json
+                        try:
+                            # Parse the string into a Python list
+                            patch_data["trail_documents"] = json.loads(trail_documents_value)
+                        except json.JSONDecodeError:
+                            raise ValidationError({"error": "Invalid JSON format for trail_documents"})
+
                 kwargs["data"] = patch_data
                 kwargs["partial"] = True
         
