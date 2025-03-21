@@ -248,6 +248,8 @@ class CounterCreditOfferSerializer(serializers.ModelSerializer):
 # TRANSACTION
 class TransactionSerializer(serializers.ModelSerializer):
     transaction_proof = serializers.SerializerMethodField()
+    trail_documents = serializers.SerializerMethodField()
+
 
     def get_transaction_proof(self, obj):
         if obj.transaction_proof:
@@ -259,7 +261,15 @@ class TransactionSerializer(serializers.ModelSerializer):
                 
         return None
 
-
+    
+    def get_trail_documents(self, obj):
+        if obj.trail_documents:
+            if obj.trail_documents.url.startswith('http'):
+                return obj.trail_documents.url
+            else:
+                return f'https://res.cloudinary.com/{cloud_name}/{obj.trail_documents.url}'
+        return None
+    
     class Meta:
         model = Transaction
         fields = [
@@ -267,7 +277,7 @@ class TransactionSerializer(serializers.ModelSerializer):
             'counter_credit_offer', 'total_price', 'credit_type',
             'price_per_credit', 'product_type', 'producer_type',
             'credit_quantity', 'offered_by', 'work_order_date',
-            'is_complete', 'status', 'transaction_proof','waste_type','recycler_type','producer_epr'
+            'is_complete', 'status', 'transaction_proof','waste_type','recycler_type','producer_epr','trail_documents'
         ]
         read_only_fields = [
             'id'
@@ -281,10 +291,12 @@ class TransactionSerializer(serializers.ModelSerializer):
         if self.instance:  # Update
             if not isinstance(request.user, Recycler):
                 raise serializers.ValidationError("Only recycler can update transaction")
-            if any(k not in ['is_complete', 'status', 'transaction_proof'] for k in data.keys()):
+            if any(k not in ['is_complete', 'status', 'transaction_proof','trail_documents'] for k in data.keys()):
                 raise serializers.ValidationError("Only is_complete, status, and transaction_proof can be updated")
             if data.get('status') == 'approved' and  'transaction_proof' not in request.FILES:
                 raise serializers.ValidationError("Transaction proof required for approval")
+            # if data.get('status') == 'approved' and  'trail_documents' not in request.FILES:
+            #     raise serializers.ValidationError("Trail Documents required for approval")
             if data.get('status') == 'approved':
                 data['is_complete'] = True
         
@@ -304,7 +316,9 @@ class TransactionSerializer(serializers.ModelSerializer):
             transaction_proof = request.FILES.get('transaction_proof')
             validated_data['transaction_proof'] = transaction_proof
 
-          
+            trail_documents = request.FILES.get('trail_documents')
+            validated_data['trail_documents'] = trail_documents
+
         # Producer can update all fields
         return super().update(instance, validated_data)
     

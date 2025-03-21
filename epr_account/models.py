@@ -414,6 +414,12 @@ class Transaction(models.Model):
         blank=True,
         null=True
     )
+    trail_documents = CloudinaryField(
+        'trail_documents',
+        resource_type='raw',  
+        blank=True,
+        null=True
+    )
 
     def generate_order_id(self):
         # Get the highest existing order_id with 'O' prefix
