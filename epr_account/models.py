@@ -113,6 +113,8 @@ class RecyclerEPR(models.Model):
     city = models.CharField(max_length=100)
     state = models.CharField(max_length=100)
     created_at = models.DateTimeField(auto_now_add=True)
+    is_approved = models.BooleanField(default=False)  
+
     
     def clean(self):
         if self.waste_type in WASTE_CHOICES:
@@ -151,6 +153,8 @@ class ProducerEPR(models.Model):
     city = models.CharField(max_length=100)
     state = models.CharField(max_length=100)
     created_at = models.DateTimeField(auto_now_add=True)
+    is_approved = models.BooleanField(default=False)  
+
 
     def clean(self):
         if self.waste_type in self.PRODUCER_CHOICES:
@@ -274,9 +278,8 @@ class CreditOffer(models.Model):
     # populate from credit record
     epr_registration_number = models.CharField(max_length=50)
     # approved super admin
-    is_approved = models.BooleanField(default=False)  
+    is_approved = models.BooleanField(default=True)  
     
-
     waste_type = models.CharField(max_length=20, choices=[(wt, wt) for wt in WASTE_CHOICES.keys()])
     FY = models.IntegerField(default=get_default_year)
     offer_title = models.CharField(max_length=255, default="Default Offer")

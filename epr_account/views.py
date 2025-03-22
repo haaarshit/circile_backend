@@ -49,7 +49,7 @@ class RecyclerEPRViewSet(viewsets.ModelViewSet):
 
 
     def get_queryset(self):
-            return RecyclerEPR.objects.filter(recycler=self.request.user)
+            return RecyclerEPR.objects.filter(recycler=self.request.user,is_approved=True)
     
     def list(self, request, *args, **kwargs):
         try:
@@ -93,6 +93,13 @@ class RecyclerEPRViewSet(viewsets.ModelViewSet):
                     "status": False,
                     "error": "You are not authorized to update this record."
                 }, status=status.HTTP_403_FORBIDDEN)
+            
+            if 'is_approved' in request.data:
+                return Response({
+                    "status": False,
+                    "error": "Only admins can modify the 'is_approved' field."
+                }, status=status.HTTP_403_FORBIDDEN)
+
 
             serializer = self.get_serializer(instance, data=request.data, partial=False)
             serializer.is_valid(raise_exception=True)
@@ -120,6 +127,12 @@ class RecyclerEPRViewSet(viewsets.ModelViewSet):
                 return Response({
                     "status": False,
                     "error": "You are not authorized to update this record."
+                }, status=status.HTTP_403_FORBIDDEN)
+            
+            if 'is_approved' in request.data:
+                return Response({
+                    "status": False,
+                    "error": "Only admins can modify the 'is_approved' field."
                 }, status=status.HTTP_403_FORBIDDEN)
 
             serializer = self.get_serializer(instance, data=request.data, partial=True)
@@ -363,6 +376,8 @@ class EPRCreditViewSet(viewsets.ModelViewSet):
 
                 try:
                     epr_account = RecyclerEPR.objects.get(id=epr_account_id, recycler=self.request.user)
+                    if not epr_account.is_approved:
+                        raise serializers.ValidationError({"error": "Cannot create credit: EPR account is not approved by admin."})
                 except RecyclerEPR.DoesNotExist:
                     raise serializers.ValidationError({"error": "Invalid epr_id or not authorized."})
 
@@ -585,6 +600,8 @@ class CreditOfferViewSet(viewsets.ModelViewSet):
 
                 try:
                     get_epr_account = RecyclerEPR.objects.get(id=epr_id, recycler=self.request.user)
+                    if not get_epr_account.is_approved:
+                     raise ValidationError({"error": "Cannot create credit offer: EPR account is not approved by admin."})
                     epr_credit = EPRCredit.objects.get(id=epr_credit_id, recycler=self.request.user, epr_account=get_epr_account)
                 except RecyclerEPR.DoesNotExist:
                     raise ValidationError({"error": "Invalid epr_account_id or not authorized."})
@@ -680,7 +697,7 @@ class ProducerEPRViewSet(viewsets.ModelViewSet):
     parser_classes = (MultiPartParser, FormParser,JSONParser)
 
     def get_queryset(self):
-        return ProducerEPR.objects.filter(producer=self.request.user)
+        return ProducerEPR.objects.filter(producer=self.request.user,is_approved=True)
 
     # GET - List
     def list(self, request, *args, **kwargs):
@@ -750,6 +767,13 @@ class ProducerEPRViewSet(viewsets.ModelViewSet):
                     "status": False,
                     "error": "You are not authorized to update this record."
                 }, status=status.HTTP_403_FORBIDDEN)
+            
+            if 'is_approved' in request.data:
+                return Response({
+                    "status": False,
+                    "error": "Only admins can modify the 'is_approved' field."
+                }, status=status.HTTP_403_FORBIDDEN)
+
 
             serializer = self.get_serializer(instance, data=request.data, partial=False)
             serializer.is_valid(raise_exception=True)
@@ -777,6 +801,12 @@ class ProducerEPRViewSet(viewsets.ModelViewSet):
                 return Response({
                     "status": False,
                     "error": "You are not authorized to update this record."
+                }, status=status.HTTP_403_FORBIDDEN)
+            
+            if 'is_approved' in request.data:
+                return Response({
+                    "status": False,
+                    "error": "Only admins can modify the 'is_approved' field."
                 }, status=status.HTTP_403_FORBIDDEN)
 
             serializer = self.get_serializer(instance, data=request.data, partial=True)
@@ -985,6 +1015,9 @@ class EPRTargetViewSet(viewsets.ModelViewSet):
 
             try:
                 epr_account = ProducerEPR.objects.get(id=epr_account_id, producer=self.request.user)
+                if not epr_account.is_approved:
+                        raise serializers.ValidationError({"error": "Cannot create credit: EPR account is not approved by admin."})
+         
             except ProducerEPR.DoesNotExist:
                 raise serializers.ValidationError({"error": "Invalid epr_id or not authorized."})
 
@@ -1314,7 +1347,7 @@ class CounterCreditOfferViewSet(viewsets.ModelViewSet):
 
 # PUBLIC VIEW FOR LISTING CREDIT OFFERS
 class PublicCreditOfferListView(generics.ListAPIView):
-    queryset = CreditOffer.objects.filter(is_approved=True).select_related('epr_account', 'epr_credit')
+    queryset = CreditOffer.objects.filter(is_sold=False).select_related('epr_account', 'epr_credit')
     serializer_class = CreditOfferSerializer
     permission_classes = [permissions.AllowAny]
     filter_backends = [DjangoFilterBackend, OrderingFilter]
@@ -1722,6 +1755,8 @@ class TransactionViewSet(viewsets.ModelViewSet):
             serializer = self.get_serializer(instance, data=request.data, partial=True)
             serializer.is_valid(raise_exception=True)
             transaction = serializer.save()
+   
+            # TODO => ADD CHECK IF TRANSACTION IS ALREADY APPROVED
             
             if transaction.status == 'approved':
                 epr_target = EPRTarget.objects.filter(
