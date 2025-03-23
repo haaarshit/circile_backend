@@ -49,7 +49,7 @@ class RecyclerEPRViewSet(viewsets.ModelViewSet):
 
 
     def get_queryset(self):
-            return RecyclerEPR.objects.filter(recycler=self.request.user,is_approved=True)
+            return RecyclerEPR.objects.filter(recycler=self.request.user)
     
     def list(self, request, *args, **kwargs):
         try:
@@ -706,7 +706,7 @@ class ProducerEPRViewSet(viewsets.ModelViewSet):
     filterset_fields = ['waste_type']
 
     def get_queryset(self):
-        queryset =  ProducerEPR.objects.filter(producer=self.request.user,is_approved=True)
+        queryset =  ProducerEPR.objects.filter(producer=self.request.user)
         waste_type = self.request.query_params.get('waste_type', None)
         if waste_type:
             queryset = queryset.filter(waste_type=waste_type)

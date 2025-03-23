@@ -15,7 +15,6 @@ class RecyclerEPRSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'created_at', 'recycler']
     
     def get_epr_certificate(self, obj):
-        print("entered RecyclerEPRSerializer - return erp cetificate =====================> ")
         if obj.epr_certificate:
             if obj.epr_certificate.url.startswith('http'):
                 return obj.epr_certificate.url

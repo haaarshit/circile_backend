@@ -407,6 +407,7 @@ class UserCountStatsView(APIView):
                 "counter_credit_offers_made": 0,  # For Producer only
                 "counter_credit_offers_received": 0,  # For Recycler only
                 "transactions": 0,
+                "achived_targets":0,
             }
 
             if isinstance(user, Recycler):
@@ -422,6 +423,7 @@ class UserCountStatsView(APIView):
                 stats["user_type"] = "producer"
                 stats["epr_accounts"] = ProducerEPR.objects.filter(producer=user).count()
                 stats["epr_targets"] = EPRTarget.objects.filter(producer=user).count()
+                stats["achived_targets"] = EPRTarget.objects.filter(producer=user,is_achieved=True).count()
                 stats["counter_credit_offers_made"] = CounterCreditOffer.objects.filter(producer=user).count()
                 stats["transactions"] = Transaction.objects.filter(producer=user).count()
 
