@@ -176,6 +176,13 @@ class RecyclerEPRViewSet(viewsets.ModelViewSet):
                     "status": False,
                     "error": "You must complete your profile  before creating an EPR account."
                 }, status=status.HTTP_400_BAD_REQUEST)
+            
+            if 'is_approved' in request.data:
+                return Response({
+                    "status": False,
+                    "error": "Only admins can modify the 'is_approved' field."
+                }, status=status.HTTP_403_FORBIDDEN)
+            
             serializer = self.get_serializer(data=request.data)
             serializer.is_valid(raise_exception=True)
             self.perform_create(serializer)
@@ -441,12 +448,12 @@ class CreditOfferViewSet(viewsets.ModelViewSet):
             except RecyclerEPR.DoesNotExist:
                 raise serializers.ValidationError({"error": "Invalid epr_account_id or not authorized."})
             
-            if epr_credit_id:
-                try:
-                    get_epr_credit = EPRCredit.objects.get(id=epr_credit_id, recycler=self.request.user)
-                    queryset = queryset.filter(epr_credit=get_epr_credit)
-                except EPRCredit.DoesNotExist:
-                    raise serializers.ValidationError({"error": "No record found for credit with the given EPR account."})
+        if epr_credit_id:
+            try:
+                get_epr_credit = EPRCredit.objects.get(id=epr_credit_id, recycler=self.request.user)
+                queryset = queryset.filter(epr_credit=get_epr_credit)
+            except EPRCredit.DoesNotExist:
+                raise serializers.ValidationError({"error": "No record found for credit with the given EPR account."})
             
         return queryset
 
@@ -695,9 +702,16 @@ class ProducerEPRViewSet(viewsets.ModelViewSet):
     authentication_classes = [CustomJWTAuthentication]
     permission_classes = [permissions.IsAuthenticated, IsProducer]
     parser_classes = (MultiPartParser, FormParser,JSONParser)
+    filter_backends = [DjangoFilterBackend]  
+    filterset_fields = ['waste_type']
 
     def get_queryset(self):
-        return ProducerEPR.objects.filter(producer=self.request.user,is_approved=True)
+        queryset =  ProducerEPR.objects.filter(producer=self.request.user,is_approved=True)
+        waste_type = self.request.query_params.get('waste_type', None)
+        if waste_type:
+            queryset = queryset.filter(waste_type=waste_type)
+
+        return queryset
 
     # GET - List
     def list(self, request, *args, **kwargs):
@@ -739,7 +753,13 @@ class ProducerEPRViewSet(viewsets.ModelViewSet):
                     "status": False,
                     "error": "You must complete your profile before creating an EPR record."
                 }, status=status.HTTP_400_BAD_REQUEST)
-
+            
+            if 'is_approved' in request.data:
+                return Response({
+                    "status": False,
+                    "error": "Only admins can modify the 'is_approved' field."
+                }, status=status.HTTP_403_FORBIDDEN)
+            
             serializer = self.get_serializer(data=request.data)
             serializer.is_valid(raise_exception=True)
             self.perform_create(serializer)

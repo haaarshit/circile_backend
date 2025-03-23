@@ -146,19 +146,21 @@ class ProducerEPR(models.Model):
     epr_registration_date = models.DateField()
     epr_registered_name = models.CharField(max_length=50)
 
-    waste_type = models.CharField(max_length=20, choices=[(wt, wt) for wt in PRODUCER_CHOICES.keys()])
+    waste_type = models.CharField(max_length=20, choices=[(wt, wt) for wt in WASTE_CHOICES.keys()])
     producer_type = models.CharField(max_length=100)
     epr_certificate = CustomCloudinaryField('file')
     address = models.TextField()
     city = models.CharField(max_length=100)
     state = models.CharField(max_length=100)
+    
     created_at = models.DateTimeField(auto_now_add=True)
-    is_approved = models.BooleanField(default=False)  
+    is_approved = models.BooleanField(default=False) 
+     
 
 
     def clean(self):
-        if self.waste_type in self.PRODUCER_CHOICES:
-            valid_producer_types = self.PRODUCER_CHOICES[self.waste_type]
+        if self.waste_type in WASTE_CHOICES:
+            valid_producer_types = WASTE_CHOICES[self.waste_type]['producer_types']
             if self.producer_type not in valid_producer_types:
                 raise ValidationError(f"Invalid Producer Type '{self.producer_type}' for Waste Type '{self.waste_type}'")
 
@@ -214,10 +216,10 @@ class EPRTarget(models.Model):
     credit_type = models.CharField(max_length=100)
     FY =  models.IntegerField()
     target_quantity = models.IntegerField() # in kgs
-    achieved_quantity = models.IntegerField(default=0)  # New field
-    is_achieved = models.BooleanField(default=False)  # New field
     state = models.CharField(max_length=100)
 
+    achieved_quantity = models.IntegerField(default=0)  # New field
+    is_achieved = models.BooleanField(default=False) 
     
     def clean(self):
         if self.waste_type in WASTE_CHOICES:

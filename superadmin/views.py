@@ -123,7 +123,7 @@ class EPRTargetDetailView(BaseSuperAdminModelDetailView):
 class CreditOfferListCreateView(BaseSuperAdminModelView):
     queryset = CreditOffer.objects.all()
     serializer_class = CreditOfferSerializer
-    filterset_fields = ['epr_registration_number', 'waste_type', 'FY', 'is_approved', 'is_sold']
+    filterset_fields = ['epr_registration_number', 'waste_type', 'FY', 'is_approved', 'is_sold','epr_credit']
 
 class CreditOfferDetailView(BaseSuperAdminModelDetailView):
     queryset = CreditOffer.objects.all()
