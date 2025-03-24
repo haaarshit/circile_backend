@@ -1395,6 +1395,26 @@ class PublicCreditOfferListView(generics.ListAPIView):
                 "error": str(e)
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+# New Detail View
+class PublicCreditOfferDetailView(generics.RetrieveAPIView):
+    queryset = CreditOffer.objects.filter(is_sold=False).select_related('epr_account', 'epr_credit')
+    serializer_class = CreditOfferSerializer
+    permission_classes = [permissions.AllowAny]
+
+    def retrieve(self, request, *args, **kwargs):
+        try:
+            instance = self.get_object()
+            serializer = self.get_serializer(instance)
+            return Response({
+                "status": True,
+                "data": serializer.data
+            }, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({
+                "status": False,
+                "error": str(e)
+            }, status=status.HTTP_404_NOT_FOUND if "DoesNotExist" in str(e) else status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 # CREATED BY PRODUCER ONLY | UPDATED BY RECYCLER
 class TransactionViewSet(viewsets.ModelViewSet):
     queryset = Transaction.objects.all()

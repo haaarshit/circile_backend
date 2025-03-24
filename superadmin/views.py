@@ -83,7 +83,7 @@ class BaseSuperAdminModelDetailView(ResponseWrapperMixin,generics.RetrieveUpdate
 class RecyclerEPRListCreateView(BaseSuperAdminModelView):
     queryset = RecyclerEPR.objects.all()
     serializer_class = RecyclerEPRSerializer
-    filterset_fields = ['epr_registration_number', 'waste_type', 'recycler_type', 'company_name', 'city', 'state']
+    filterset_fields = ['epr_registration_number', 'waste_type', 'recycler_type', 'city', 'state']
 
 class RecyclerEPRDetailView(BaseSuperAdminModelDetailView):
     queryset = RecyclerEPR.objects.all()
@@ -93,7 +93,7 @@ class RecyclerEPRDetailView(BaseSuperAdminModelDetailView):
 class ProducerEPRListCreateView(BaseSuperAdminModelView):
     queryset = ProducerEPR.objects.all()
     serializer_class = ProducerEPRSerializer
-    filterset_fields = ['epr_registration_number', 'waste_type', 'producer_type', 'company_name', 'city', 'state']
+    filterset_fields = ['epr_registration_number', 'waste_type', 'producer_type', 'city', 'state']
 
 class ProducerEPRDetailView(BaseSuperAdminModelDetailView):
     queryset = ProducerEPR.objects.all()

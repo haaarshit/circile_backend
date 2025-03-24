@@ -98,9 +98,16 @@ def get_current_year_start():
     return datetime.date.today().replace(month=1, day=1)
 
 class RecyclerEPR(models.Model):
+    
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('approved', 'Approved'),
+        ('rejected', 'Rejected'),
+    ]
    
     id = models.UUIDField(default=uuid.uuid4, primary_key=True, editable=False)
     recycler = models.ForeignKey('users.Recycler', on_delete=models.CASCADE, related_name='epr_accounts')
+
 
     epr_registration_number = models.CharField(max_length=50, unique=True)
     epr_registration_date = models.DateField()
@@ -114,6 +121,11 @@ class RecyclerEPR(models.Model):
     state = models.CharField(max_length=100)
     created_at = models.DateTimeField(auto_now_add=True)
     is_approved = models.BooleanField(default=False)  
+    status = models.CharField(
+        max_length=10,
+        choices=STATUS_CHOICES,
+        default='pending'
+    )
 
     
     def clean(self):
@@ -131,6 +143,13 @@ class RecyclerEPR(models.Model):
         super().save(*args, **kwargs)
 
 class ProducerEPR(models.Model):
+      
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('approved', 'Approved'),
+        ('rejected', 'Rejected'),
+    ]
+    
     PRODUCER_CHOICES = {
     'Plastic': ['Producer (P)', 'Importer (I)', 'Brand Owner (BO)'],
     'E-waste': ['Producer (PEW)', 'Manufacturer', 'Importer', 'Bulk Consumer'],
@@ -152,6 +171,11 @@ class ProducerEPR(models.Model):
     address = models.TextField()
     city = models.CharField(max_length=100)
     state = models.CharField(max_length=100)
+    status = models.CharField(
+        max_length=10,
+        choices=STATUS_CHOICES,
+        default='pending'
+    )
     
     created_at = models.DateTimeField(auto_now_add=True)
     is_approved = models.BooleanField(default=False) 
