@@ -114,6 +114,8 @@ class CreditOfferSerializer(serializers.ModelSerializer):
 
     availability_proof = serializers.SerializerMethodField()
     company_name = serializers.SerializerMethodField()  # New field for company
+    registered_on = serializers.SerializerMethodField()  # get registered date
+
 
     
     class Meta:
@@ -136,6 +138,11 @@ class CreditOfferSerializer(serializers.ModelSerializer):
         if obj.recycler:
             # Assuming 'company' is a field in the Recycler model
             return obj.recycler.company_name  # Adjust this based on your Recycler model
+        return None
+    
+    def get_registered_on(self, obj):
+        if obj.epr_account:
+            return obj.epr_account.epr_registration_date   
         return None
     
     def get_product_image(self, obj):
