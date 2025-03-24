@@ -408,6 +408,8 @@ class UserCountStatsView(APIView):
                 "counter_credit_offers_received": 0,  # For Recycler only
                 "transactions": 0,
                 "achived_targets":0,
+                "complete_order":0,
+                "pending_order":0
             }
 
             if isinstance(user, Recycler):
@@ -418,6 +420,9 @@ class UserCountStatsView(APIView):
                 stats["credit_offers"] = CreditOffer.objects.filter(recycler=user).count()
                 stats["counter_credit_offers_received"] = CounterCreditOffer.objects.filter(recycler=user).count()
                 stats["transactions"] = Transaction.objects.filter(recycler=user).count()
+                stats["pending_order"] = Transaction.objects.filter(recycler=user,is_complete=False).count()
+                stats["complete_order"] = Transaction.objects.filter(recycler=user,is_complete=True).count()
+
 
             elif isinstance(user, Producer):
                 stats["user_type"] = "producer"
@@ -426,6 +431,8 @@ class UserCountStatsView(APIView):
                 stats["achived_targets"] = EPRTarget.objects.filter(producer=user,is_achieved=True).count()
                 stats["counter_credit_offers_made"] = CounterCreditOffer.objects.filter(producer=user).count()
                 stats["transactions"] = Transaction.objects.filter(producer=user).count()
+                stats["pending_order"] = Transaction.objects.filter(producer=user,is_complete=False).count()
+                stats["complete_order"] = Transaction.objects.filter(producer=user,is_complete=True).count()
 
             else:
                 return Response(
