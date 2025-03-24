@@ -115,6 +115,7 @@ class CreditOfferSerializer(serializers.ModelSerializer):
     availability_proof = serializers.SerializerMethodField()
     company_name = serializers.SerializerMethodField()  # New field for company
     registered_on = serializers.SerializerMethodField()  # get registered date
+    address = serializers.SerializerMethodField()  
 
 
     
@@ -143,6 +144,11 @@ class CreditOfferSerializer(serializers.ModelSerializer):
     def get_registered_on(self, obj):
         if obj.epr_account:
             return obj.epr_account.epr_registration_date   
+        return None
+    
+    def get_address(self, obj):
+        if obj.epr_account:
+            return obj.epr_account.address   
         return None
     
     def get_product_image(self, obj):
