@@ -113,6 +113,8 @@ class CreditOfferSerializer(serializers.ModelSerializer):
     product_image = serializers.SerializerMethodField()
 
     availability_proof = serializers.SerializerMethodField()
+    company_name = serializers.SerializerMethodField()  # New field for company
+
     
     class Meta:
         model = CreditOffer
@@ -128,6 +130,13 @@ class CreditOfferSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError({"trail_documents": "Invalid JSON format"})
         return super().to_internal_value(data)
 
+    
+    def get_company_name(self, obj):
+        # Fetch the company from the recycler foreign key
+        if obj.recycler:
+            # Assuming 'company' is a field in the Recycler model
+            return obj.recycler.company_name  # Adjust this based on your Recycler model
+        return None
     
     def get_product_image(self, obj):
         print("entered ProducerEPRSerializer - return erp cetificate =====================> ")
