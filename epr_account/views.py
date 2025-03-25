@@ -46,14 +46,17 @@ class RecyclerEPRViewSet(viewsets.ModelViewSet):
     authentication_classes = [CustomJWTAuthentication]
     permission_classes = [permissions.IsAuthenticated,IsRecycler]
     parser_classes = (MultiPartParser, FormParser,JSONParser)
-
+ # Fields that can be used for ordering
+    filter_backends = [OrderingFilter]
+    ordering_fields = ['created_at']  # Adjust this to match your model's field name
+    ordering = ['-created_at']  # '-' indicates descending order
 
     def get_queryset(self):
             return RecyclerEPR.objects.filter(recycler=self.request.user)
     
     def list(self, request, *args, **kwargs):
         try:
-            queryset = self.get_queryset()
+            queryset = self.filter_queryset(self.get_queryset())  
             serializer = self.get_serializer(queryset, many=True)
             return Response({
                 "status": True,
@@ -220,6 +223,11 @@ class EPRCreditViewSet(viewsets.ModelViewSet):
     authentication_classes = [CustomJWTAuthentication]
     permission_classes = [permissions.IsAuthenticated, IsRecycler]
     parser_classes = (MultiPartParser, FormParser,JSONParser)
+     # Fields that can be used for ordering
+    filter_backends = [OrderingFilter]
+    ordering_fields = ['created_at']  # Adjust this to match your model's field name
+    ordering = ['-created_at']  # '-' indicates descending order
+
 
     def get_queryset(self):
        
@@ -248,7 +256,7 @@ class EPRCreditViewSet(viewsets.ModelViewSet):
     # GET - List
     def list(self, request, *args, **kwargs):
         try:
-            queryset = self.get_queryset()
+            queryset = self.filter_queryset(self.get_queryset())  
             serializer = self.get_serializer(queryset, many=True)
             return Response({
                 "status": True,
@@ -434,6 +442,11 @@ class CreditOfferViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated, IsRecycler]
     parser_classes = (MultiPartParser, FormParser,JSONParser)
 
+      # Fields that can be used for ordering
+    filter_backends = [OrderingFilter]
+    ordering_fields = ['created_at']  # Adjust this to match your model's field name
+    ordering = ['-created_at']  # '-' indicates descending order
+
 
     def get_queryset(self):
         epr_account_id = self.request.query_params.get("epr_id")
@@ -460,7 +473,7 @@ class CreditOfferViewSet(viewsets.ModelViewSet):
     # GET - List
     def list(self, request, *args, **kwargs):
         try:
-            queryset = self.get_queryset()
+            queryset = self.filter_queryset(self.get_queryset())  
             serializer = self.get_serializer(queryset, many=True)
             return Response({
                 "status": True,
@@ -705,6 +718,11 @@ class ProducerEPRViewSet(viewsets.ModelViewSet):
     filter_backends = [DjangoFilterBackend]  
     filterset_fields = ['waste_type']
 
+       # Fields that can be used for ordering
+    filter_backends = [OrderingFilter]
+    ordering_fields = ['created_at']  # Adjust this to match your model's field name
+    ordering = ['-created_at']  # '-' indicates descending order
+
     def get_queryset(self):
         queryset =  ProducerEPR.objects.filter(producer=self.request.user)
         waste_type = self.request.query_params.get('waste_type', None)
@@ -716,7 +734,7 @@ class ProducerEPRViewSet(viewsets.ModelViewSet):
     # GET - List
     def list(self, request, *args, **kwargs):
         try:
-            queryset = self.get_queryset()
+            queryset = self.filter_queryset(self.get_queryset())  
             serializer = self.get_serializer(queryset, many=True)
             return Response({
                 "status": True,
@@ -904,6 +922,11 @@ class EPRTargetViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated, IsProducer]
     parser_classes = (MultiPartParser, FormParser,JSONParser)
 
+    # Fields that can be used for ordering
+    filter_backends = [OrderingFilter]
+    ordering_fields = ['created_at']  # Adjust this to match your model's field name
+    ordering = ['-created_at']  # '-' indicates descending order
+
     def get_queryset(self):
         epr_account_id = self.request.query_params.get("epr_id")
         if epr_account_id:
@@ -917,7 +940,7 @@ class EPRTargetViewSet(viewsets.ModelViewSet):
     # GET - List
     def list(self, request, *args, **kwargs):
         try:
-            queryset = self.get_queryset()
+            queryset = self.filter_queryset(self.get_queryset())  
             serializer = self.get_serializer(queryset, many=True)
             return Response({
                 "status": True,
@@ -1102,6 +1125,12 @@ class CounterCreditOfferViewSet(viewsets.ModelViewSet):
     authentication_classes = [CustomJWTAuthentication]
     parser_classes = (MultiPartParser, FormParser,JSONParser)  
 
+     # Fields that can be used for ordering
+    filter_backends = [OrderingFilter]
+    ordering_fields = ['created_at']  # Adjust this to match your model's field name
+    ordering = ['-created_at']  # '-' indicates descending order
+
+
     def get_permissions(self):
         try:
             if self.action == 'create':
@@ -1152,7 +1181,7 @@ class CounterCreditOfferViewSet(viewsets.ModelViewSet):
     # GET - List
     def list(self, request, *args, **kwargs):
         try:
-            queryset = self.get_queryset()
+            queryset = self.filter_queryset(self.get_queryset())  
             serializer = self.get_serializer(queryset, many=True)
             return Response({
                 "status": True,
@@ -1378,8 +1407,9 @@ class PublicCreditOfferListView(generics.ListAPIView):
         'credit_available',
         'waste_type',
         'epr_credit__credit_type',
+        'created_at'
     ]
-    ordering = ['price_per_credit']  
+    ordering = ['-created_at','price_per_credit']  
 
     def list(self, request, *args, **kwargs):
         try:
@@ -1421,6 +1451,11 @@ class TransactionViewSet(viewsets.ModelViewSet):
     serializer_class = TransactionSerializer
     permission_classes = [permissions.IsAuthenticated]
     authentication_classes = [CustomJWTAuthentication]
+
+      # Fields that can be used for ordering
+    filter_backends = [OrderingFilter]
+    ordering_fields = ['created_at']  # Adjust this to match your model's field name
+    ordering = ['-created_at']  # '-' indicates descending order
     
     def get_permissions(self):
         try:
@@ -1446,7 +1481,7 @@ class TransactionViewSet(viewsets.ModelViewSet):
     
     def list(self, request, *args, **kwargs):
         try:
-            queryset = self.get_queryset()
+            queryset = self.filter_queryset(self.get_queryset())  
             serializer = self.get_serializer(queryset, many=True)
             return Response({
                 "status": True,

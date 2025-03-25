@@ -320,6 +320,7 @@ class EPRCredit(models.Model):
     comulative_certificate_potential = models.FloatField()
     available_certificate_value = models.FloatField()
     state = models.CharField(max_length=100)
+    created_at = models.DateTimeField(default=timezone.now)
 
     def clean(self):
         if self.waste_type in WASTE_CHOICES:
@@ -355,6 +356,9 @@ class EPRTarget(models.Model):
 
     achieved_quantity = models.IntegerField(default=0)  # New field
     is_achieved = models.BooleanField(default=False) 
+
+    created_at = models.DateTimeField(default=timezone.now)
+
     
     def clean(self):
         if self.waste_type in WASTE_CHOICES:
@@ -429,6 +433,9 @@ class CreditOffer(models.Model):
     product_type = models.CharField(max_length=100)
     is_sold = models.BooleanField(default=False)
 
+    created_at = models.DateTimeField(default=timezone.now)
+
+
 
     # TODO -> TRAIL DOCUMENT
     trail_documents = models.JSONField(
@@ -475,6 +482,9 @@ class CounterCreditOffer(models.Model):
 
     is_approved = models.BooleanField(default=False)  
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default="pending")  
+
+    created_at = models.DateTimeField(default=timezone.now)
+
     def clean(self):
         pass
     
@@ -560,6 +570,9 @@ class Transaction(models.Model):
         blank=True,
         null=True
     )
+
+    created_at = models.DateTimeField(default=timezone.now)
+
 
     def generate_order_id(self):
         # Get the highest existing order_id with 'O' prefix
