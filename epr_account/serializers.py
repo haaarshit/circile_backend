@@ -95,10 +95,17 @@ class ProducerEPRSerializer(serializers.ModelSerializer):
         return super().create(validated_data)
     
 class EPRCreditSerializer(serializers.ModelSerializer):
+    registered_name = serializers.SerializerMethodField()  # get registered date
+
     class Meta:
         model = EPRCredit
         fields = '__all__'
         read_only_fields = ['id', 'recycler','erp_account'] 
+    def get_registered_name(self, obj):
+        if obj.epr_account:
+            return obj.epr_account.epr_registered_name   
+        return None
+    
 
 
 class EPRTargetSerializer(serializers.ModelSerializer):
