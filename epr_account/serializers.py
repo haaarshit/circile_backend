@@ -116,6 +116,9 @@ class CreditOfferSerializer(serializers.ModelSerializer):
     company_name = serializers.SerializerMethodField()  # New field for company
     registered_on = serializers.SerializerMethodField()  # get registered date
     address = serializers.SerializerMethodField()  
+    city = serializers.SerializerMethodField()  
+    state = serializers.SerializerMethodField()  
+
 
 
     
@@ -149,6 +152,16 @@ class CreditOfferSerializer(serializers.ModelSerializer):
     def get_address(self, obj):
         if obj.epr_account:
             return obj.epr_account.address   
+        return None
+    
+    def get_city(self, obj):
+        if obj.epr_account:
+            return obj.epr_account.city   
+        return None
+    
+    def get_state(self, obj):
+        if obj.epr_account:
+            return obj.epr_account.state   
         return None
     
     def get_product_image(self, obj):

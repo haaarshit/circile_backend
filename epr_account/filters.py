@@ -21,6 +21,8 @@ class CreditOfferFilter(filters.FilterSet):
     waste_type = filters.CharFilter(field_name='waste_type', lookup_expr='iexact')
     recycler_type = filters.CharFilter(field_name='epr_account__recycler_type', lookup_expr='iexact')
     state = filters.CharFilter(field_name='epr_account__state', lookup_expr='iexact')
+    city = filters.CharFilter(field_name='epr_account__city', lookup_expr='iexact')
+    status = filters.CharFilter(field_name='epr_account__status', lookup_expr='iexact')
     credit_type = filters.CharFilter(field_name='epr_credit__credit_type', lookup_expr='iexact')
     product_type = filters.CharFilter(field_name='epr_credit__product_type', lookup_expr='iexact')
     price_per_credit = filters.RangeFilter(field_name='price_per_credit')
@@ -57,9 +59,11 @@ class CreditOfferFilter(filters.FilterSet):
             'waste_type',
             'recycler_type',
             'state',
+            'city',
             'credit_type',
             'product_type',
             'price_per_credit',
+            'status',
             'price_per_credit_exact',
             'trail_documents',
             'is_approved',
