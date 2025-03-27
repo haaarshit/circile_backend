@@ -222,10 +222,10 @@ class RecyclerEPR(models.Model):
 
     epr_registration_number = models.CharField(max_length=50, unique=True)
     epr_registration_date = models.DateField()
-    epr_registered_name = models.CharField(max_length=50)
+    epr_registered_name = models.CharField()
 
     waste_type = models.CharField(max_length=20, choices=[(wt, wt) for wt in WASTE_CHOICES.keys()])
-    recycler_type = models.CharField(max_length=100)
+    recycler_type = models.CharField()
     epr_certificate = CustomCloudinaryField('file')
     address = models.TextField()
     city = models.CharField(max_length=100)
@@ -274,10 +274,10 @@ class ProducerEPR(models.Model):
     
     epr_registration_number = models.CharField(max_length=50, unique=True)
     epr_registration_date = models.DateField()
-    epr_registered_name = models.CharField(max_length=50)
+    epr_registered_name = models.CharField(max_length=100)
 
     waste_type = models.CharField(max_length=20, choices=[(wt, wt) for wt in WASTE_CHOICES.keys()])
-    producer_type = models.CharField(max_length=100)
+    producer_type = models.CharField()
     epr_certificate = CustomCloudinaryField('file')
     address = models.TextField()
     city = models.CharField(max_length=100)
@@ -313,8 +313,8 @@ class EPRCredit(models.Model):
     epr_registration_number = models.CharField(max_length=50)
     
     waste_type = models.CharField(max_length=20, choices=[(wt, wt) for wt in WASTE_CHOICES.keys()])
-    product_type = models.CharField(max_length=100)
-    credit_type = models.CharField(max_length=100)
+    product_type = models.CharField()
+    credit_type = models.CharField()
     year = models.DateTimeField()
     processing_capacity =models.DecimalField(max_digits=10, decimal_places=2)
     comulative_certificate_potential = models.FloatField()
@@ -348,8 +348,8 @@ class EPRTarget(models.Model):
     epr_registration_number = models.CharField(max_length=50)
     waste_type = models.CharField(max_length=20, choices=[(wt, wt) for wt in WASTE_CHOICES.keys()])
 
-    product_type = models.CharField(max_length=100)
-    credit_type = models.CharField(max_length=100)
+    product_type = models.CharField()
+    credit_type = models.CharField()
     FY =  models.IntegerField()
     target_quantity = models.IntegerField() # in kgs
     state = models.CharField(max_length=100)
@@ -429,8 +429,8 @@ class CreditOffer(models.Model):
     price_per_credit = models.FloatField(default=0.0)
     product_image = CloudinaryField('image', resource_type='image', default="")
     availability_proof = CloudinaryField('image', resource_type='image', default="")
-    credit_type = models.CharField(max_length=100)
-    product_type = models.CharField(max_length=100)
+    credit_type = models.CharField()
+    product_type = models.CharField()
     is_sold = models.BooleanField(default=False)
 
     created_at = models.DateTimeField(default=timezone.now)
@@ -483,6 +483,10 @@ class CounterCreditOffer(models.Model):
     is_approved = models.BooleanField(default=False)  
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default="pending")  
 
+    is_complete = models.BooleanField(default=False)  # New field added
+
+
+
     created_at = models.DateTimeField(default=timezone.now)
 
     def clean(self):
@@ -491,6 +495,53 @@ class CounterCreditOffer(models.Model):
     def save(self, *args, **kwargs):
         self.clean()
         super().save(*args, **kwargs)
+
+class PurchasesRequest(models.Model):
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('approved', 'Approved'),
+        ('rejected', 'Rejected'),
+    ]
+
+    id = models.UUIDField(default=uuid.uuid4, primary_key=True, editable=False)
+    
+    recycler = models.ForeignKey(
+        'users.Recycler', 
+        on_delete=models.CASCADE, 
+        related_name='purchase_request_recycler_transactions'
+    )
+    producer = models.ForeignKey(
+        'users.Producer', 
+        on_delete=models.CASCADE, 
+        related_name='purchase_request_producer_transactions'
+    )
+    
+    
+    credit_offer = models.ForeignKey(
+        CreditOffer,  
+        on_delete=models.CASCADE,
+        related_name='purchase_request',
+        null=True,
+        blank=True
+    )
+
+    producer_epr = models.ForeignKey(
+        ProducerEPR, 
+        on_delete=models.CASCADE, 
+        related_name='purchase_request_epr_transactions',
+         null=True,  
+         blank=True  
+    )
+
+    is_approved = models.BooleanField(default=False) 
+    status = models.CharField(
+        max_length=10,
+        choices=STATUS_CHOICES,
+        default='pending'
+    )
+    is_complete = models.BooleanField(default=False)  # New field added
+
+
 
 
 class Transaction(models.Model):
@@ -542,28 +593,44 @@ class Transaction(models.Model):
     )
 
     total_price = models.FloatField()
-    credit_type = models.CharField(max_length=100)
+    credit_type = models.CharField()
     waste_type = models.CharField(max_length=20)
-    recycler_type = models.CharField(max_length=50)
+    recycler_type = models.CharField()
     price_per_credit = models.FloatField()
-    product_type = models.CharField(max_length=100)
-    producer_type = models.CharField(max_length=100)
+    product_type = models.CharField()
+    producer_type = models.CharField()
     credit_quantity = models.FloatField()
     offered_by = models.CharField(max_length=20)
     
     work_order_date = models.DateTimeField(auto_now_add=True)
+  
     is_complete = models.BooleanField(default=False)
+
+    # approved by superadmin
+    is_approved = models.BooleanField(default=False) 
     status = models.CharField(
         max_length=10,
         choices=STATUS_CHOICES,
         default='pending'
     )
+
+
+    # producer
     transaction_proof = CloudinaryField(
         'transaction_proof',
         resource_type='raw',  
         blank=True,
         null=True
     )
+
+    producer_transfer_proof = CloudinaryField(
+        'producer_transfer_proof',
+        resource_type='raw',  
+        blank=True,
+        null=True
+    )
+
+    # recycler
     trail_documents = CloudinaryField(
         'trail_documents',
         resource_type='raw',  
@@ -571,6 +638,13 @@ class Transaction(models.Model):
         null=True
     )
 
+    recycler_transfer_proof = CloudinaryField(
+        'recycler_transfer_proof',
+        resource_type='raw',  
+        blank=True,
+        null=True
+    )
+    
     created_at = models.DateTimeField(default=timezone.now)
 
 
@@ -599,16 +673,19 @@ class Transaction(models.Model):
         if (not self.credit_offer and self.counter_credit_offer) or (not self.credit_offer and not self.counter_credit_offer):
             raise ValidationError("Transaction must be linked to either a CreditOffer or CounterCreditOffer")
         
-        if self.credit_quantity > self.credit_offer.credit_available:
-            raise ValidationError(
-                f"Credit quantity ({self.credit_quantity}) exceeds available credits ({self.credit_offer.credit_available})"
-            )
-        
+        if not self.is_approved:
+
+            if self.credit_quantity > self.credit_offer.credit_available:
+                raise ValidationError(
+                    f"Credit quantity ({self.credit_quantity}) exceeds available credits ({self.credit_offer.credit_available})"
+                )
+            
         if self.counter_credit_offer and self.credit_quantity != self.counter_credit_offer.quantity:
             raise ValidationError(
                 f"Credit quantity ({self.credit_quantity}) must equal counter credit offer quantity ({self.counter_credit_offer.quantity})"
             )
         
+
 
 # WASTE FILTER API
 

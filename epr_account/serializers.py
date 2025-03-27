@@ -1,7 +1,9 @@
 from rest_framework import serializers
-from .models import RecyclerEPR, ProducerEPR, EPRCredit, EPRTarget, CreditOffer,CounterCreditOffer,Transaction,WasteType, ProducerType, RecyclerType, ProductType, CreditType
+from .models import RecyclerEPR, ProducerEPR, EPRCredit, EPRTarget, CreditOffer,CounterCreditOffer,Transaction,WasteType, ProducerType, RecyclerType, ProductType, CreditType,PurchasesRequest
 from decouple import config
 from users.models import Recycler,Producer
+
+from superadmin.models import SuperAdmin
 import json
 cloud_name = config('CLOUDINARY_CLOUD_NAME')
 
@@ -106,8 +108,6 @@ class EPRCreditSerializer(serializers.ModelSerializer):
             return obj.epr_account.epr_registered_name   
         return None
     
-
-
 class EPRTargetSerializer(serializers.ModelSerializer):
     class Meta:
         model = EPRTarget
@@ -285,61 +285,193 @@ class CounterCreditOfferSerializer(serializers.ModelSerializer):
         # Producer can update all fields
         return super().update(instance, validated_data)
 
+# PURCHASE REQUEST
+class PurchasesRequestSerializer(serializers.ModelSerializer):
+
+    credit_type = serializers.SerializerMethodField()  
+    waste_type = serializers.SerializerMethodField()  
+    credit_available = serializers.SerializerMethodField()  
+    price_per_credit = serializers.SerializerMethodField()  
+
+    class Meta:
+        model = PurchasesRequest
+        fields =  '__all__'
+        read_only_fields = ['id']  
+
+    def get_credit_type(self, obj):
+        if obj.credit_offer:
+            return obj.credit_offer.credit_type
+        return None
+    
+    def get_waste_type(self, obj):
+        if obj.credit_offer:
+            return obj.credit_offer.waste_type 
+        return None
+    
+    def get_credit_available(self, obj):
+        if obj.credit_offer:
+            return obj.credit_offer.credit_available 
+        return None
+    
+    def get_price_per_credit(self, obj):
+        if obj.credit_offer:
+            return obj.credit_offer.price_per_credit 
+        return None
+    
+    
+    
+
+    def validate(self, data):
+        request = self.context.get('request')
+
+        if self.instance:  # Update
+            if not isinstance(request.user, Recycler):
+                raise serializers.ValidationError("Only Recycler can update PurchasesRequest")
+            if any(k not in ['status', 'is_approved'] for k in data.keys()):
+                raise serializers.ValidationError("Only status and is_approved can be updated by Recycler")
+
+        return data
+    
+    def create(self, validated_data):
+        validated_data['producer'] = self.context['request'].user  
+        return super().create(validated_data)
 
 # TRANSACTION
 class TransactionSerializer(serializers.ModelSerializer):
+    # transaction_proof = serializers.SerializerMethodField()
+    # trail_documents = serializers.SerializerMethodField()
+
+
+    # def get_transaction_proof(self, obj):
+    #     if obj.transaction_proof:
+    #         if obj.transaction_proof.url.startswith('http'):
+    #             return obj.transaction_proof.url
+    #         else:
+    #             # Only add the domain if it's not already there
+    #             return f'https://res.cloudinary.com/{cloud_name}/{obj.transaction_proof.url}'
+                
+    #     return None
+
+    
+    # def get_trail_documents(self, obj):
+    #     if obj.trail_documents:
+    #         if obj.trail_documents.url.startswith('http'):
+    #             return obj.trail_documents.url
+    #         else:
+    #             return f'https://res.cloudinary.com/{cloud_name}/{obj.trail_documents.url}'
+    #     return None
+    
+    # class Meta:
+    #     model = Transaction
+    #     fields ='__all__'
+    #     read_only_fields = [
+    #         'id'
+    #     ]
+
+    # def validate(self, data):
+    #     request = self.context.get('request')
+        
+    #     if self.instance:  # Update
+    #         if not isinstance(request.user, Recycler):
+    #             raise serializers.ValidationError("Only recycler can update transaction")
+    #         if any(k not in ['is_complete', 'status', 'transaction_proof','trail_documents'] for k in data.keys()):
+    #             raise serializers.ValidationError("Only is_complete, status, and transaction_proof can be updated")
+    #         if data.get('status') == 'approved' and  'transaction_proof' not in request.FILES:
+    #             raise serializers.ValidationError("Transaction proof required for approval")
+    #         # if data.get('status') == 'approved' and  'trail_documents' not in request.FILES:
+    #         #     raise serializers.ValidationError("Trail Documents required for approval")
+    #         if data.get('status') == 'approved':
+    #             data['is_complete'] = True
+        
+    #     else:  # Create
+    #         if not isinstance(request.user, Producer):
+    #             raise serializers.ValidationError("Only producer can create transaction")
+        
+    #     return data
+
+       
+    # def update(self, instance, validated_data):
+    #     request = self.context["request"]
+
+    #     if isinstance(request.user,Recycler):  
+    #         request = self.context['request']
+            
+    #         transaction_proof = request.FILES.get('transaction_proof')
+    #         validated_data['transaction_proof'] = transaction_proof
+
+    #         trail_documents = request.FILES.get('trail_documents')
+    #         validated_data['trail_documents'] = trail_documents
+
+    #     # Producer can update all fields
+    #     return super().update(instance, validated_data)
+
     transaction_proof = serializers.SerializerMethodField()
     trail_documents = serializers.SerializerMethodField()
-
+    producer_transfer_proof = serializers.SerializerMethodField()
+    recycler_transfer_proof = serializers.SerializerMethodField()
 
     def get_transaction_proof(self, obj):
         if obj.transaction_proof:
-            if obj.transaction_proof.url.startswith('http'):
-                return obj.transaction_proof.url
-            else:
-                # Only add the domain if it's not already there
-                return f'https://res.cloudinary.com/{cloud_name}/{obj.transaction_proof.url}'
-                
+            return obj.transaction_proof.url if obj.transaction_proof.url.startswith('http') else f'https://res.cloudinary.com/{cloud_name}/{obj.transaction_proof.url}'
         return None
-
     
     def get_trail_documents(self, obj):
         if obj.trail_documents:
-            if obj.trail_documents.url.startswith('http'):
-                return obj.trail_documents.url
-            else:
-                return f'https://res.cloudinary.com/{cloud_name}/{obj.trail_documents.url}'
+            return obj.trail_documents.url if obj.trail_documents.url.startswith('http') else f'https://res.cloudinary.com/{cloud_name}/{obj.trail_documents.url}'
+        return None
+    
+    def get_producer_transfer_proof(self, obj):
+        if obj.producer_transfer_proof:
+            return obj.producer_transfer_proof.url if obj.producer_transfer_proof.url.startswith('http') else f'https://res.cloudinary.com/{cloud_name}/{obj.producer_transfer_proof.url}'
+        return None
+    
+    def get_recycler_transfer_proof(self, obj):
+        if obj.recycler_transfer_proof:
+            return obj.recycler_transfer_proof.url if obj.recycler_transfer_proof.url.startswith('http') else f'https://res.cloudinary.com/{cloud_name}/{obj.recycler_transfer_proof.url}'
         return None
     
     class Meta:
         model = Transaction
-        fields = [
-            'id', 'order_id', 'recycler', 'producer', 'credit_offer',
-            'counter_credit_offer', 'total_price', 'credit_type',
-            'price_per_credit', 'product_type', 'producer_type',
-            'credit_quantity', 'offered_by', 'work_order_date',
-            'is_complete', 'status', 'transaction_proof','waste_type','recycler_type','producer_epr','trail_documents'
-        ]
-        read_only_fields = [
-            'id'
-        ]
+        fields = '__all__'
+        read_only_fields = ['id']
 
     def validate(self, data):
         request = self.context.get('request')
-        print(request.data)
-        print(request.FILES)
         
         if self.instance:  # Update
-            if not isinstance(request.user, Recycler):
-                raise serializers.ValidationError("Only recycler can update transaction")
-            if any(k not in ['is_complete', 'status', 'transaction_proof','trail_documents'] for k in data.keys()):
-                raise serializers.ValidationError("Only is_complete, status, and transaction_proof can be updated")
-            if data.get('status') == 'approved' and  'transaction_proof' not in request.FILES:
-                raise serializers.ValidationError("Transaction proof required for approval")
-            # if data.get('status') == 'approved' and  'trail_documents' not in request.FILES:
-            #     raise serializers.ValidationError("Trail Documents required for approval")
-            if data.get('status') == 'approved':
-                data['is_complete'] = True
+            user = request.user
+            
+            # Superadmin check
+            if isinstance(user, SuperAdmin):
+                allowed_fields = {'is_approved', 'status'}
+                if self.instance.is_approved:
+                    raise serializers.ValidationError("Transaction is already approved")
+                if any(k not in allowed_fields for k in data.keys()):
+                    raise serializers.ValidationError("Superadmin can only update 'is_approved' and 'status'")
+                if data.get('status') == 'approved' and not (self.instance.transaction_proof):
+                    raise serializers.ValidationError("Cannot approve transaction without Producer documents")
+            
+            # Producer check
+            elif isinstance(user, Producer):
+                allowed_fields = {'transaction_proof', 'producer_transfer_proof'}
+                if any(k not in allowed_fields for k in data.keys()):
+                    raise serializers.ValidationError("Producer can only update 'transaction_proof' and 'producer_transfer_proof'")
+                if not self.instance.transaction_proof and not self.instance.producer_transfer_proof:
+                    if 'transaction_proof' not in request.FILES and 'producer_transfer_proof' not in request.FILES:
+                        raise serializers.ValidationError("At least one proof document is required from Producer transaction_proof or producer_transfer_proof")
+            
+            # Recycler check
+            elif isinstance(user, Recycler):
+                allowed_fields = {'trail_documents', 'recycler_transfer_proof'}
+                if any(k not in allowed_fields for k in data.keys()):
+                    raise serializers.ValidationError("Recycler can only update 'trail_documents' and 'recycler_transfer_proof'")
+                if not self.instance.is_approved:
+                    raise serializers.ValidationError("Transaction must be approved by Superadmin before Recycler can upload documents")
+                if 'trail_documents' not in request.FILES and 'recycler_transfer_proof' not in request.FILES:
+                    raise serializers.ValidationError("At least one proof document is required from Recycler")
+            
+            else:
+                raise serializers.ValidationError("Unauthorized to update transaction")
         
         else:  # Create
             if not isinstance(request.user, Producer):
@@ -347,25 +479,25 @@ class TransactionSerializer(serializers.ModelSerializer):
         
         return data
 
-       
     def update(self, instance, validated_data):
         request = self.context["request"]
-
-        if isinstance(request.user,Recycler):  
-            request = self.context['request']
-            
-            transaction_proof = request.FILES.get('transaction_proof')
-            validated_data['transaction_proof'] = transaction_proof
-
-            trail_documents = request.FILES.get('trail_documents')
-            validated_data['trail_documents'] = trail_documents
-
-        # Producer can update all fields
-        return super().update(instance, validated_data)
+        
+        if isinstance(request.user, Producer):
+            instance.transaction_proof = request.FILES.get('transaction_proof', instance.transaction_proof)
+            instance.producer_transfer_proof = request.FILES.get('producer_transfer_proof', instance.producer_transfer_proof)
+        
+        elif isinstance(request.user, Recycler):
+            instance.trail_documents = request.FILES.get('trail_documents', instance.trail_documents)
+            instance.recycler_transfer_proof = request.FILES.get('recycler_transfer_proof', instance.recycler_transfer_proof)
+            instance.is_complete = True
+        
+        elif isinstance(request.user, SuperAdmin):
+            instance.is_approved = validated_data.get('is_approved', instance.is_approved)
+            instance.status = validated_data.get('status', instance.status)
+        
+        instance.save()
+        return instance
     
-
-
-
 
 
 

@@ -8,9 +8,10 @@ from .authentication import SuperAdminJWTAuthentication
 from .permissions import IsSuperAdmin
 from .utils import ResponseWrapperMixin  # Import the mixin
 from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework import generics, status
+from rest_framework import generics, status,serializers
 from rest_framework.exceptions import ValidationError
 from .utils import ResponseWrapperMixin
+
 
 
 # EPR Account Models and Serializers (Assuming you have these in epr_account app)
@@ -148,6 +149,54 @@ class TransactionListCreateView(BaseSuperAdminModelView):
 class TransactionDetailView(BaseSuperAdminModelDetailView):
     queryset = Transaction.objects.all()
     serializer_class = TransactionSerializer
+    filterset_fields = ['order_id', 'waste_type', 'credit_type', 'status', 'is_complete']
+
+    def update(self, request, *args, **kwargs):
+        try:
+            instance = self.get_object()
+            serializer = self.get_serializer(instance, data=request.data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            transaction = serializer.save()
+
+
+            # Move EPRTarget/CreditOffer logic here for Superadmin approval
+            if transaction.status == 'approved' and isinstance(request.user, SuperAdmin):
+                epr_target = EPRTarget.objects.filter(
+                    epr_account=transaction.producer_epr,
+                    waste_type=transaction.waste_type,
+                    product_type=transaction.product_type,
+                    credit_type=transaction.credit_type,
+                    is_achieved=False
+                ).first()
+
+                if epr_target:
+                    epr_target.achieved_quantity += int(transaction.credit_quantity)
+                    if epr_target.achieved_quantity == epr_target.target_quantity:
+                        epr_target.is_achieved = True
+                    epr_target.save()
+                
+                if transaction.counter_credit_offer:
+                    transaction.credit_offer.credit_available -= transaction.credit_quantity 
+                    if transaction.credit_offer.credit_available == 0:
+                        transaction.credit_offer.is_sold = True
+                    transaction.credit_offer.save()
+                else:
+                    transaction.credit_offer.is_sold = True
+                    transaction.credit_offer.credit_available = 0
+                    transaction.credit_offer.save()
+            
+            return Response({"status": True,"data": serializer.data}, status=status.HTTP_200_OK)
+        
+        except serializers.ValidationError as e:
+            return Response({
+                "status": False,
+                "error": e.detail if hasattr(e, 'detail') else str(e)
+            }, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({
+                "status": False,
+                "error": str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 # Recycler Views
 class RecyclerListCreateView(BaseSuperAdminModelView):

@@ -1,8 +1,8 @@
 from rest_framework import viewsets, permissions, status, serializers,generics
 from rest_framework.response import Response
 from users.authentication import CustomJWTAuthentication
-from .models import RecyclerEPR, ProducerEPR,EPRCredit,EPRTarget,CreditOffer,CounterCreditOffer,Transaction,WasteType
-from .serializers import RecyclerEPRSerializer, ProducerEPRSerializer, EPRCreditSerializer,EPRTargetSerializer, CreditOfferSerializer,CounterCreditOfferSerializer,TransactionSerializer, WasteTypeSerializer, WasteTypeNameSerializer
+from .models import RecyclerEPR, ProducerEPR,EPRCredit,EPRTarget,CreditOffer,CounterCreditOffer,Transaction,WasteType,PurchasesRequest
+from .serializers import RecyclerEPRSerializer, ProducerEPRSerializer, EPRCreditSerializer,EPRTargetSerializer, CreditOfferSerializer,CounterCreditOfferSerializer,TransactionSerializer, WasteTypeSerializer, WasteTypeNameSerializer, PurchasesRequestSerializer
 from users.models import Recycler, Producer
 from rest_framework.exceptions import ValidationError
 from django.core.exceptions import ValidationError as DjangoValidationError
@@ -1459,10 +1459,19 @@ class TransactionViewSet(viewsets.ModelViewSet):
     
     def get_permissions(self):
         try:
+        #     if self.action == 'create':
+        #         permission_classes = [permissions.IsAuthenticated, IsProducer]
+        #     elif self.action in ['update', 'partial_update']:
+        #         permission_classes = [permissions.IsAuthenticated, IsRecycler]
+        #     else:  # list, retrieve
+        #         permission_classes = [permissions.IsAuthenticated]
+        #     return [permission() for permission in permission_classes]
+        # except Exception as e:
+        #     raise ValidationError({"error": f"Permission error: {str(e)}"})
             if self.action == 'create':
                 permission_classes = [permissions.IsAuthenticated, IsProducer]
             elif self.action in ['update', 'partial_update']:
-                permission_classes = [permissions.IsAuthenticated, IsRecycler]
+                permission_classes = [permissions.IsAuthenticated]  # Specific roles checked in serializer
             else:  # list, retrieve
                 permission_classes = [permissions.IsAuthenticated]
             return [permission() for permission in permission_classes]
@@ -1515,17 +1524,18 @@ class TransactionViewSet(viewsets.ModelViewSet):
    
     def create(self, request, *args, **kwargs):
         try:
-            credit_offer_id = request.query_params.get('credit_offer_id')
+            # credit_offer_id = request.query_params.get('credit_offer_id')
+            purchases_request_id = request.query_params.get('purchases_request_id')
             counter_credit_offer_id = request.query_params.get('counter_credit_offer_id')
 
             # Validate query parameters
-            if not credit_offer_id and not counter_credit_offer_id:
+            if not purchases_request_id and not counter_credit_offer_id:
                 return Response({
                     "status": False,
                     "error": "Provide either credit_offer_id or counter_credit_offer_id"
                 }, status=status.HTTP_400_BAD_REQUEST)
     
-            if credit_offer_id and counter_credit_offer_id:
+            if purchases_request_id and counter_credit_offer_id:
                 return Response({
                     "status": False,
                     "error": "Provide only one of credit_offer_id or counter_credit_offer_id"
@@ -1540,6 +1550,10 @@ class TransactionViewSet(viewsets.ModelViewSet):
             data.pop('status', None)
 
             producer_epr = None
+            counter_credit_offer = None
+            purchases_request = None
+
+
             if counter_credit_offer_id:
                 # Fetch producer_epr from CounterCreditOffer
                 try:
@@ -1561,26 +1575,48 @@ class TransactionViewSet(viewsets.ModelViewSet):
                         "error": "Counter credit offer not found"
                     }, status=status.HTTP_404_NOT_FOUND)
             else:
-                # Fetch producer_epr from request body
-                producer_epr_id = data.get('producer_epr_id')
-                if not producer_epr_id:
+              # Fetch producer_epr and credit_offer from PurchasesRequest
+                try:
+                    purchases_request = PurchasesRequest.objects.get(id=purchases_request_id)
+                    if purchases_request.status != 'approved':
+                        return Response({
+                            "status": False,
+                            "error": "Purchase request must be approved"
+                        }, status=status.HTTP_400_BAD_REQUEST)
+                    producer_epr = purchases_request.producer_epr
+                    if not producer_epr:
+                        return Response({
+                            "status": False,
+                            "error": "Purchase request does not have an associated producer EPR account"
+                        }, status=status.HTTP_400_BAD_REQUEST)
+                    if not purchases_request.credit_offer:
+                        return Response({
+                            "status": False,
+                            "error": "Purchase request does not have an associated credit offer"
+                        }, status=status.HTTP_400_BAD_REQUEST)
+                    # Verify the producer matches the requesting user
+                    if purchases_request.producer != request.user:
+                        return Response({
+                            "status": False,
+                            "error": "You are not authorized to use this purchase request as producer of purchase request does not match your identity"
+                        }, status=status.HTTP_403_FORBIDDEN)
+                except PurchasesRequest.DoesNotExist:
                     return Response({
                         "status": False,
-                        "error": "producer_epr_id is required in the request body when creating a transaction from a credit offer"
-                    }, status=status.HTTP_400_BAD_REQUEST)
-                try:
-                     producer_epr = ProducerEPR.objects.get(id=producer_epr_id, producer=request.user)
-                except ProducerEPR.DoesNotExist:
-                    return Response({
-                        "status": False,
-                        "error": "Invalid producer_epr_id or not authorized"
-                    }, status=status.HTTP_400_BAD_REQUEST)
+                        "error": "Purchase request not found"
+                    }, status=status.HTTP_404_NOT_FOUND)
 
 
-            # Populate data from CreditOffer
-            if credit_offer_id:
+            # Populate data from purchase request
+            if purchases_request_id:
                 try:
-                    credit_offer = CreditOffer.objects.get(id=credit_offer_id)
+                    credit_offer = purchases_request.credit_offer
+                    if not credit_offer:  # Handle case where credit_offer is None
+                        return Response({
+                            "status": False,
+                            "error": "Purchase request does not have an associated credit offer"
+                        }, status=status.HTTP_400_BAD_REQUEST)
+                    data['counter_credit_offer'] = None
                     data['credit_offer'] = credit_offer.id
                     data['recycler'] = credit_offer.recycler.id
                     data['credit_quantity'] = credit_offer.credit_available
@@ -1592,11 +1628,12 @@ class TransactionViewSet(viewsets.ModelViewSet):
                     data['product_type'] = credit_offer.epr_credit.product_type
                     data['producer_type'] = request.user.epr_accounts.first().producer_type
                     data['offered_by'] = credit_offer.recycler.unique_id
-                except CreditOffer.DoesNotExist:
+
+                except Exception as e:
                     return Response({
                         "status": False,
-                        "error": "Credit offer not found"
-                    }, status=status.HTTP_404_NOT_FOUND)
+                        "error": f"Error processing purchase request: {str(e)}"
+                    }, status=status.HTTP_400_BAD_REQUEST)
 
             # Populate data from CounterCreditOffer
             else:
@@ -1658,6 +1695,7 @@ class TransactionViewSet(viewsets.ModelViewSet):
                     "error": f"Credit quantity ({data['credit_quantity']}) cannot exceed remaining target quantity ({remaining_quantity})"
                 }, status=status.HTTP_400_BAD_REQUEST)
             
+            
             # Add producer_epr to data
             data['producer_epr'] = producer_epr.id
             print(data['producer_epr'])
@@ -1667,6 +1705,15 @@ class TransactionViewSet(viewsets.ModelViewSet):
             serializer.is_valid(raise_exception=True)
             transaction = serializer.save()
 
+             # Update is_complete if counter_credit_offer_id was provided
+            if counter_credit_offer:
+                counter_credit_offer.is_complete = True
+                counter_credit_offer.save()
+
+             # Update is_complete if purchase_request_id  was provided
+            if purchases_request:
+                purchases_request.is_complete = True
+                purchases_request.save()
    
             # Fetch producer and recycler details
             producer = Producer.objects.get(id=request.user.id)
@@ -1833,31 +1880,31 @@ class TransactionViewSet(viewsets.ModelViewSet):
    
             # TODO => ADD CHECK IF TRANSACTION IS ALREADY APPROVED
             
-            if transaction.status == 'approved':
-                epr_target = EPRTarget.objects.filter(
-                    epr_account=transaction.producer_epr,
-                    waste_type=transaction.waste_type,
-                    product_type=transaction.product_type,
-                    credit_type=transaction.credit_type,
-                    is_achieved=False
-                ).first()
+            # if transaction.status == 'approved':
+            #     epr_target = EPRTarget.objects.filter(
+            #         epr_account=transaction.producer_epr,
+            #         waste_type=transaction.waste_type,
+            #         product_type=transaction.product_type,
+            #         credit_type=transaction.credit_type,
+            #         is_achieved=False
+            #     ).first()
 
-                if epr_target:
-                    epr_target.achieved_quantity += int(transaction.credit_quantity)
-                    if epr_target.achieved_quantity == epr_target.target_quantity:
-                        epr_target.is_achieved = True
-                    epr_target.save()  
-                if transaction.counter_credit_offer:
-                    transaction.credit_offer.credit_available -= transaction.credit_quantity 
-                    if transaction.credit_offer.credit_available == 0:
-                        transaction.credit_offer.is_sold = True
+            #     if epr_target:
+            #         epr_target.achieved_quantity += int(transaction.credit_quantity)
+            #         if epr_target.achieved_quantity == epr_target.target_quantity:
+            #             epr_target.is_achieved = True
+            #         epr_target.save()  
+            #     if transaction.counter_credit_offer:
+            #         transaction.credit_offer.credit_available -= transaction.credit_quantity 
+            #         if transaction.credit_offer.credit_available == 0:
+            #             transaction.credit_offer.is_sold = True
 
-                    transaction.credit_offer.save()
+            #         transaction.credit_offer.save()
 
-                else:
-                    transaction.credit_offer.is_sold = True
-                    transaction.credit_offer.credit_available = 0
-                    transaction.credit_offer.save()
+            #     else:
+            #         transaction.credit_offer.is_sold = True
+            #         transaction.credit_offer.credit_available = 0
+            #         transaction.credit_offer.save()
             
             return Response({"data":serializer.data,"status":True})
         
@@ -1885,6 +1932,167 @@ class TransactionViewSet(viewsets.ModelViewSet):
         }, status=status.HTTP_405_METHOD_NOT_ALLOWED)
     
 
+
+# PURCHASE REQUEST
+class PurchasesRequestViewSet(viewsets.ModelViewSet):
+    queryset = PurchasesRequest.objects.all()
+    serializer_class = PurchasesRequestSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    authentication_classes = [CustomJWTAuthentication]
+
+    def get_permissions(self):
+        try:
+            if self.action == 'create':
+                permission_classes = [permissions.IsAuthenticated, IsProducer]
+            elif self.action in ['update', 'partial_update']:
+                permission_classes = [permissions.IsAuthenticated, IsRecycler]
+            else:  # list, retrieve
+                permission_classes = [permissions.IsAuthenticated]
+            return [permission() for permission in permission_classes]
+        except Exception as e:
+            raise ValidationError({"error": f"Permission error: {str(e)}"})
+
+    def get_queryset(self):
+        user = self.request.user
+        if isinstance(user, Recycler):
+            return PurchasesRequest.objects.filter(recycler=user)
+        elif isinstance(user, Producer):
+            return PurchasesRequest.objects.filter(producer=user)
+        return PurchasesRequest.objects.none()
+    
+
+    def list(self, request, *args, **kwargs):
+        try:
+            queryset = self.filter_queryset(self.get_queryset())  
+            serializer = self.get_serializer(queryset, many=True)
+            return Response({
+                "status": True,
+                "data": serializer.data
+            }, status=status.HTTP_200_OK)
+        except ValidationError as e:
+            return Response({
+                "status": False,
+                "error": e.detail if hasattr(e, 'detail') else str(e)
+            }, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({
+                "status": False,
+                "error": str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def retrieve(self, request, *args, **kwargs):
+        try:
+            instance = self.get_object()
+            serializer = self.get_serializer(instance)
+            return Response({
+                "status": True,
+                "data": serializer.data
+            }, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({
+                "status": False,
+                "error": str(e)
+            }, status=status.HTTP_404_NOT_FOUND if "DoesNotExist" in str(e) else status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+    def get_serializer(self, *args, **kwargs):
+        if self.request.method == "POST":
+            # Fetch credit_offer_id from query params
+            credit_offer_id = self.request.query_params.get('credit_offer_id')
+            if not credit_offer_id:
+                raise ValidationError({"error": "credit_offer_id is required in query parameters"})
+
+            # Get the CreditOffer
+            try:
+                credit_offer = CreditOffer.objects.get(id=credit_offer_id)
+            except CreditOffer.DoesNotExist:
+                raise ValidationError({"error": "Invalid credit_offer_id"})
+
+            # Prepare request data by copying the original data
+            request_data = self.request.data.copy() if hasattr(self.request.data, 'copy') else dict(self.request.data)
+            
+            # Validate producer_epr from request body
+            producer_epr_id = request_data.get('producer_epr')
+            if not producer_epr_id:
+                raise ValidationError({"error": "producer_epr is required in the request body"})
+            try:
+                producer_epr = ProducerEPR.objects.get(id=producer_epr_id)
+                if producer_epr.producer != self.request.user:
+                    raise ValidationError({"error": "producer_epr must belong to the requesting Producer"})
+                if producer_epr.waste_type != credit_offer.waste_type:
+                    raise ValidationError({"error": "Given epr account's waste type does not match the credit offer's waste type"})
+            except ProducerEPR.DoesNotExist:
+                raise ValidationError({"error": "Invalid producer_epr ID"})
+
+            # Add recycler, producer, and credit_offer to the data as UUID strings
+            request_data.update({
+                "recycler": str(credit_offer.recycler.id),
+                "producer": str(self.request.user.id),
+                "credit_offer": str(credit_offer.id),
+                # Keep producer_epr as the UUID string from the request body
+            })
+
+            kwargs["data"] = request_data
+            kwargs["context"] = {'request': self.request}  # Ensure context is passed
+
+        return super().get_serializer(*args, **kwargs)
+
+    def create(self, request, *args, **kwargs):
+        try:
+            serializer = self.get_serializer(data=request.data, context={'request': request})
+            serializer.is_valid(raise_exception=True)
+            purchase_request = serializer.save()
+            return Response({
+                "status": True,
+                "data": serializer.data
+            }, status=status.HTTP_201_CREATED)
+        except ValidationError as e:
+            return Response({
+                "status": False,
+                "error": e.detail if hasattr(e, 'detail') else str(e)
+            }, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({
+                "status": False,
+                "error": str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+    def update(self, request, *args, **kwargs):
+        try:
+            instance = self.get_object()
+            if isinstance(request.user, Recycler) and instance.recycler != request.user:
+                return Response({
+                    "status": False,
+                    "error": "You are not authorized to update this PurchasesRequest"
+                }, status=status.HTTP_403_FORBIDDEN)
+            
+            serializer = self.get_serializer(instance, data=request.data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            purchase_request = serializer.save()
+            return Response({
+                "status": True,
+                "data": serializer.data
+            }, status=status.HTTP_200_OK)
+        except ValidationError as e:
+            return Response({
+                "status": False,
+                "error": e.detail if hasattr(e, 'detail') else str(e)
+            }, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({
+                "status": False,
+                "error": str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def partial_update(self, request, *args, **kwargs):
+        return self.update(request, *args, **kwargs)
+
+    def destroy(self, request, *args, **kwargs):
+        return Response({
+            "status": False,
+            "error": "Deletion of purchase requests is not allowed."
+        }, status=status.HTTP_405_METHOD_NOT_ALLOWED)
 
 # WASTE FILTERS
 class WasteTypeDetailView(APIView):
