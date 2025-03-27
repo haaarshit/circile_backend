@@ -255,10 +255,36 @@ class CreditOfferSerializer(serializers.ModelSerializer):
         return super().create(validated_data)
     
 class CounterCreditOfferSerializer(serializers.ModelSerializer):
+
+    credit_type = serializers.SerializerMethodField()  
+    waste_type = serializers.SerializerMethodField()  
+    credit_available = serializers.SerializerMethodField()  
+    price_per_credit = serializers.SerializerMethodField()  
+
     class Meta:
         model = CounterCreditOffer
         fields = '__all__'
         read_only_fields = ['id', 'recycler','erp_account','epr_credit'] 
+
+    def get_credit_type(self, obj):
+        if obj.credit_offer:
+            return obj.credit_offer.credit_type
+        return None
+    
+    def get_waste_type(self, obj):
+        if obj.credit_offer:
+            return obj.credit_offer.waste_type 
+        return None
+    
+    def get_credit_available(self, obj):
+        if obj.credit_offer:
+            return obj.credit_offer.credit_available 
+        return None
+    
+    def get_price_per_credit(self, obj):
+        if obj.credit_offer:
+            return obj.credit_offer.price_per_credit 
+        return None
 
     def create(self, validated_data): 
 
