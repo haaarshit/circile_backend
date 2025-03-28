@@ -260,6 +260,8 @@ class CounterCreditOfferSerializer(serializers.ModelSerializer):
     waste_type = serializers.SerializerMethodField()  
     credit_available = serializers.SerializerMethodField()  
     price_per_credit = serializers.SerializerMethodField()  
+    title = serializers.SerializerMethodField()  
+
 
     class Meta:
         model = CounterCreditOffer
@@ -284,6 +286,11 @@ class CounterCreditOfferSerializer(serializers.ModelSerializer):
     def get_price_per_credit(self, obj):
         if obj.credit_offer:
             return obj.credit_offer.price_per_credit 
+        return None
+    
+    def get_title(self, obj):
+        if obj.credit_offer:
+            return obj.credit_offer.offer_title
         return None
 
     def create(self, validated_data): 
@@ -318,6 +325,7 @@ class PurchasesRequestSerializer(serializers.ModelSerializer):
     waste_type = serializers.SerializerMethodField()  
     credit_available = serializers.SerializerMethodField()  
     price_per_credit = serializers.SerializerMethodField()  
+    title = serializers.SerializerMethodField()
 
     class Meta:
         model = PurchasesRequest
@@ -345,7 +353,10 @@ class PurchasesRequestSerializer(serializers.ModelSerializer):
         return None
     
     
-    
+    def get_title(self, obj):
+        if obj.credit_offer:
+            return obj.credit_offer.offer_title
+        return None
 
     def validate(self, data):
         request = self.context.get('request')

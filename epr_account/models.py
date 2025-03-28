@@ -533,6 +533,8 @@ class PurchasesRequest(models.Model):
          blank=True  
     )
     FY = models.IntegerField(default=get_default_year)
+    quantity = models.FloatField(default=0.0) 
+
 
     is_approved = models.BooleanField(default=False) 
     status = models.CharField(

@@ -52,7 +52,17 @@ class RecyclerEPRViewSet(viewsets.ModelViewSet):
     ordering = ['-created_at']  # '-' indicates descending order
 
     def get_queryset(self):
-            return RecyclerEPR.objects.filter(recycler=self.request.user)
+            queryset = RecyclerEPR.objects.filter(recycler=self.request.user)
+            waste_type = self.request.query_params.get('waste_type', None)
+            is_approved = self.request.query_params.get('is_approved')
+
+            if waste_type:
+                queryset = queryset.filter(waste_type=waste_type)
+
+            if is_approved:
+                queryset = queryset.filter(is_approved=True)
+
+            return queryset
     
     def list(self, request, *args, **kwargs):
         try:
@@ -726,8 +736,13 @@ class ProducerEPRViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         queryset =  ProducerEPR.objects.filter(producer=self.request.user)
         waste_type = self.request.query_params.get('waste_type', None)
+        is_approved = self.request.query_params.get('is_approved')
+
         if waste_type:
             queryset = queryset.filter(waste_type=waste_type)
+
+        if is_approved:
+            queryset = queryset.filter(is_approved=True)
 
         return queryset
 
@@ -1563,13 +1578,13 @@ class TransactionViewSet(viewsets.ModelViewSet):
             if not purchases_request_id and not counter_credit_offer_id:
                 return Response({
                     "status": False,
-                    "error": "Provide either credit_offer_id or counter_credit_offer_id"
+                    "error": "Provide either purchases_request_id or counter_credit_offer_id"
                 }, status=status.HTTP_400_BAD_REQUEST)
     
             if purchases_request_id and counter_credit_offer_id:
                 return Response({
                     "status": False,
-                    "error": "Provide only one of credit_offer_id or counter_credit_offer_id"
+                    "error": "Provide only one of purchases_request_id or counter_credit_offer_id"
                 }, status=status.HTTP_400_BAD_REQUEST)
 
             # Prepare data 
@@ -1656,7 +1671,7 @@ class TransactionViewSet(viewsets.ModelViewSet):
                     data['counter_credit_offer'] = None
                     data['credit_offer'] = credit_offer.id
                     data['recycler'] = credit_offer.recycler.id
-                    data['credit_quantity'] = credit_offer.credit_available
+                    data['credit_quantity'] = purchases_request.quantity
                     data['waste_type'] = credit_offer.waste_type
                     data['recycler_type'] = credit_offer.epr_account.recycler_type
                     data['total_price'] = float(data['credit_quantity']) * credit_offer.price_per_credit
@@ -2055,6 +2070,13 @@ class PurchasesRequestViewSet(viewsets.ModelViewSet):
             
             # Validate producer_epr from request body
             producer_epr_id = request_data.get('producer_epr')
+            quantity = request_data.get('quantity')
+
+            if int(quantity) < int(credit_offer.minimum_purchase):
+                   raise ValidationError("quantity should be greater than minimum purchase")
+            elif int(quantity) > int(credit_offer.credit_available):
+                   raise ValidationError( "quantity should be less than credit availabe")
+
             if not producer_epr_id:
                 raise ValidationError({"error": "producer_epr is required in the request body"})
             try:

@@ -32,7 +32,7 @@ from .utils import validate_unique_email
 from .models import Recycler, Producer
 from .serializers import RecyclerSerializer, ProducerSerializer,RecyclerUpdateSerializer,ProducerUpdateSerializer,RecyclerDetailSerializer,ProducerDetailSerializer,ForgotPasswordSerializer,ResetPasswordSerializer
 from .authentication import CustomJWTAuthentication
-from epr_account.models import RecyclerEPR, ProducerEPR, EPRCredit, EPRTarget, CreditOffer, CounterCreditOffer, Transaction
+from epr_account.models import RecyclerEPR, ProducerEPR, EPRCredit, EPRTarget, CreditOffer, CounterCreditOffer, Transaction, PurchasesRequest
 
 
 
@@ -409,7 +409,8 @@ class UserCountStatsView(APIView):
                 "transactions": 0,
                 "achived_targets":0,
                 "complete_order":0,
-                "pending_order":0
+                "pending_order":0,
+                "direct_purchase":0
             }
 
             if isinstance(user, Recycler):
@@ -422,6 +423,8 @@ class UserCountStatsView(APIView):
                 stats["transactions"] = Transaction.objects.filter(recycler=user).count()
                 stats["pending_order"] = Transaction.objects.filter(recycler=user,is_complete=False).count()
                 stats["complete_order"] = Transaction.objects.filter(recycler=user,is_complete=True).count()
+                stats["direct_purchase"] = PurchasesRequest.objects.filter(recycler=user).count()
+                
 
 
             elif isinstance(user, Producer):
@@ -433,6 +436,7 @@ class UserCountStatsView(APIView):
                 stats["transactions"] = Transaction.objects.filter(producer=user).count()
                 stats["pending_order"] = Transaction.objects.filter(producer=user,is_complete=False).count()
                 stats["complete_order"] = Transaction.objects.filter(producer=user,is_complete=True).count()
+                stats["direct_purchase"] = PurchasesRequest.objects.filter(producer=user).count()
 
             else:
                 return Response(
