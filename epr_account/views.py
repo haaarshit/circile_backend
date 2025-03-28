@@ -1318,9 +1318,25 @@ class CounterCreditOfferViewSet(viewsets.ModelViewSet):
                 "data": serializer.data
             }, status=status.HTTP_201_CREATED)
         except ValidationError as e:
+            # error_message = "An unexpected error occurred"
+            error_message = e.detail if hasattr(e, 'detail') else str(e)
+            if error_message['error']:
+                error_message = error_message['error']
+    
+            # Since e.detail is a dict, access the 'error' key
+            if isinstance(e.detail, dict) and 'error' in e.detail:
+                error_list = e.detail['error']  # Get the list under 'error' key
+                if isinstance(error_list, list) and len(error_list) > 0:
+                    # Access the first ErrorDetail object
+                    first_error = error_list[0]
+                    # Extract the string from the ErrorDetail
+                    error_message = first_error.string if hasattr(first_error, 'string') else str(first_error)
+            
+            
+            print(error_message)
             return Response({
                 "status": False,
-                "error": e.detail if hasattr(e, 'detail') else str(e)
+                "error": error_message
             }, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             return Response({
@@ -1336,15 +1352,30 @@ class CounterCreditOfferViewSet(viewsets.ModelViewSet):
                 try:
                     get_credit_offer = CreditOffer.objects.get(id=credit_offer_id)
                 except CreditOffer.DoesNotExist:
-                    raise ValidationError({"error": "Invalid credit_offer_id or not authorized."})
+                    raise serializer.ValidationError({"error": "Invalid credit_offer_id or not authorized."})
                     
                 producer_epr_id = self.request.data['producer_epr']
                 producer_epr = ProducerEPR.objects.get(id=producer_epr_id, producer=self.request.user)
 
                 if producer_epr.waste_type !=  get_credit_offer.waste_type:
                    raise ValidationError({  "error": f"Your EPR Account's Waste Type does not matches the the waste type of the credit offer you want to buy. Epr's waste type:{producer_epr.waste_type} Credit offer's waste type: {get_credit_offer.waste_type}", "status": False})
-              
-                
+               
+                #CHECK IF the appropriate target exist or not
+                epr_target = EPRTarget.objects.filter(
+                    epr_account=producer_epr,
+                    waste_type=get_credit_offer.waste_type,
+                    product_type=get_credit_offer.product_type,
+                    credit_type=get_credit_offer.credit_type,
+                    is_achieved=False
+                ).first()
+
+
+                if not epr_target:
+                    raise ValidationError(
+                         f"No matching EPR Target found. Please create an EPR target for the given EPR account where credit type should be {get_credit_offer.credit_type} and product type should be {get_credit_offer.product_type}"
+                    )
+
+
 
                  # Validate quantity against credit_available
                 validated_data = serializer.validated_data
@@ -1610,6 +1641,12 @@ class TransactionViewSet(viewsets.ModelViewSet):
             # Populate data from purchase request
             if purchases_request_id:
                 try:
+                    if purchases_request.is_complete:
+                         return Response({
+                            "status": False,
+                            "error": "Transaction has been already created for the purchase request"
+                        }, status=status.HTTP_400_BAD_REQUEST)
+
                     credit_offer = purchases_request.credit_offer
                     if not credit_offer:  # Handle case where credit_offer is None
                         return Response({
@@ -1638,7 +1675,12 @@ class TransactionViewSet(viewsets.ModelViewSet):
             # Populate data from CounterCreditOffer
             else:
                 try:
-                    counter_credit_offer = CounterCreditOffer.objects.get(id=counter_credit_offer_id)
+                    # counter_credit_offer = CounterCreditOffer.objects.get(id=counter_credit_offer_id)
+                    if counter_credit_offer.is_complete:
+                         return Response({
+                            "status": False,
+                            "error": "Transaction has been already created for the counter credit offer request"
+                        }, status=status.HTTP_400_BAD_REQUEST)
                     if counter_credit_offer.status != 'approved':
                         return Response({
                             "status": False,
@@ -2089,11 +2131,25 @@ class PurchasesRequestViewSet(viewsets.ModelViewSet):
         return self.update(request, *args, **kwargs)
 
     def destroy(self, request, *args, **kwargs):
-        return Response({
-            "status": False,
-            "error": "Deletion of purchase requests is not allowed."
-        }, status=status.HTTP_405_METHOD_NOT_ALLOWED)
+        try:
+            instance = self.get_object()
+            if instance.producer != request.user:
+                return Response({
+                    "status": False,
+                    "error": "You are not authorized to delete this record."
+                }, status=status.HTTP_403_FORBIDDEN)
 
+            self.perform_destroy(instance)
+            return Response({
+                "status": True,
+                "message": " Purchase request deleted successfully."
+            }, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({
+                "status": False,
+                "error": str(e)
+            }, status=status.HTTP_404_NOT_FOUND if "DoesNotExist" in str(e) else status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
 # WASTE FILTERS
 class WasteTypeDetailView(APIView):
     def get(self, request, waste_type_name):
