@@ -1335,8 +1335,10 @@ class CounterCreditOfferViewSet(viewsets.ModelViewSet):
         except ValidationError as e:
             # error_message = "An unexpected error occurred"
             error_message = e.detail if hasattr(e, 'detail') else str(e)
-            if error_message['error']:
-                error_message = error_message['error']
+
+            if isinstance(error_message,dict):
+                if error_message['error']:
+                    error_message = error_message['error']
     
             # Since e.detail is a dict, access the 'error' key
             if isinstance(e.detail, dict) and 'error' in e.detail:
@@ -1347,8 +1349,8 @@ class CounterCreditOfferViewSet(viewsets.ModelViewSet):
                     # Extract the string from the ErrorDetail
                     error_message = first_error.string if hasattr(first_error, 'string') else str(first_error)
             
-            
-            print(error_message)
+            if isinstance(error_message,list):
+                error_message = error_message[0]
             return Response({
                 "status": False,
                 "error": error_message
@@ -2075,6 +2077,9 @@ class PurchasesRequestViewSet(viewsets.ModelViewSet):
             producer_epr_id = request_data.get('producer_epr')
             quantity = request_data.get('quantity')
 
+
+
+
             if int(quantity) < int(credit_offer.minimum_purchase):
                    raise ValidationError("quantity should be greater than minimum purchase")
             elif int(quantity) > int(credit_offer.credit_available):
@@ -2090,6 +2095,23 @@ class PurchasesRequestViewSet(viewsets.ModelViewSet):
                     raise ValidationError({"error": "Given epr account's waste type does not match the credit offer's waste type"})
             except ProducerEPR.DoesNotExist:
                 raise ValidationError({"error": "Invalid producer_epr ID"})
+            
+
+            epr_target = EPRTarget.objects.filter(
+                    epr_account=producer_epr,
+                    waste_type=credit_offer.waste_type,
+                    product_type=credit_offer.product_type,
+                    credit_type=credit_offer.credit_type,
+                    is_achieved=False
+                ).first()
+
+
+            if not epr_target:
+                    raise ValidationError(
+                         f"No matching EPR Target found. Please create an EPR target for the given EPR account where credit type should be {credit_offer.credit_type} and product type should be {credit_offer.product_type}"
+                    )
+
+
 
             # Add recycler, producer, and credit_offer to the data as UUID strings
             request_data.update({
@@ -2114,9 +2136,27 @@ class PurchasesRequestViewSet(viewsets.ModelViewSet):
                 "data": serializer.data
             }, status=status.HTTP_201_CREATED)
         except ValidationError as e:
+              # error_message = "An unexpected error occurred"
+            error_message = e.detail if hasattr(e, 'detail') else str(e)
+            if isinstance(error_message,dict):
+                if error_message['error']:
+                    error_message = error_message['error']
+    
+            # Since e.detail is a dict, access the 'error' key
+            if isinstance(e.detail, dict) and 'error' in e.detail:
+                error_list = e.detail['error']  # Get the list under 'error' key
+                if isinstance(error_list, list) and len(error_list) > 0:
+                    # Access the first ErrorDetail object
+                    first_error = error_list[0]
+                    # Extract the string from the ErrorDetail
+                    error_message = first_error.string if hasattr(first_error, 'string') else str(first_error)
+            
+            
+            if isinstance(error_message,list):
+                error_message = error_message[0]
             return Response({
                 "status": False,
-                "error": e.detail if hasattr(e, 'detail') else str(e)
+                "error": error_message
             }, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             return Response({
