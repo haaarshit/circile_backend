@@ -7,6 +7,8 @@ from rest_framework.exceptions import AuthenticationFailed
 from uuid import UUID  
 class CustomJWTAuthentication(JWTAuthentication):
     def authenticate(self, request):
+        if request.path.startswith("/api/epr/public-credit-offers/"):
+            return None  # Allows anonymous access
         header = self.get_header(request)
         if header is None:
             return None

@@ -157,10 +157,11 @@ REST_FRAMEWORK = {
         # 'rest_framework_simplejwt.authentication.JWTAuthentication',
         'users.authentication.CustomJWTAuthentication',  # Use the custom authentication class
         'superadmin.authentication.SuperAdminJWTAuthentication',  # For SuperAdmin
-
-
     ),
-        'EXCEPTION_HANDLER': 'epr_account.exceptions.custom_exception_handler',
+     'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.AllowAny',  # ✅ Ensure this is set for public routes
+    ],
+    'EXCEPTION_HANDLER': 'epr_account.exceptions.custom_exception_handler',
 
 }
 
@@ -202,15 +203,17 @@ DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
 
 
 # CORS settings
-CORS_ALLOW_ALL_ORIGINS = True  # For development only!
 
-# For production, specify allowed origins:
+# # For production, specify allowed origins:
 # CORS_ALLOWED_ORIGINS = [
 #     "http://localhost:8000",
 #     "http://127.0.0.1:8000",
 # ]
 
-CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_ALL_ORIGINS = True  
+
+CORS_ALLOW_CREDENTIALS = True  # Allow credentials (cookies, Authorization headers)
+
 
 # Allow all headers
 CORS_ALLOW_HEADERS = [
