@@ -446,6 +446,9 @@ class TransactionSerializer(serializers.ModelSerializer):
     trail_documents = serializers.SerializerMethodField()
     producer_transfer_proof = serializers.SerializerMethodField()
     recycler_transfer_proof = serializers.SerializerMethodField()
+    producer_unique_id = serializers.SerializerMethodField()
+    recycler_unique_id = serializers.SerializerMethodField()
+    
 
     def get_transaction_proof(self, obj):
         if obj.transaction_proof:
@@ -466,6 +469,15 @@ class TransactionSerializer(serializers.ModelSerializer):
         if obj.recycler_transfer_proof:
             return obj.recycler_transfer_proof.url if obj.recycler_transfer_proof.url.startswith('http') else f'https://res.cloudinary.com/{cloud_name}/{obj.recycler_transfer_proof.url}'
         return None
+    
+    def get_producer_unique_id(self,obj):
+        if obj.producer:
+            return obj.producer.unique_id
+        
+        
+    def get_recycler_unique_id(self,obj):
+        if obj.recycler:
+            return obj.recycler.unique_id
     
     class Meta:
         model = Transaction

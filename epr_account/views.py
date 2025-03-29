@@ -1599,6 +1599,10 @@ class TransactionViewSet(viewsets.ModelViewSet):
             data.pop('is_complete', None)
             data.pop('transaction_proof', None)
             data.pop('status', None)
+            data.pop('is_approved', None)
+            data.pop('producer_transfer_proof', None)
+            data.pop('trail_documents', None)
+            data.pop('recycler_transfer_proof', None)
 
             producer_epr = None
             counter_credit_offer = None
