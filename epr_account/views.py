@@ -1445,6 +1445,7 @@ class PublicCreditOfferListView(generics.ListAPIView):
     queryset = CreditOffer.objects.filter(is_sold=False).select_related('epr_account', 'epr_credit')
     serializer_class = CreditOfferSerializer
     permission_classes = [permissions.AllowAny]
+    authentication_classes = []  # Bypass authentication
     filter_backends = [DjangoFilterBackend, OrderingFilter]
     filterset_class = CreditOfferFilter
     ordering_fields = [
@@ -1476,6 +1477,8 @@ class PublicCreditOfferDetailView(generics.RetrieveAPIView):
     queryset = CreditOffer.objects.filter(is_sold=False).select_related('epr_account', 'epr_credit')
     serializer_class = CreditOfferSerializer
     permission_classes = [permissions.AllowAny]
+    authentication_classes = []  # Bypass authentication
+
 
     def retrieve(self, request, *args, **kwargs):
         try:
