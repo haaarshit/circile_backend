@@ -10,6 +10,9 @@ from .views import (
     TransactionListCreateView, TransactionDetailView,
     RecyclerListCreateView, RecyclerDetailView,
     ProducerListCreateView, ProducerDetailView,
+    PurchasesRequestListCreateView,PurchasesRequestDetailView,
+    TransactionFeeListCreateView,TransactionFeeDetailView,
+    SuperAdminCountStatsView
 )
 
 urlpatterns = [
@@ -53,4 +56,15 @@ urlpatterns = [
     # Producer
     path('producers/', ProducerListCreateView.as_view(), name='producer-list-create'),
     path('producers/<uuid:pk>/', ProducerDetailView.as_view(), name='producer-detail'),
+    
+      # PurchasesRequest 
+    path('purchases-requests/', PurchasesRequestListCreateView.as_view(), name='purchases-request-list-create'),
+    path('purchases-requests/<uuid:pk>/', PurchasesRequestDetailView.as_view(), name='purchases-request-detail'),
+
+     # New Transaction Fee paths
+    path('transaction-fees/', TransactionFeeListCreateView.as_view(), name='transaction-fee-list-create'),
+    path('transaction-fees/<int:pk>/', TransactionFeeDetailView.as_view(), name='transaction-fee-detail'),
+
+
+    path('stats/', SuperAdminCountStatsView.as_view(), name='superadmin-stats'),
 ]

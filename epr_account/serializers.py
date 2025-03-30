@@ -2,6 +2,7 @@ from rest_framework import serializers
 from .models import RecyclerEPR, ProducerEPR, EPRCredit, EPRTarget, CreditOffer,CounterCreditOffer,Transaction,WasteType, ProducerType, RecyclerType, ProductType, CreditType,PurchasesRequest
 from decouple import config
 from users.models import Recycler,Producer
+from superadmin.models import TransactionFee
 
 from superadmin.models import SuperAdmin
 import json
@@ -125,6 +126,9 @@ class CreditOfferSerializer(serializers.ModelSerializer):
     address = serializers.SerializerMethodField()  
     city = serializers.SerializerMethodField()  
     state = serializers.SerializerMethodField()  
+    transaction_fee = serializers.SerializerMethodField()  
+    gst = serializers.SerializerMethodField()
+    total = serializers.SerializerMethodField()
 
 
 
@@ -170,6 +174,22 @@ class CreditOfferSerializer(serializers.ModelSerializer):
         if obj.epr_account:
             return obj.epr_account.state   
         return None
+    
+    def get_transaction_fee(self, obj):
+        fees =  TransactionFee.objects.first()
+        if fees:
+            return fees.transaction_fee 
+        return 0
+    
+    def get_gst(self, obj):
+        if obj.price_per_credit and obj.credit_available:
+            return ( obj.price_per_credit*obj.credit_available)*0.18
+        return 0
+    
+    def get_total(self, obj):
+        if obj.price_per_credit and obj.credit_available:
+            return  obj.price_per_credit*obj.credit_available
+        return 0
     
     def get_product_image(self, obj):
         print("entered ProducerEPRSerializer - return erp cetificate =====================> ")

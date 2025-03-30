@@ -18,6 +18,8 @@ from .filters import CreditOfferFilter
 from rest_framework.filters import OrderingFilter
 from django_filters.rest_framework import DjangoFilterBackend
 
+from superadmin.models import TransactionFee
+
 from django.conf import settings
 
 
@@ -1286,7 +1288,7 @@ class CounterCreditOfferViewSet(viewsets.ModelViewSet):
                 "error": str(e)
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-    def get_serializer(self, *args, **kwargs):
+    def get_serializer(self, *args, **kwargs):  
         try:
             if self.request.method == "POST":
                 credit_offer_id = self.request.query_params.get("credit_offer_id")
@@ -1661,6 +1663,10 @@ class TransactionViewSet(viewsets.ModelViewSet):
                         "error": "Purchase request not found"
                     }, status=status.HTTP_404_NOT_FOUND)
 
+            fee = 0
+            fees = TransactionFee.objects.first()
+            if fees:
+                fee = fees.transaction_fee
 
             # Populate data from purchase request
             if purchases_request_id:
@@ -1683,7 +1689,7 @@ class TransactionViewSet(viewsets.ModelViewSet):
                     data['credit_quantity'] = purchases_request.quantity
                     data['waste_type'] = credit_offer.waste_type
                     data['recycler_type'] = credit_offer.epr_account.recycler_type
-                    data['total_price'] = float(data['credit_quantity']) * credit_offer.price_per_credit
+                    data['total_price'] = float(data['credit_quantity']) * credit_offer.price_per_credit + (float(data['credit_quantity']) * credit_offer.price_per_credit)*0.18 + fee
                     data['price_per_credit'] = credit_offer.price_per_credit
                     data['credit_type'] = credit_offer.epr_credit.credit_type
                     data['product_type'] = credit_offer.epr_credit.product_type
@@ -1716,7 +1722,7 @@ class TransactionViewSet(viewsets.ModelViewSet):
                     data['credit_quantity'] = counter_credit_offer.quantity  
                     data['waste_type'] = counter_credit_offer.credit_offer.waste_type
                     data['recycler_type'] = counter_credit_offer.credit_offer.epr_account.recycler_type
-                    data['total_price'] = float(data['credit_quantity']) * counter_credit_offer.offer_price
+                    data['total_price'] = float(data['credit_quantity']) * counter_credit_offer.offer_price + (float(data['credit_quantity']) * counter_credit_offer.offer_price)*0.18 + fee
                     data['price_per_credit'] = counter_credit_offer.offer_price
                     data['credit_type'] = counter_credit_offer.credit_offer.epr_credit.credit_type
                     data['product_type'] = counter_credit_offer.credit_offer.epr_credit.product_type

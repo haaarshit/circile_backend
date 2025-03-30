@@ -1,6 +1,6 @@
 from django.db import models
 from django.contrib.auth.hashers import make_password
-from django.core.validators import EmailValidator
+from django.core.validators import EmailValidator,MinValueValidator
 import uuid 
 
 class SuperAdmin(models.Model):
@@ -29,3 +29,26 @@ class SuperAdmin(models.Model):
     class Meta:
         verbose_name = "SuperAdmin"
         verbose_name_plural = "SuperAdmins"
+
+
+class TransactionFee(models.Model):
+    """
+    Model to store transaction fee, editable only by SuperAdmins.
+    """
+    transaction_fee = models.FloatField(blank=False,default=0.0) 
+    
+    description = models.CharField(
+        max_length=255,
+        blank=True,
+        null=True,
+        help_text="Optional description of the fee"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Fee: {self.transaction_fee}"
+
+    class Meta:
+        verbose_name = "Transaction Fee"
+        verbose_name_plural = "Transaction Fees"

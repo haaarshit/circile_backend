@@ -2,8 +2,8 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.tokens import RefreshToken
-from .models import SuperAdmin
-from .serializers import SuperAdminSerializer, SuperAdminLoginSerializer
+from .models import SuperAdmin,TransactionFee
+from .serializers import SuperAdminSerializer, SuperAdminLoginSerializer,TransactionFeeSerializer
 from .authentication import SuperAdminJWTAuthentication
 from .permissions import IsSuperAdmin
 from .utils import ResponseWrapperMixin  # Import the mixin
@@ -17,12 +17,12 @@ from .utils import ResponseWrapperMixin
 # EPR Account Models and Serializers (Assuming you have these in epr_account app)
 from epr_account.models import (
     RecyclerEPR, ProducerEPR, EPRCredit, EPRTarget, CreditOffer, 
-    CounterCreditOffer, Transaction
+    CounterCreditOffer, Transaction,PurchasesRequest
 )
 from epr_account.serializers import (
     RecyclerEPRSerializer, ProducerEPRSerializer, EPRCreditSerializer, 
     EPRTargetSerializer, CreditOfferSerializer, CounterCreditOfferSerializer, 
-    TransactionSerializer
+    TransactionSerializer,PurchasesRequestSerializer
 )
 
 # User Models and Serializers (Assuming you have these in users app)
@@ -114,7 +114,7 @@ class EPRCreditDetailView(BaseSuperAdminModelDetailView):
 class EPRTargetListCreateView(BaseSuperAdminModelView):
     queryset = EPRTarget.objects.all()
     serializer_class = EPRTargetSerializer
-    filterset_fields = ['epr_registration_number', 'waste_type', 'product_type', 'credit_type', 'FY']
+    filterset_fields = ['epr_registration_number', 'waste_type', 'product_type', 'credit_type', 'FY','is_achieved']
 
 class EPRTargetDetailView(BaseSuperAdminModelDetailView):
     queryset = EPRTarget.objects.all()
@@ -181,18 +181,33 @@ class TransactionDetailView(BaseSuperAdminModelDetailView):
                         transaction.credit_offer.is_sold = True
                     transaction.credit_offer.save()
                 else:
-                    transaction.credit_offer.is_sold = True
-                    transaction.credit_offer.credit_available = 0
+                    transaction.credit_offer.credit_available -= transaction.credit_quantity 
+                    if transaction.credit_offer.credit_available == 0:
+                        transaction.credit_offer.is_sold = True
                     transaction.credit_offer.save()
             
-            return Response({"status": True,"data": serializer.data}, status=status.HTTP_200_OK)
+            return Response( serializer.data, status=status.HTTP_200_OK)
         
         except serializers.ValidationError as e:
+            if isinstance(e.detail, dict):
+            # Flatten the nested dictionary error messages
+                error_messages = []
+                for key, value in e.detail.items():
+                    if isinstance(value, list):  # Typical DRF ValidationError structure
+                        error_messages.extend(value)
+                    else:
+                        error_messages.append(str(value))
+                
+                error_message = error_messages[0] if error_messages else "An unknown error occurred."
+            else:
+                error_message = str(e)
+    
             return Response({
-                "status": False,
-                "error": e.detail if hasattr(e, 'detail') else str(e)
+         
+                 error_message
             }, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
+            
             return Response({
                 "status": False,
                 "error": str(e)
@@ -217,3 +232,75 @@ class ProducerListCreateView(BaseSuperAdminModelView):
 class ProducerDetailView(BaseSuperAdminModelDetailView):
     queryset = Producer.objects.all()
     serializer_class = ProducerDetailSerializer
+
+# PurchasesRequest Views
+class PurchasesRequestListCreateView(BaseSuperAdminModelView):
+    queryset = PurchasesRequest.objects.all()
+    serializer_class = PurchasesRequestSerializer
+    filterset_fields = ['status']  # Adjust fields as per your model
+
+class PurchasesRequestDetailView(BaseSuperAdminModelDetailView):
+    queryset = PurchasesRequest.objects.all()
+    serializer_class = PurchasesRequestSerializer
+
+
+class SuperAdminCountStatsView(APIView):
+    authentication_classes = [SuperAdminJWTAuthentication]
+    permission_classes = [IsSuperAdmin]
+
+    def get(self, request):
+        try:
+            # Ensure the user is a SuperAdmin
+            user = request.user
+            if not isinstance(user, SuperAdmin):
+                return Response(
+                    {"error": "User is not a SuperAdmin", "status": False},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+
+            # Aggregate counts from all relevant tables
+            stats = {
+                "total_superadmins": SuperAdmin.objects.count(),
+                "total_recyclers": Recycler.objects.count(),
+                "total_producers": Producer.objects.count(),
+                "total_recycler_epr_accounts": RecyclerEPR.objects.count(),
+                "total_producer_epr_accounts": ProducerEPR.objects.count(),
+                "total_epr_credits": EPRCredit.objects.count(),
+                "total_epr_targets": EPRTarget.objects.count(),
+                "total_achieved_targets": EPRTarget.objects.filter(is_achieved=True).count(),
+                "total_credit_offers": CreditOffer.objects.count(),
+                "total_counter_credit_offers": CounterCreditOffer.objects.count(),
+                "total_transactions": Transaction.objects.count(),
+                "total_completed_transactions": Transaction.objects.filter(is_complete=True).count(),
+                "total_pending_transactions": Transaction.objects.filter(is_complete=False).count(),
+                "total_direct_purchases": PurchasesRequest.objects.count()
+            }
+
+            return Response(
+                {
+                    "status": True,
+                    "message": "SuperAdmin statistics retrieved successfully",
+                    "data": stats
+                },
+                status=status.HTTP_200_OK
+            )
+
+        except Exception as e:
+            return Response(
+                {"error": str(e), "status": False},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+        
+class TransactionFeeListCreateView(ResponseWrapperMixin, generics.ListCreateAPIView):
+    authentication_classes = [SuperAdminJWTAuthentication]
+    permission_classes = [IsSuperAdmin]
+    queryset = TransactionFee.objects.all()
+    serializer_class = TransactionFeeSerializer
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ['transaction_fee', 'description']
+
+class TransactionFeeDetailView(ResponseWrapperMixin, generics.RetrieveUpdateDestroyAPIView):
+    authentication_classes = [SuperAdminJWTAuthentication]
+    permission_classes = [IsSuperAdmin]
+    queryset = TransactionFee.objects.all()
+    serializer_class = TransactionFeeSerializer

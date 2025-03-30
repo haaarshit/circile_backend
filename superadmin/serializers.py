@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import SuperAdmin
+from .models import SuperAdmin, TransactionFee
 from django.contrib.auth.hashers import check_password
 
 class SuperAdminSerializer(serializers.ModelSerializer):
@@ -40,3 +40,9 @@ class SuperAdminLoginSerializer(serializers.Serializer):
         
         data['superadmin'] = superadmin
         return data
+
+class TransactionFeeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = TransactionFee
+        fields = ['id', 'transaction_fee', 'description', 'created_at', 'updated_at']
+        read_only_fields = ['created_at', 'updated_at']
