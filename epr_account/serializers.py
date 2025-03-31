@@ -129,6 +129,7 @@ class CreditOfferSerializer(serializers.ModelSerializer):
     transaction_fee = serializers.SerializerMethodField()  
     gst = serializers.SerializerMethodField()
     total = serializers.SerializerMethodField()
+    recycler_type = serializers.SerializerMethodField()
 
 
 
@@ -175,6 +176,11 @@ class CreditOfferSerializer(serializers.ModelSerializer):
             return obj.epr_account.state   
         return None
     
+    def get_recycler_type(self, obj):
+        if obj.epr_account:
+            return obj.epr_account.recycler_type   
+        return None
+    
     def get_transaction_fee(self, obj):
         fees =  TransactionFee.objects.first()
         if fees:
@@ -187,12 +193,15 @@ class CreditOfferSerializer(serializers.ModelSerializer):
         return 0
     
     def get_total(self, obj):
+        fee = 0
+        fees =  TransactionFee.objects.first()
+        if fees:
+            fee = fees.transaction_fee 
         if obj.price_per_credit and obj.credit_available:
-            return  obj.price_per_credit*obj.credit_available
+            return  obj.price_per_credit*obj.credit_available + ( obj.price_per_credit*obj.credit_available)*0.18 +fee
         return 0
     
     def get_product_image(self, obj):
-        print("entered ProducerEPRSerializer - return erp cetificate =====================> ")
         if obj.product_image:
             if obj.product_image.url.startswith('http'):
                 return obj.product_image.url
@@ -468,6 +477,7 @@ class TransactionSerializer(serializers.ModelSerializer):
     recycler_transfer_proof = serializers.SerializerMethodField()
     producer_unique_id = serializers.SerializerMethodField()
     recycler_unique_id = serializers.SerializerMethodField()
+    transaction_status = serializers.SerializerMethodField()
     
 
     def get_transaction_proof(self, obj):
@@ -498,7 +508,15 @@ class TransactionSerializer(serializers.ModelSerializer):
     def get_recycler_unique_id(self,obj):
         if obj.recycler:
             return obj.recycler.unique_id
-    
+        
+    def get_transaction_status(self,obj):
+        if obj.transaction_proof and not obj.is_approved:
+            return "In Process"
+        if obj.transaction_proof and  obj.is_approved and obj.trail_documents:
+            return "Complete"
+
+        return "Pending"
+
     class Meta:
         model = Transaction
         fields = '__all__'

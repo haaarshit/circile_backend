@@ -12,7 +12,7 @@ from .views import (
     ProducerListCreateView, ProducerDetailView,
     PurchasesRequestListCreateView,PurchasesRequestDetailView,
     TransactionFeeListCreateView,TransactionFeeDetailView,
-    SuperAdminCountStatsView
+    SuperAdminCountStatsView,CreditOfferPriceStatsView
 )
 
 urlpatterns = [
@@ -67,4 +67,6 @@ urlpatterns = [
 
 
     path('stats/', SuperAdminCountStatsView.as_view(), name='superadmin-stats'),
+    path('credit-offer-price-stats/', CreditOfferPriceStatsView.as_view(), name='credit-offer-price-stats'),
+
 ]

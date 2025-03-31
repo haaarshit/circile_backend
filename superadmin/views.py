@@ -11,6 +11,7 @@ from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import generics, status,serializers
 from rest_framework.exceptions import ValidationError
 from .utils import ResponseWrapperMixin
+from django.db.models import Max, Min, Avg
 
 
 
@@ -304,3 +305,64 @@ class TransactionFeeDetailView(ResponseWrapperMixin, generics.RetrieveUpdateDest
     permission_classes = [IsSuperAdmin]
     queryset = TransactionFee.objects.all()
     serializer_class = TransactionFeeSerializer
+
+
+class CreditOfferPriceStatsView(APIView):
+    authentication_classes = [SuperAdminJWTAuthentication]
+    permission_classes = [IsSuperAdmin]
+
+    def get(self, request):
+        try:
+            # Check if there are any records
+            if not CreditOffer.objects.exists():
+                return Response(
+                    {
+                        "status": False,
+                        "message": "No CreditOffer records found",
+                        "data": {}
+                    },
+                    status=status.HTTP_404_NOT_FOUND
+                )
+
+            # Get max and min price_per_credit
+            price_stats = CreditOffer.objects.aggregate(
+                max_price=Max('price_per_credit'),
+                min_price=Min('price_per_credit')
+            )
+
+            # Calculate average as (max_price + min_price) / 2
+            max_price = price_stats['max_price']
+            min_price = price_stats['min_price']
+            average_price = (max_price + min_price) / 2 if max_price is not None and min_price is not None else 0.0
+
+            # Fetch records with max and min price_per_credit
+            max_price_record = CreditOffer.objects.filter(price_per_credit=max_price).first()
+            min_price_record = CreditOffer.objects.filter(price_per_credit=min_price).first()
+
+            # Serialize the records
+            max_serializer = CreditOfferSerializer(max_price_record)
+            min_serializer = CreditOfferSerializer(min_price_record)
+
+            # Prepare response data
+            response_data = {
+                "maximum_price": float(max_price) if max_price is not None else None,
+                "minimum_price": float(min_price) if min_price is not None else None,
+                "average_price": float(average_price),
+                "maximum_price_record": max_serializer.data,
+                "minimum_price_record": min_serializer.data
+            }
+
+            return Response(
+                {
+                    "status": True,
+                    "message": "Credit offer price statistics retrieved successfully",
+                    "data": response_data
+                },
+                status=status.HTTP_200_OK
+            )
+
+        except Exception as e:
+            return Response(
+                {"status": False, "error": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
