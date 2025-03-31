@@ -159,7 +159,7 @@ class TransactionDetailView(BaseSuperAdminModelDetailView):
             serializer.is_valid(raise_exception=True)
             transaction = serializer.save()
 
-
+            # TODO SEND MAIL TO RECYCLER IF TRANSACTION GET APPROVED
             # Move EPRTarget/CreditOffer logic here for Superadmin approval
             if transaction.status == 'approved' and isinstance(request.user, SuperAdmin):
                 epr_target = EPRTarget.objects.filter(
@@ -291,7 +291,8 @@ class SuperAdminCountStatsView(APIView):
                 {"error": str(e), "status": False},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
-        
+
+# TRANSACTION FEE 
 class TransactionFeeListCreateView(ResponseWrapperMixin, generics.ListCreateAPIView):
     authentication_classes = [SuperAdminJWTAuthentication]
     permission_classes = [IsSuperAdmin]

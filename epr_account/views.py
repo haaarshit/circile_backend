@@ -1268,8 +1268,8 @@ class CounterCreditOfferViewSet(viewsets.ModelViewSet):
                     "error": "You are not authorized to update this record."
                 }, status=status.HTTP_403_FORBIDDEN)
             
-            print(request.data)
 
+    # TODO SEND AN EMAIL TO THE PRODUCER  IF THE OFFER GET ACCEPTED
             serializer = self.get_serializer(instance, data=request.data, partial=True)
             serializer.is_valid(raise_exception=True)
             self.perform_update(serializer)
@@ -1336,23 +1336,51 @@ class CounterCreditOfferViewSet(viewsets.ModelViewSet):
             }, status=status.HTTP_201_CREATED)
         except ValidationError as e:
             # error_message = "An unexpected error occurred"
-            error_message = e.detail if hasattr(e, 'detail') else str(e)
+            # error_message = e.detail if hasattr(e, 'detail') else str(e)
 
-            if isinstance(error_message,dict):
-                if error_message['error']:
-                    error_message = error_message['error']
+            # if isinstance(error_message,dict):
+            #     if error_message['error']:
+            #         error_message = error_message['error']
     
-            # Since e.detail is a dict, access the 'error' key
-            if isinstance(e.detail, dict) and 'error' in e.detail:
-                error_list = e.detail['error']  # Get the list under 'error' key
-                if isinstance(error_list, list) and len(error_list) > 0:
-                    # Access the first ErrorDetail object
-                    first_error = error_list[0]
-                    # Extract the string from the ErrorDetail
-                    error_message = first_error.string if hasattr(first_error, 'string') else str(first_error)
+            # # Since e.detail is a dict, access the 'error' key
+            # if isinstance(e.detail, dict) and 'error' in e.detail:
+            #     error_list = e.detail['error']  # Get the list under 'error' key
+            #     if isinstance(error_list, list) and len(error_list) > 0:
+            #         # Access the first ErrorDetail object
+            #         first_error = error_list[0]
+            #         # Extract the string from the ErrorDetail
+            #         error_message = first_error.string if hasattr(first_error, 'string') else str(first_error)
             
-            if isinstance(error_message,list):
-                error_message = error_message[0]
+            # if isinstance(error_message,list):
+            #     error_message = error_message[0]
+            error_message = e.detail if hasattr(e, 'detail') else str(e)
+    
+            # Handle case where error_message is a dict
+            if isinstance(error_message, dict):
+                # Check if 'error' key exists before accessing it
+                if 'error' in error_message:
+                    error_list = error_message['error']
+                    if isinstance(error_list, list) and len(error_list) > 0:
+                        first_error = error_list[0]
+                        error_message = str(first_error)
+                else:
+                    # Handle other possible error keys (like 'producer_epr' in your case)
+                    for key, value in error_message.items():
+                        if isinstance(value, list) and len(value) > 0:
+                            first_error = value[0]
+                            error_message = str(first_error)
+                            break
+                    else:
+                        # Fallback if no list found in dict
+                        error_message = str(error_message)
+            
+            # Handle case where error_message is a list
+            elif isinstance(error_message, list) and len(error_message) > 0:
+                error_message = str(error_message[0])
+            
+            # Default case
+            else:
+                error_message = str(error_message)
             return Response({
                 "status": False,
                 "error": error_message
@@ -1377,7 +1405,7 @@ class CounterCreditOfferViewSet(viewsets.ModelViewSet):
                 producer_epr = ProducerEPR.objects.get(id=producer_epr_id, producer=self.request.user)
 
                 if producer_epr.waste_type !=  get_credit_offer.waste_type:
-                   raise ValidationError({  "error": f"Your EPR Account's Waste Type does not matches the the waste type of the credit offer you want to buy. Epr's waste type:{producer_epr.waste_type} Credit offer's waste type: {get_credit_offer.waste_type}", "status": False})
+                   raise ValidationError(f"Your EPR Account's Waste Type does not matches the the waste type of the credit offer you want to buy. Epr's waste type:{producer_epr.waste_type} Credit offer's waste type: {get_credit_offer.waste_type}")
                
                 #CHECK IF the appropriate target exist or not
                 epr_target = EPRTarget.objects.filter(
@@ -1402,11 +1430,11 @@ class CounterCreditOfferViewSet(viewsets.ModelViewSet):
                 credit_available = get_credit_offer.credit_available
 
                 if quantity is None:
-                    raise ValidationError({"error": "Quantity is required to create a counter credit offer."})
+                    raise ValidationError("Quantity is required to create a counter credit offer.")
 
                 if quantity > credit_available:
                     raise ValidationError({
-                        "error": f"Quantity ({quantity}) exceeds available credits ({credit_available}) in the credit offer."
+                        f"Quantity ({quantity}) exceeds available credits ({credit_available}) in the credit offer."
                     })
 
                 serializer.save(
@@ -2100,9 +2128,9 @@ class PurchasesRequestViewSet(viewsets.ModelViewSet):
             try:
                 producer_epr = ProducerEPR.objects.get(id=producer_epr_id)
                 if producer_epr.producer != self.request.user:
-                    raise ValidationError({"error": "producer_epr must belong to the requesting Producer"})
+                    raise ValidationError("producer_epr must belong to the requesting Producer")
                 if producer_epr.waste_type != credit_offer.waste_type:
-                    raise ValidationError({"error": "Given epr account's waste type does not match the credit offer's waste type"})
+                    raise ValidationError("Given epr account's waste type does not match the credit offer's waste type")
             except ProducerEPR.DoesNotExist:
                 raise ValidationError({"error": "Invalid producer_epr ID"})
             
@@ -2147,20 +2175,48 @@ class PurchasesRequestViewSet(viewsets.ModelViewSet):
             }, status=status.HTTP_201_CREATED)
         except ValidationError as e:
               # error_message = "An unexpected error occurred"
-            error_message = e.detail if hasattr(e, 'detail') else str(e)
-            if isinstance(error_message,dict):
-                if error_message['error']:
-                    error_message = error_message['error']
+            # error_message = e.detail if hasattr(e, 'detail') else str(e)
+            # if isinstance(error_message,dict):
+            #     if error_message['error']:
+            #         error_message = error_message['error']
     
-            # Since e.detail is a dict, access the 'error' key
-            if isinstance(e.detail, dict) and 'error' in e.detail:
-                error_list = e.detail['error']  # Get the list under 'error' key
-                if isinstance(error_list, list) and len(error_list) > 0:
-                    # Access the first ErrorDetail object
-                    first_error = error_list[0]
-                    # Extract the string from the ErrorDetail
-                    error_message = first_error.string if hasattr(first_error, 'string') else str(first_error)
+            # # Since e.detail is a dict, access the 'error' key
+            # if isinstance(e.detail, dict) and 'error' in e.detail:
+            #     error_list = e.detail['error']  # Get the list under 'error' key
+            #     if isinstance(error_list, list) and len(error_list) > 0:
+            #         # Access the first ErrorDetail object
+            #         first_error = error_list[0]
+            #         # Extract the string from the ErrorDetail
+            #         error_message = first_error.string if hasattr(first_error, 'string') else str(first_error)
             
+            error_message = e.detail if hasattr(e, 'detail') else str(e)
+    
+            # Handle case where error_message is a dict
+            if isinstance(error_message, dict):
+                # Check if 'error' key exists before accessing it
+                if 'error' in error_message:
+                    error_list = error_message['error']
+                    if isinstance(error_list, list) and len(error_list) > 0:
+                        first_error = error_list[0]
+                        error_message = str(first_error)
+                else:
+                    # Handle other possible error keys (like 'producer_epr' in your case)
+                    for key, value in error_message.items():
+                        if isinstance(value, list) and len(value) > 0:
+                            first_error = value[0]
+                            error_message = str(first_error)
+                            break
+                    else:
+                        # Fallback if no list found in dict
+                        error_message = str(error_message)
+            
+            # Handle case where error_message is a list
+            elif isinstance(error_message, list) and len(error_message) > 0:
+                error_message = str(error_message[0])
+            
+            # Default case
+            else:
+                error_message = str(error_message)
             
             if isinstance(error_message,list):
                 error_message = error_message[0]
@@ -2187,6 +2243,7 @@ class PurchasesRequestViewSet(viewsets.ModelViewSet):
             serializer = self.get_serializer(instance, data=request.data, partial=True)
             serializer.is_valid(raise_exception=True)
             purchase_request = serializer.save()
+            # TODO => SEND MAIL TO PRODUCER IF TRANSACTION REQUEST GET APPROVED
             return Response({
                 "status": True,
                 "data": serializer.data
