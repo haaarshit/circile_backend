@@ -188,8 +188,8 @@ class CreditOfferSerializer(serializers.ModelSerializer):
         return 0
     
     def get_gst(self, obj):
-        if obj.price_per_credit and obj.credit_available:
-            return ( obj.price_per_credit*obj.credit_available)*0.18
+        if obj.price_per_credit and obj.minimum_purchase:
+            return (obj.price_per_credit*obj.minimum_purchase)*0.18
         return 0
     
     def get_total(self, obj):
@@ -197,8 +197,8 @@ class CreditOfferSerializer(serializers.ModelSerializer):
         fees =  TransactionFee.objects.first()
         if fees:
             fee = fees.transaction_fee 
-        if obj.price_per_credit and obj.credit_available:
-            return  obj.price_per_credit*obj.credit_available + ( obj.price_per_credit*obj.credit_available)*0.18 +fee
+        if obj.price_per_credit and obj.minimum_purchase:
+            return  obj.price_per_credit*obj.minimum_purchase + ( obj.price_per_credit*obj.minimum_purchase)*0.18 +fee
         return 0
     
     def get_product_image(self, obj):
@@ -289,7 +289,8 @@ class CounterCreditOfferSerializer(serializers.ModelSerializer):
     waste_type = serializers.SerializerMethodField()  
     credit_available = serializers.SerializerMethodField()  
     price_per_credit = serializers.SerializerMethodField()  
-    title = serializers.SerializerMethodField()  
+    title = serializers.SerializerMethodField() 
+    actual_price = serializers.SerializerMethodField()
 
 
     class Meta:
@@ -321,6 +322,11 @@ class CounterCreditOfferSerializer(serializers.ModelSerializer):
         if obj.credit_offer:
             return obj.credit_offer.offer_title
         return None
+    
+    def get_actual_price(self, obj):
+        if obj.credit_offer:
+            return obj.credit_offer.price_per_credit
+        return None
 
     def create(self, validated_data): 
 
@@ -342,7 +348,7 @@ class CounterCreditOfferSerializer(serializers.ModelSerializer):
                 else:
                     raise serializers.ValidationError({"error": "Recycler in counter offer didn't match the current user."})
             else:
-                raise serializers.ValidationError({"error": "Recycler can only update the status field."})
+                raise serializers.ValidationError("Recycler can only update the status field.")
 
         # Producer can update all fields
         return super().update(instance, validated_data)

@@ -544,6 +544,9 @@ class PurchasesRequest(models.Model):
     )
     is_complete = models.BooleanField(default=False)  # New field added
 
+    created_at = models.DateTimeField(default=timezone.now)
+
+
 
 
 

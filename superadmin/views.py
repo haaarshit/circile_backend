@@ -13,6 +13,8 @@ from rest_framework.exceptions import ValidationError
 from .utils import ResponseWrapperMixin
 from django.db.models import Max, Min, Avg
 
+from django.conf import settings
+from django.core.mail import send_mail
 
 
 # EPR Account Models and Serializers (Assuming you have these in epr_account app)
@@ -170,6 +172,11 @@ class TransactionDetailView(BaseSuperAdminModelDetailView):
                     is_achieved=False
                 ).first()
 
+                if not epr_target:
+                    raise ValidationError(
+                         f"No matching EPR Target found. Please create an EPR target for the given EPR account where credit type should be {transaction.credit_type}, product type should be {transaction.product_type} and waste type {transaction.waste_type}"
+                    )
+
                 if epr_target:
                     epr_target.achieved_quantity += int(transaction.credit_quantity)
                     if epr_target.achieved_quantity == epr_target.target_quantity:
@@ -186,6 +193,144 @@ class TransactionDetailView(BaseSuperAdminModelDetailView):
                     if transaction.credit_offer.credit_available == 0:
                         transaction.credit_offer.is_sold = True
                     transaction.credit_offer.save()
+
+                  # Email to Recycler
+                recycler = transaction.recycler
+                producer = transaction.producer
+                
+                # Common fields
+                email = 'support@circle8.in'
+                contact_number = '+91 9620220013'
+
+                # Email to Recycler (Stylish HTML)
+                recycler_subject = "Transaction Approved by SuperAdmin"
+                recycler_html_message = (
+                 
+                    f"<!DOCTYPE html>"
+                    f"<html>"
+                    f"<head>"
+                    f"    <meta charset='UTF-8'>"
+                    f"    <meta name='viewport' content='width=device-width, initial-scale=1.0'>"
+                    f"    <title>Transaction Approval Notification</title>"
+                    f"    <style>"
+                    f"        body {{"
+                    f"            font-family: Arial, sans-serif;"
+                    f"            margin: 0;"
+                    f"            padding: 20px;"
+                    f"            background-color: #f4f4f4;"
+                    f"        }}"
+                    f"        .container {{"
+                    f"            max-width: 600px;"
+                    f"            background: #ffffff;"
+                    f"            padding: 20px;"
+                    f"            border-radius: 8px;"
+                    f"            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);"
+                    f"        }}"
+                    f"        h2 {{"
+                    f"            color: #2c3e50;"
+                    f"            text-align: center;"
+                    f"        }}"
+                    f"        .details {{"
+                    f"            margin: 20px 0;"
+                    f"        }}"
+                    f"        .details table {{"
+                    f"            width: 100%;"
+                    f"            border-collapse: collapse;"
+                    f"        }}"
+                    f"        .details th, .details td {{"
+                    f"            border: 1px solid #ddd;"
+                    f"            padding: 8px;"
+                    f"            text-align: left;"
+                    f"        }}"
+                    f"        .details th {{"
+                    f"            background-color: #3498db;"
+                    f"            color: white;"
+                    f"        }}"
+                    f"        .status {{"
+                    f"            text-align: center;"
+                    f"            padding: 10px;"
+                    f"            font-weight: bold;"
+                    f"            background-color: #27ae60;"
+                    f"            color: white;"
+                    f"            border-radius: 4px;"
+                    f"        }}"
+                    f"        .cta {{"
+                    f"            text-align: center;"
+                    f"            margin-top: 20px;"
+                    f"        }}"
+                    f"        .cta a {{"
+                    f"            text-decoration: none;"
+                    f"            background: #27ae60;"
+                    f"            color: white;"
+                    f"            padding: 10px 20px;"
+                    f"            border-radius: 5px;"
+                    f"            display: inline-block;"
+                    f"        }}"
+                    f"    </style>"
+                    f"</head>"
+                    f"<body>"
+                    f"    <div class='container'>"
+                    f"        <h2>📢 Transaction Approval Notification</h2>"
+                    f"        <p>Dear <strong>{recycler.full_name}</strong>,</p>"
+                    f"        <p>A transaction involving your credit offer has been approved by the SuperAdmin. Below are the details:</p>"
+                    f"        "
+                    f"        <div class='details'>"
+                    f"            <h3>🛠 Transaction Details</h3>"
+                    f"            <table>"
+                    f"                <tr><th>Request By</th><td>{producer.unique_id}</td></tr>"
+                    f"                <tr><th>Work Order ID</th><td>{transaction.order_id}</td></tr>"
+                    f"                <tr><th>Work Order Date</th><td>{transaction.work_order_date}</td></tr>"
+                    f"                <tr><th>Waste Type</th><td>{transaction.waste_type}</td></tr>"
+                    f"                <tr><th>Credit Type</th><td>{transaction.credit_type}</td></tr>"
+                    f"                <tr><th>Price per Credit</th><td>{transaction.price_per_credit}</td></tr>"
+                    f"                <tr><th>Product Type</th><td>{transaction.product_type}</td></tr>"
+                    f"                <tr><th>Producer Type</th><td>{transaction.producer_type}</td></tr>"
+                    f"                <tr><th>Credit Quantity</th><td>{transaction.credit_quantity}</td></tr>"
+                    f"                <tr><th>Total Price</th><td>{transaction.total_price}</td></tr>"
+                    f"            </table>"
+                    f"        </div>"
+                    f"        "
+                    f"        <div class='details'>"
+                    f"            <h3>👤 Producer Details</h3>"
+                    f"            <table>"
+                    f"                <tr><th>EPR Registration Number</th><td>{transaction.producer_epr.epr_registration_number}</td></tr>"
+                    f"                <tr><th>EPR Registered Name</th><td>{transaction.producer_epr.epr_registered_name}</td></tr>"
+                    f"                <tr><th>Email</th><td><a href='mailto:{email}'>{email}</a></td></tr>"
+                    f"                <tr><th>Contact Number</th><td>{contact_number}</td></tr>"
+                    f"            </table>"
+                    f"        </div>"
+                    f"        "
+                    f"        <div class='details'>"
+                    f"            <h3>📁 Trail Documents</h3>"
+                    f"            <ul>"
+                    f"                  {''.join([f'<li>✅ {doc}</li>' for doc in transaction.credit_offer.trail_documents if doc.strip()])}"
+                    f"            </ul>"
+                    f"        </div>"
+                    f"        "
+                    f"        <div class='status'>Status: {transaction.status}</div>"
+                    # f"        "
+                    # f"        <div class='cta'>"
+                    # f"            <a href='#'>Upload Documents</a>"
+                    # f"        </div>"
+                    # f"        "
+                    # f"        <p style='color: #34495e; text-align: center; margin-top: 20px;'>"
+                    # f"            Please upload the necessary documents (trail_documents, recycler_transfer_proof) to complete the transaction."
+                    # f"        </p>"
+                    # f"        <p style='color: #7f8c8d; font-size: 12px; text-align: center; margin-top: 20px;'>"
+                    # f"            This is an automated message. Please do not reply directly to this email."
+                    # f"        </p>"
+                    f"    </div>"
+                    f"</body>"
+                    f"</html>"
+                )
+                send_mail(
+                    subject=recycler_subject,
+                    message="",
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    recipient_list=[recycler.email],
+                    fail_silently=False,
+                    html_message=recycler_html_message
+                )
             
             return Response( serializer.data, status=status.HTTP_200_OK)
         
