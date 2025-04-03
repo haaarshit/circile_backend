@@ -22,6 +22,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.exceptions import TokenError
+from django.core.exceptions import ValidationError
 
 import jwt
 from django.conf import settings
@@ -225,13 +226,33 @@ class UpdateUserProfileView(APIView):
                     return Response({"error": "Invalid user type","status":False}, status=status.HTTP_400_BAD_REQUEST)
 
                 if serializer.is_valid():
-                    serializer.save()
-                    return Response(
-                        {"message": "Profile updated successfully", "data": serializer.data,"status":True},
-                        status=status.HTTP_200_OK
-                    )
+                    try:
+                        serializer.save()  # This triggers model save() and clean()
+                        return Response(
+                            {"message": "Profile updated successfully", "data": serializer.data, "status": True},
+                            status=status.HTTP_200_OK
+                        )
+                    except ValidationError as e:
+                        # Handle validation errors from the model's clean() method
+                        error_dict = e.message_dict if hasattr(e, 'message_dict') else {'general': str(e)}
+                        return Response(
+                            {
+                                "error": "Validation failed",
+                                "details": error_dict,
+                                "status": False
+                            },
+                            status=status.HTTP_400_BAD_REQUEST
+                        )
 
-                return Response({"error": "Invalid user type","status":False}, status=status.HTTP_400_BAD_REQUEST)
+                else:
+                    return Response(
+                        {
+                            "error": "Invalid data",
+                            "details": serializer.errors,
+                            "status": False
+                        },
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
             except Exception as e:
                     print(f"Registration error: {str(e)}")
                     return Response(
@@ -471,7 +492,10 @@ class CheckProfileCompletionView(APIView):
             recycler_required_fields = [
                 'email', 'mobile_no', 'company_name', 'address', 'full_name',
                 'city', 'state', 
-                 'designation','gst_number','pcb_number'
+                'designation','gst_number','pcb_number',
+                'account_holder_name', 'account_number', 'bank_name', 
+                'ifsc_code', 'branch_name'
+
             ]
             
             producer_required_fields = [

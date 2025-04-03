@@ -251,6 +251,17 @@ class RecyclerEPR(models.Model):
 
     def save(self, *args, **kwargs):
         self.clean()
+        fields_to_capitalize = [
+            'state',
+            'city',
+            'address'
+        ]
+
+        # Apply title case to specified fields if they exist and are strings
+        for field in fields_to_capitalize:
+            value = getattr(self, field, None)
+            if value and isinstance(value, str):
+                setattr(self, field, value.title())
         super().save(*args, **kwargs)
 
 class ProducerEPR(models.Model):
@@ -301,6 +312,17 @@ class ProducerEPR(models.Model):
 
     def save(self, *args, **kwargs):
         self.clean()
+        fields_to_capitalize = [
+            'state',
+            'city',
+            'address'
+        ]
+
+        # Apply title case to specified fields if they exist and are strings
+        for field in fields_to_capitalize:
+            value = getattr(self, field, None)
+            if value and isinstance(value, str):
+                setattr(self, field, value.title())
         super().save(*args, **kwargs)    
 
 # ONLY FOR REDUCER
@@ -337,6 +359,17 @@ class EPRCredit(models.Model):
 
     def save(self, *args, **kwargs):
         self.clean()
+    
+        fields_to_capitalize = [
+            'state',
+        ]
+
+        # Apply title case to specified fields if they exist and are strings
+        for field in fields_to_capitalize:
+            value = getattr(self, field, None)
+            if value and isinstance(value, str):
+                setattr(self, field, value.title())
+
         super().save(*args, **kwargs)
 
 # ONLY FOR PRODUCER
@@ -374,6 +407,15 @@ class EPRTarget(models.Model):
             
     def save(self, *args, **kwargs):
         self.clean()
+        fields_to_capitalize = [
+            'state'
+        ]
+
+        # Apply title case to specified fields if they exist and are strings
+        for field in fields_to_capitalize:
+            value = getattr(self, field, None)
+            if value and isinstance(value, str):
+                setattr(self, field, value.title())
         super().save(*args, **kwargs)
 
 def validate_doc_choices(value):
@@ -460,6 +502,16 @@ class CreditOffer(models.Model):
     def save(self, *args, **kwargs):
         # if self.epr_credit and not self.credit_type:
         #     self.credit_type = self.epr_credit.credit_type
+        fields_to_capitalize = [
+            'offer_title'
+        ]
+
+        # Apply title case to specified fields if they exist and are strings
+        for field in fields_to_capitalize:
+            value = getattr(self, field, None)
+            if value and isinstance(value, str):
+                setattr(self, field, value.title())
+        
         super().save(*args, **kwargs)
 
 # COUNTER CREDIT OFFER BY PRODUCER

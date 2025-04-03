@@ -218,9 +218,11 @@ class RecyclerEPRViewSet(viewsets.ModelViewSet):
         Check if the recycler's profile is complete based on all required fields.
         """
         required_fields = [
-            'email', 'full_name', 'mobile_no', 'designation', 'password',
-            'company_name', 'city', 'state', 'gst_number', 'pcb_number', 'address',
-            'company_logo', 'pcb_doc','registration_date'
+                'email', 'mobile_no', 'company_name', 'address', 'full_name',
+                'city', 'state', 
+                'designation','gst_number','pcb_number',
+                'account_holder_name', 'account_number', 'bank_name', 
+                'ifsc_code', 'branch_name'
         ]
         for field in required_fields:
             value = getattr(recycler, field, None)
@@ -902,9 +904,9 @@ class ProducerEPRViewSet(viewsets.ModelViewSet):
     def is_profile_complete(self, producer):
 
         required_fields = [
-            'email', 'full_name', 'mobile_no', 'designation', 'password',
-            'company_name', 'city', 'state', 'gst_number', 'pcb_number', 'address',
-            'company_logo', 'pcb_doc','registration_date'
+                'email', 'mobile_no', 'company_name', 'address', 'full_name',
+                'city', 'state',  
+                'designation','gst_number','pcb_number'
         ]
         for field in required_fields:
             value = getattr(producer, field, None)

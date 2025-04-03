@@ -14,6 +14,9 @@ import re
 import os
 from cloudinary.models import CloudinaryField
 
+from django.core.exceptions import ValidationError
+
+
 class BaseUserModel(AbstractBaseUser):
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)  # UUID primary key
@@ -51,6 +54,15 @@ class BaseUserModel(AbstractBaseUser):
     is_verified = models.BooleanField(default=False)
     verification_token = models.CharField(max_length=100, null=True, blank=True)
     token_created_at = models.DateTimeField(null=True, blank=True)
+
+    # BANK DETAILS
+    account_holder_name = models.CharField(max_length=100, null=True, blank=True)
+    account_number = models.CharField(max_length=20, null=True, blank=True)
+    confirm_account_number = models.CharField(max_length=20, null=True, blank=True)  
+    bank_name = models.CharField(max_length=100, null=True, blank=True)
+    ifsc_code = models.CharField(max_length=11, null=True, blank=True)  
+    branch_name = models.CharField(max_length=100, null=True, blank=True)
+    canceled_check_proof = CloudinaryField('image', null=True, blank=True)  
 
     objects = CustomUserManager()
 
@@ -299,6 +311,56 @@ class BaseUserModel(AbstractBaseUser):
         return False
     class Meta:
         abstract = True
+
+    def clean(self):
+        """
+        Validate fields before saving. Raises ValidationError if invalid.
+        """
+        errors = {}
+
+        # Validate account number
+        if self.account_number:
+            # account_pattern = re.compile(r'^\d{9,18}$')
+            # if not account_pattern.match(self.account_number):
+            #     errors['account_number'] = "Invalid account number. Must be 9-18 digits."
+            if self.account_number != self.confirm_account_number:
+                errors['confirm_account_number'] = "Account number and confirmation do not match."
+
+        # Validate IFSC code
+        # if self.ifsc_code:
+        #     ifsc_pattern = re.compile(r'^[A-Z]{4}0[A-Z0-9]{6}$')
+            # if not ifsc_pattern.match(self.ifsc_code):
+            #     errors['ifsc_code'] = "Invalid IFSC code. Must be 11 characters (e.g., SBIN0001234)."
+
+        if errors:
+            raise ValidationError(errors)
+
+    def save(self, *args, **kwargs):
+        """
+        Ensure validation is run before saving.
+        """
+
+        # CAPITALIZE SPECIFIC FIELDS
+        fields_to_capitalize = [
+            'full_name',
+            'designation',
+            'company_name',
+            'city',
+            'state',
+            'address',
+            'account_holder_name',
+            'bank_name',
+            'branch_name',
+        ]
+
+        # Apply title case to specified fields if they exist and are strings
+        for field in fields_to_capitalize:
+            value = getattr(self, field, None)
+            if value and isinstance(value, str):
+                setattr(self, field, value.title())
+                
+        self.full_clean()  # This calls clean() and other validation
+        super().save(*args, **kwargs)
 
 class Recycler(BaseUserModel):
     """

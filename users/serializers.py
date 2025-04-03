@@ -42,6 +42,10 @@ class RecyclerUpdateSerializer(serializers.ModelSerializer):
                 
             if 'pcb_doc' in request.FILES and not request.FILES.get('pcb_doc'):
                 raise serializers.ValidationError({"pcb_doc": "PCB document file is required."})
+            
+                            
+            if 'canceled_check_proof' in request.FILES and not request.FILES.get('canceled_check_proof'):
+                raise serializers.ValidationError({"canceled_check_proof": " canceled_check_proof is required."})
              
         return data
     
@@ -63,6 +67,12 @@ class RecyclerUpdateSerializer(serializers.ModelSerializer):
                 representation['pcb_doc'] = instance.pcb_doc.url
             else:
                 representation['pcb_doc'] = f'https://res.cloudinary.com/{cloud_name}/{instance.pcb_doc.url}'
+
+        if instance.canceled_check_proof:
+            if instance.canceled_check_proof.url.startswith('http'):
+                representation['canceled_check_proof'] = instance.canceled_check_proof.url
+            else:
+                representation['canceled_check_proof'] = f'https://res.cloudinary.com/{cloud_name}/{instance.canceled_check_proof.url}'
         representation.pop('password', None)        
         return representation
 
@@ -81,6 +91,11 @@ class ProducerUpdateSerializer(serializers.ModelSerializer):
                 
             if 'pcb_doc' in request.FILES and not request.FILES.get('pcb_doc'):
                 raise serializers.ValidationError({"pcb_doc": "PCB document file is required."})
+            
+                                        
+            if 'canceled_check_proof' in request.FILES and not request.FILES.get('canceled_check_proof'):
+                raise serializers.ValidationError({"canceled_check_proof": " canceled_check_proof is required."})
+             
             
         return data
     
@@ -101,19 +116,27 @@ class ProducerUpdateSerializer(serializers.ModelSerializer):
                 representation['pcb_doc'] = instance.pcb_doc.url
             else:
                 representation['pcb_doc'] = f'https://res.cloudinary.com/{cloud_name}/{instance.pcb_doc.url}'
+        
+        if instance.canceled_check_proof:
+            if instance.canceled_check_proof.url.startswith('http'):
+                representation['canceled_check_proof'] = instance.canceled_check_proof.url
+            else:
+                representation['canceled_check_proof'] = f'https://res.cloudinary.com/{cloud_name}/{instance.canceled_check_proof.url}'
         representation.pop('password', None)
 
         return representation
     
 class RecyclerDetailSerializer(serializers.ModelSerializer):
     company_logo = serializers.SerializerMethodField()
+    canceled_check_proof = serializers.SerializerMethodField()
     pcb_doc = serializers.SerializerMethodField()
     class Meta:
         model = Recycler
         fields = [
             'id', 'email', 'full_name', 'mobile_no', 'designation', 
             'company_name', 'city', 'state', 'gst_number', 'pcb_number', 
-            'address', 'company_logo', 'pcb_doc', 'is_active', 'is_verified','unique_id','social_links','registration_date'
+            'address', 'company_logo', 'pcb_doc', 'is_active', 'is_verified','unique_id','social_links','registration_date', 'account_holder_name', 'account_number', 'bank_name', 
+                'ifsc_code', 'branch_name','canceled_check_proof'
         ]
     def get_company_logo(self, obj):
         """
@@ -122,6 +145,21 @@ class RecyclerDetailSerializer(serializers.ModelSerializer):
         if obj.company_logo:
             try:
                 url = obj.company_logo.url
+                if url.startswith('http'):
+                    return url
+                return f'https://res.cloudinary.com/{cloud_name}/{url}'
+            except Exception as e:
+                print(f"Error getting company_logo URL: {str(e)}")
+                return None
+        return None
+        
+    def get_canceled_check_proof(self, obj):
+        """
+        Handle company_logo image URL generation
+        """
+        if obj.canceled_check_proof:
+            try:
+                url = obj.canceled_check_proof.url
                 if url.startswith('http'):
                     return url
                 return f'https://res.cloudinary.com/{cloud_name}/{url}'
@@ -147,13 +185,16 @@ class RecyclerDetailSerializer(serializers.ModelSerializer):
     
 class ProducerDetailSerializer(serializers.ModelSerializer):
     company_logo = serializers.SerializerMethodField()
+    canceled_check_proof = serializers.SerializerMethodField()
+
     pcb_doc = serializers.SerializerMethodField()
     class Meta:
         model = Recycler
         fields = [
             'id', 'email', 'full_name', 'mobile_no', 'designation', 
             'company_name', 'city', 'state', 'gst_number', 'pcb_number', 
-            'address', 'company_logo', 'pcb_doc', 'is_active', 'is_verified','unique_id','social_links','registration_date'
+            'address', 'company_logo', 'pcb_doc', 'is_active', 'is_verified','unique_id','social_links','registration_date', 'account_holder_name', 'account_number', 'bank_name', 
+                'ifsc_code', 'branch_name','canceled_check_proof'
         ]
     def get_company_logo(self, obj):
         """
@@ -162,6 +203,21 @@ class ProducerDetailSerializer(serializers.ModelSerializer):
         if obj.company_logo:
             try:
                 url = obj.company_logo.url
+                if url.startswith('http'):
+                    return url
+                return f'https://res.cloudinary.com/{cloud_name}/{url}'
+            except Exception as e:
+                print(f"Error getting company_logo URL: {str(e)}")
+                return None
+        return None
+    
+    def get_canceled_check_proof(self, obj):
+        """
+        Handle company_logo image URL generation
+        """
+        if obj.canceled_check_proof:
+            try:
+                url = obj.canceled_check_proof.url
                 if url.startswith('http'):
                     return url
                 return f'https://res.cloudinary.com/{cloud_name}/{url}'
