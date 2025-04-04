@@ -1554,6 +1554,7 @@ class CounterCreditOfferViewSet(viewsets.ModelViewSet):
                    raise ValidationError(f"Your EPR Account's Waste Type does not matches the the waste type of the credit offer you want to buy. Epr's waste type:{producer_epr.waste_type} Credit offer's waste type: {get_credit_offer.waste_type}")
                
                 #CHECK IF the appropriate target exist or not
+                # TODO => TARGET QUANTITY CHECK (SHOULD BE GREATER OR EQUAL TO QUANTITY OF THE REQUEST BODY)
                 epr_target = EPRTarget.objects.filter(
                     epr_account=producer_epr,
                     waste_type=get_credit_offer.waste_type,
@@ -2286,6 +2287,7 @@ class PurchasesRequestViewSet(viewsets.ModelViewSet):
             except ProducerEPR.DoesNotExist:
                 raise ValidationError({"error": "Invalid producer_epr ID"})
             
+            # TODO => TARGET QUANTITY CHECK (SHOULD BE GREATER OR EQUAL TO QUANTITY OF THE REQUEST BODY)
 
             epr_target = EPRTarget.objects.filter(
                     epr_account=producer_epr,

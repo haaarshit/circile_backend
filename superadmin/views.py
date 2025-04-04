@@ -177,6 +177,8 @@ class TransactionDetailView(BaseSuperAdminModelDetailView):
                          f"No matching EPR Target found. Please create an EPR target for the given EPR account where credit type should be {transaction.credit_type}, product type should be {transaction.product_type} and waste type {transaction.waste_type}"
                     )
 
+                # TODO => TARGET QUANTITY CHECK (SHOULD BE GREATER OR EQUAL TO QUANTITY OF THE REQUEST BODY)
+
                 if epr_target:
                     epr_target.achieved_quantity += int(transaction.credit_quantity)
                     if epr_target.achieved_quantity == epr_target.target_quantity:

@@ -130,6 +130,7 @@ class CreditOfferSerializer(serializers.ModelSerializer):
     gst = serializers.SerializerMethodField()
     total = serializers.SerializerMethodField()
     recycler_type = serializers.SerializerMethodField()
+    recycler_id = serializers.SerializerMethodField()
 
 
 
@@ -212,7 +213,6 @@ class CreditOfferSerializer(serializers.ModelSerializer):
         return None
     
     def get_availability_proof(self, obj):
-        print("entered ProducerEPRSerializer - return erp cetificate =====================> ")
         if obj.availability_proof:
             if obj.availability_proof.url.startswith('http'):
                 return obj.availability_proof.url
@@ -222,6 +222,12 @@ class CreditOfferSerializer(serializers.ModelSerializer):
                 
         return None
     
+    def get_recycler_id(self,obj):
+        if obj.recycler:
+            if obj.recycler.unique_id:
+                return obj.recycler.unique_id
+        return None
+
     def validate(self, data):
   
         request = self.context.get('request')
