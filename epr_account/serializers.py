@@ -482,6 +482,9 @@ class PurchasesRequestSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError("Only Recycler can update PurchasesRequest")
             if any(k not in ['status', 'is_approved'] for k in data.keys()):
                 raise serializers.ValidationError("Only status and is_approved can be updated by Recycler")
+            
+        if data.get('status') == 'approved':
+            data['is_approved'] = True
 
         return data
     

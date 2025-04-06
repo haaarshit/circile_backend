@@ -2612,16 +2612,19 @@ class OrderDetailView(APIView):
         """
         try:
             user = request.user
+            type = ""
             instance = None
             serializer = None
             instance = CounterCreditOffer.objects.filter(id=record_id).first()
             if instance:
                     serializer = CounterCreditOfferSerializer(instance)
+                    type = "counter credit"
             else:
                     # Check PurchasesRequest (Producer also creates these)
                 instance = PurchasesRequest.objects.filter(id=record_id).first()
                 if instance:
                     serializer = PurchasesRequestSerializer(instance)
+                    type = "direct purchase"
 
             # Determine user type and filter accordingly
             # if isinstance(user, Producer):
@@ -2656,7 +2659,8 @@ class OrderDetailView(APIView):
             # Return the serialized data
             return Response({
                 "status": True,
-                "data": serializer.data
+                "data": serializer.data,
+                "type":type
             }, status=status.HTTP_200_OK)
 
         except ObjectDoesNotExist:
