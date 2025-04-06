@@ -5,7 +5,7 @@ from .models import RecyclerEPR, ProducerEPR,EPRCredit,EPRTarget,CreditOffer,Cou
 from .serializers import RecyclerEPRSerializer, ProducerEPRSerializer, EPRCreditSerializer,EPRTargetSerializer, CreditOfferSerializer,CounterCreditOfferSerializer,TransactionSerializer, WasteTypeSerializer, WasteTypeNameSerializer, PurchasesRequestSerializer
 from users.models import Recycler, Producer
 from rest_framework.exceptions import ValidationError
-from django.core.exceptions import ValidationError as DjangoValidationError
+from django.core.exceptions import ValidationError as DjangoValidationError, ObjectDoesNotExist
 from django.db.models import Q
 from django.core.mail import send_mail
 
@@ -2595,6 +2595,83 @@ class PurchasesRequestViewSet(viewsets.ModelViewSet):
                 "error": str(e)
             }, status=status.HTTP_404_NOT_FOUND if "DoesNotExist" in str(e) else status.HTTP_500_INTERNAL_SERVER_ERROR)
         
+
+class OrderDetailView(APIView):
+    """
+    A GET-only view to retrieve a record from either CounterCreditOffer or PurchasesRequest
+    based on the record_id provided in the path parameters.
+    """
+    authentication_classes = [CustomJWTAuthentication]
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, record_id, *args, **kwargs):
+        """
+        Retrieve a record based on the record_id, checking both CounterCreditOffer and PurchasesRequest.
+
+        :param record_id: The ID of the record to retrieve (UUID)
+        """
+        try:
+            user = request.user
+            instance = None
+            serializer = None
+            instance = CounterCreditOffer.objects.filter(id=record_id).first()
+            if instance:
+                    serializer = CounterCreditOfferSerializer(instance)
+            else:
+                    # Check PurchasesRequest (Producer also creates these)
+                instance = PurchasesRequest.objects.filter(id=record_id).first()
+                if instance:
+                    serializer = PurchasesRequestSerializer(instance)
+
+            # Determine user type and filter accordingly
+            # if isinstance(user, Producer):
+            #     # Check CounterCreditOffer first (Producer creates these)
+            #     instance = CounterCreditOffer.objects.filter(id=record_id, producer=user).first()
+            #     if instance:
+            #         serializer = CounterCreditOfferSerializer(instance)
+            #     else:
+            #         # Check PurchasesRequest (Producer also creates these)
+            #         instance = PurchasesRequest.objects.filter(id=record_id, producer=user).first()
+            #         if instance:
+            #             serializer = PurchasesRequestSerializer(instance)
+
+            # elif isinstance(user, Recycler):
+            #     # Check CounterCreditOffer (Recycler updates/approves these)
+            #     instance = CounterCreditOffer.objects.filter(id=record_id, recycler=user).first()
+            #     if instance:
+            #         serializer = CounterCreditOfferSerializer(instance)
+            #     else:
+            #         # Check PurchasesRequest (Recycler updates/approves these)
+            #         instance = PurchasesRequest.objects.filter(id=record_id, recycler=user).first()
+            #         if instance:
+            #             serializer = PurchasesRequestSerializer(instance)
+
+            # If no instance is found
+            if not instance:
+                return Response({
+                    "status": False,
+                    "error": f"No record found with ID {record_id} for this user."
+                }, status=status.HTTP_404_NOT_FOUND)
+
+            # Return the serialized data
+            return Response({
+                "status": True,
+                "data": serializer.data
+            }, status=status.HTTP_200_OK)
+
+        except ObjectDoesNotExist:
+            # This shouldn't typically trigger due to .first(), but kept for robustness
+            return Response({
+                "status": False,
+                "error": f"Record with ID {record_id} does not exist."
+            }, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({
+                "status": False,
+                "error": str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
 # WASTE FILTERS
 class WasteTypeDetailView(APIView):
     def get(self, request, waste_type_name):
