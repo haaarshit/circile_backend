@@ -26,6 +26,7 @@ class RecyclerEPRSerializer(serializers.ModelSerializer):
                 return f'https://res.cloudinary.com/{cloud_name}/{obj.epr_certificate.url}'
                 
         return None
+    
 
     def validate(self, data):
         """
@@ -297,6 +298,11 @@ class CounterCreditOfferSerializer(serializers.ModelSerializer):
     price_per_credit = serializers.SerializerMethodField()  
     title = serializers.SerializerMethodField() 
     actual_price = serializers.SerializerMethodField()
+    order_by = serializers.SerializerMethodField()
+    transaction_fee =  serializers.SerializerMethodField()
+    gst =  serializers.SerializerMethodField()
+    total =  serializers.SerializerMethodField()
+
 
 
     class Meta:
@@ -333,6 +339,39 @@ class CounterCreditOfferSerializer(serializers.ModelSerializer):
         if obj.credit_offer:
             return obj.credit_offer.price_per_credit
         return None
+    
+        
+    def get_order_by(self, obj):
+        if obj.producer:
+            return obj.producer.full_name
+        return None
+    
+    def get_transaction_fee(self, obj):
+        fees =  TransactionFee.objects.first()
+        if fees:
+            return fees.transaction_fee 
+        return 0
+    
+    def get_gst(self, obj):
+        price = obj.offer_price 
+        quantity = obj.quantity
+        if price and quantity:
+            return (price*quantity)*0.18
+        return 0
+    
+    def get_total(self, obj):
+        fee = 0
+        fees =  TransactionFee.objects.first()
+        if fees:
+            fee - fees.transaction_fee 
+        
+        price = obj.offer_price 
+        quantity = obj.quantity
+        if price and quantity:
+            return (price*quantity) + (price*quantity)*0.18 + fee
+        return 0
+
+
 
     def create(self, validated_data): 
 
@@ -367,6 +406,10 @@ class PurchasesRequestSerializer(serializers.ModelSerializer):
     credit_available = serializers.SerializerMethodField()  
     price_per_credit = serializers.SerializerMethodField()  
     title = serializers.SerializerMethodField()
+    order_by = serializers.SerializerMethodField()
+    transaction_fee =  serializers.SerializerMethodField()
+    gst =  serializers.SerializerMethodField()
+    total =  serializers.SerializerMethodField()
 
     class Meta:
         model = PurchasesRequest
@@ -398,6 +441,38 @@ class PurchasesRequestSerializer(serializers.ModelSerializer):
         if obj.credit_offer:
             return obj.credit_offer.offer_title
         return None
+    
+    def get_order_by(self, obj):
+        if obj.producer:
+            return obj.producer.full_name
+        return None
+    
+    def get_transaction_fee(self, obj):
+        fees =  TransactionFee.objects.first()
+        if fees:
+            return fees.transaction_fee 
+        return 0
+    
+    def get_gst(self, obj):
+        price = obj.credit_offer.price_per_credit 
+        quantity = obj.quantity
+        if price and quantity:
+            return (price*quantity)*0.18
+        return 0
+    
+    def get_total(self, obj):
+        fee = 0
+        fees =  TransactionFee.objects.first()
+        if fees:
+            fee - fees.transaction_fee 
+        
+        price = obj.credit_offer.price_per_credit 
+        quantity = obj.quantity
+        if price and quantity:
+            return (price*quantity) + (price*quantity)*0.18 + fee
+        return 0
+
+
 
     def validate(self, data):
         request = self.context.get('request')
@@ -416,72 +491,7 @@ class PurchasesRequestSerializer(serializers.ModelSerializer):
 
 # TRANSACTION
 class TransactionSerializer(serializers.ModelSerializer):
-    # transaction_proof = serializers.SerializerMethodField()
-    # trail_documents = serializers.SerializerMethodField()
-
-
-    # def get_transaction_proof(self, obj):
-    #     if obj.transaction_proof:
-    #         if obj.transaction_proof.url.startswith('http'):
-    #             return obj.transaction_proof.url
-    #         else:
-    #             # Only add the domain if it's not already there
-    #             return f'https://res.cloudinary.com/{cloud_name}/{obj.transaction_proof.url}'
-                
-    #     return None
-
-    
-    # def get_trail_documents(self, obj):
-    #     if obj.trail_documents:
-    #         if obj.trail_documents.url.startswith('http'):
-    #             return obj.trail_documents.url
-    #         else:
-    #             return f'https://res.cloudinary.com/{cloud_name}/{obj.trail_documents.url}'
-    #     return None
-    
-    # class Meta:
-    #     model = Transaction
-    #     fields ='__all__'
-    #     read_only_fields = [
-    #         'id'
-    #     ]
-
-    # def validate(self, data):
-    #     request = self.context.get('request')
-        
-    #     if self.instance:  # Update
-    #         if not isinstance(request.user, Recycler):
-    #             raise serializers.ValidationError("Only recycler can update transaction")
-    #         if any(k not in ['is_complete', 'status', 'transaction_proof','trail_documents'] for k in data.keys()):
-    #             raise serializers.ValidationError("Only is_complete, status, and transaction_proof can be updated")
-    #         if data.get('status') == 'approved' and  'transaction_proof' not in request.FILES:
-    #             raise serializers.ValidationError("Transaction proof required for approval")
-    #         # if data.get('status') == 'approved' and  'trail_documents' not in request.FILES:
-    #         #     raise serializers.ValidationError("Trail Documents required for approval")
-    #         if data.get('status') == 'approved':
-    #             data['is_complete'] = True
-        
-    #     else:  # Create
-    #         if not isinstance(request.user, Producer):
-    #             raise serializers.ValidationError("Only producer can create transaction")
-        
-    #     return data
-
-       
-    # def update(self, instance, validated_data):
-    #     request = self.context["request"]
-
-    #     if isinstance(request.user,Recycler):  
-    #         request = self.context['request']
-            
-    #         transaction_proof = request.FILES.get('transaction_proof')
-    #         validated_data['transaction_proof'] = transaction_proof
-
-    #         trail_documents = request.FILES.get('trail_documents')
-    #         validated_data['trail_documents'] = trail_documents
-
-    #     # Producer can update all fields
-    #     return super().update(instance, validated_data)
+   
 
     transaction_proof = serializers.SerializerMethodField()
     trail_documents = serializers.SerializerMethodField()
@@ -597,7 +607,6 @@ class TransactionSerializer(serializers.ModelSerializer):
         instance.save()
         return instance
     
-
 
 
 # WASTE FILTER 

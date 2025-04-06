@@ -17,6 +17,7 @@ from django.shortcuts import get_object_or_404
 from .filters import CreditOfferFilter
 from rest_framework.filters import OrderingFilter
 from django_filters.rest_framework import DjangoFilterBackend
+from django.db.models import F
 
 from superadmin.models import TransactionFee
 
@@ -1554,26 +1555,31 @@ class CounterCreditOfferViewSet(viewsets.ModelViewSet):
                    raise ValidationError(f"Your EPR Account's Waste Type does not matches the the waste type of the credit offer you want to buy. Epr's waste type:{producer_epr.waste_type} Credit offer's waste type: {get_credit_offer.waste_type}")
                
                 #CHECK IF the appropriate target exist or not
-                # TODO => TARGET QUANTITY CHECK (SHOULD BE GREATER OR EQUAL TO QUANTITY OF THE REQUEST BODY)
+
+                validated_data = serializer.validated_data
+                quantity = validated_data.get("quantity")
                 epr_target = EPRTarget.objects.filter(
                     epr_account=producer_epr,
                     waste_type=get_credit_offer.waste_type,
                     product_type=get_credit_offer.product_type,
                     credit_type=get_credit_offer.credit_type,
                     is_achieved=False
+                ).annotate(
+                remaining_quantity=F('target_quantity') - F('achieved_quantity')
+                ).filter(
+                    remaining_quantity__gte=quantity
                 ).first()
 
 
                 if not epr_target:
                     raise ValidationError(
-                         f"No matching EPR Target found. Please create an EPR target for the given EPR account where credit type should be {get_credit_offer.credit_type} and product type should be {get_credit_offer.product_type}"
+                         f"No matching EPR Target found. Please create an EPR target for the given EPR account where credit type should be {get_credit_offer.credit_type} and product type should be {get_credit_offer.product_type} and remaining Target quantity is higher than {quantity}"
                     )
 
 
 
                  # Validate quantity against credit_available
-                validated_data = serializer.validated_data
-                quantity = validated_data.get("quantity")
+   
                 credit_available = get_credit_offer.credit_available
 
                 if quantity is None:
@@ -2270,11 +2276,11 @@ class PurchasesRequestViewSet(viewsets.ModelViewSet):
 
 
 
-
+            # if credit_offer.minimum_purchase < credit_offer.credit_available:
             if int(quantity) < int(credit_offer.minimum_purchase):
-                   raise ValidationError("quantity should be greater than minimum purchase")
+                    raise ValidationError("quantity should be greater than or equal to minimum purchase")
             elif int(quantity) > int(credit_offer.credit_available):
-                   raise ValidationError( "quantity should be less than credit availabe")
+                    raise ValidationError( "quantity should be less than or equal to credit availabe")
 
             if not producer_epr_id:
                 raise ValidationError({"error": "producer_epr is required in the request body"})
@@ -2295,12 +2301,17 @@ class PurchasesRequestViewSet(viewsets.ModelViewSet):
                     product_type=credit_offer.product_type,
                     credit_type=credit_offer.credit_type,
                     is_achieved=False
+                ).annotate(
+                remaining_quantity=F('target_quantity') - F('achieved_quantity')
+                ).filter(
+                    remaining_quantity__gte=quantity
                 ).first()
+
 
 
             if not epr_target:
                     raise ValidationError(
-                         f"No matching EPR Target found. Please create an EPR target for the given EPR account where credit type should be {credit_offer.credit_type} and product type should be {credit_offer.product_type}"
+                         f"No matching EPR Target found. Please create an EPR target for the given EPR account where credit type should be {credit_offer.credit_type} and product type should be {credit_offer.product_type} and  remaining Target quantity is higher than {quantity}"
                     )
 
 

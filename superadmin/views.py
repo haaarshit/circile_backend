@@ -15,6 +15,8 @@ from django.db.models import Max, Min, Avg
 
 from django.conf import settings
 from django.core.mail import send_mail
+from django.db.models import F
+
 
 
 # EPR Account Models and Serializers (Assuming you have these in epr_account app)
@@ -161,23 +163,28 @@ class TransactionDetailView(BaseSuperAdminModelDetailView):
             serializer.is_valid(raise_exception=True)
             transaction = serializer.save()
 
-            # TODO SEND MAIL TO RECYCLER IF TRANSACTION GET APPROVED
-            # Move EPRTarget/CreditOffer logic here for Superadmin approval
             if transaction.status == 'approved' and isinstance(request.user, SuperAdmin):
+                credit_offer = transaction.credit_offer
+
+                if credit_offer.credit_available < transaction.credit_quantity:
+                            raise ValidationError(f"Not enough credit is available in credit offer for this transaction. Available credit {credit_offer.credit_available}. Required credit {transaction.credit_quantity} ")
                 epr_target = EPRTarget.objects.filter(
                     epr_account=transaction.producer_epr,
                     waste_type=transaction.waste_type,
                     product_type=transaction.product_type,
                     credit_type=transaction.credit_type,
                     is_achieved=False
+                ).annotate(
+                remaining_quantity=F('target_quantity') - F('achieved_quantity')
+                ).filter(
+                    remaining_quantity__gte=transaction.credit_quantity
                 ).first()
 
                 if not epr_target:
                     raise ValidationError(
-                         f"No matching EPR Target found. Please create an EPR target for the given EPR account where credit type should be {transaction.credit_type}, product type should be {transaction.product_type} and waste type {transaction.waste_type}"
+                         f"No matching EPR Target found. Please create an EPR target for the given EPR account where credit type should be {transaction.credit_type}, product type should be {transaction.product_type} and waste type {transaction.waste_type} and remaining Target quantity is higher than {transaction.credit_quantity}"
                     )
 
-                # TODO => TARGET QUANTITY CHECK (SHOULD BE GREATER OR EQUAL TO QUANTITY OF THE REQUEST BODY)
 
                 if epr_target:
                     epr_target.achieved_quantity += int(transaction.credit_quantity)
@@ -185,16 +192,24 @@ class TransactionDetailView(BaseSuperAdminModelDetailView):
                         epr_target.is_achieved = True
                     epr_target.save()
                 
-                if transaction.counter_credit_offer:
-                    transaction.credit_offer.credit_available -= transaction.credit_quantity 
-                    if transaction.credit_offer.credit_available == 0:
-                        transaction.credit_offer.is_sold = True
-                    transaction.credit_offer.save()
-                else:
-                    transaction.credit_offer.credit_available -= transaction.credit_quantity 
-                    if transaction.credit_offer.credit_available == 0:
-                        transaction.credit_offer.is_sold = True
-                    transaction.credit_offer.save()
+                # if transaction.counter_credit_offer:
+                #     transaction.credit_offer.credit_available -= transaction.credit_quantity 
+                #     if transaction.credit_offer.credit_available == 0:
+                #         transaction.credit_offer.is_sold = True
+                #     transaction.credit_offer.save()
+                # else:
+                # transaction.credit_offer.credit_available -= transaction.credit_quantity 
+                # if transaction.credit_offer.credit_available == 0:
+                #     transaction.credit_offer.is_sold = True
+                # if transaction.credit_offer.credit_available < transaction.credit_offer.minimum_purchase:
+                #     transaction.credit_offer.credit_available = transaction.credit_offer.minimum_purchase
+                # transaction.credit_offer.save()
+      
+                credit_offer.credit_available = credit_offer.credit_available - transaction.credit_quantity
+                if credit_offer.credit_available < credit_offer.minimum_purchase:
+                    credit_offer.minimum_purchase = credit_offer.credit_available
+                credit_offer.is_sold = credit_offer.credit_available == 0
+                credit_offer.save()
 
                   # Email to Recycler
                 recycler = transaction.recycler
@@ -337,22 +352,25 @@ class TransactionDetailView(BaseSuperAdminModelDetailView):
             return Response( serializer.data, status=status.HTTP_200_OK)
         
         except serializers.ValidationError as e:
+
             if isinstance(e.detail, dict):
-            # Flatten the nested dictionary error messages
+            # Flatten dictionary errors
                 error_messages = []
                 for key, value in e.detail.items():
-                    if isinstance(value, list):  # Typical DRF ValidationError structure
-                        error_messages.extend(value)
-                    else:
-                        error_messages.append(str(value))
-                
+                        if isinstance(value, list):
+                            # Extract string from each ErrorDetail object
+                            error_messages.extend(str(err) for err in value)
+                        else:
+                            error_messages.append(str(value))
                 error_message = error_messages[0] if error_messages else "An unknown error occurred."
+            elif isinstance(e.detail, list):
+                    # Handle list of ErrorDetail objects
+                    error_message = str(e.detail[0]) if e.detail else "An unknown error occurred."
             else:
-                error_message = str(e)
-    
+                    error_message = str(e)
+
             return Response({
-         
-                 error_message
+                error_message
             }, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             
