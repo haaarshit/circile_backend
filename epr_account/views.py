@@ -1932,12 +1932,16 @@ class TransactionViewSet(viewsets.ModelViewSet):
                 product_type=data.get('product_type'),
                 credit_type=data.get('credit_type'),
                 is_achieved=False
-            ).first()
+                ).annotate(
+                remaining_quantity=F('target_quantity') - F('achieved_quantity')
+                ).filter(
+                    remaining_quantity__gte=data.get('credit_quantity')
+                ).first()
 
             if not epr_target:
                 return Response({
                     "status": False,
-                    "error": "No matching EPRTarget found for this transaction, Please make epr target for given epr account"
+                    "error":  f"No matching EPR Target found. Please create an EPR target for the given EPR account where credit type should be {data.get('credit_type')}, product type should be {data.get('product_type')} and waste type {data['waste_type']} and remaining Target quantity is higher than {data.get('credit_quantity')}"
                 }, status=status.HTTP_400_BAD_REQUEST)
 
             # Validate credit_quantity against EPRTarget
