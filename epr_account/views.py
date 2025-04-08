@@ -1271,6 +1271,13 @@ class CounterCreditOfferViewSet(viewsets.ModelViewSet):
                     "error": "You are not authorized to update this record."
                 }, status=status.HTTP_403_FORBIDDEN)
             
+            if instance.quantity > instance.credit_offer.credit_available and request.data["status"] == "approved":
+                return Response({
+                    "status": False,
+                    "error": f"Credit offer has only { instance.credit_offer.credit_available } credit than counter credit offer's { instance.quantity }"
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+            
 
     # TODO SEND AN EMAIL TO THE PRODUCER  IF THE OFFER GET ACCEPTED
             serializer = self.get_serializer(instance, data=request.data, partial=True)
@@ -1945,12 +1952,12 @@ class TransactionViewSet(viewsets.ModelViewSet):
                 }, status=status.HTTP_400_BAD_REQUEST)
 
             # Validate credit_quantity against EPRTarget
-            remaining_quantity = epr_target.target_quantity - epr_target.achieved_quantity
-            if float(data['credit_quantity']) > remaining_quantity:
-                return Response({
-                    "status": False,
-                    "error": f"Credit quantity ({data['credit_quantity']}) cannot exceed remaining target quantity ({remaining_quantity})"
-                }, status=status.HTTP_400_BAD_REQUEST)
+            # remaining_quantity = epr_target.target_quantity - epr_target.achieved_quantity
+            # if float(data['credit_quantity']) > remaining_quantity:
+            #     return Response({
+            #         "status": False,
+            #         "error": f"Credit quantity ({data['credit_quantity']}) cannot exceed remaining target quantity ({remaining_quantity})"
+            #     }, status=status.HTTP_400_BAD_REQUEST)
             
             
             # Add producer_epr to data
@@ -1972,14 +1979,14 @@ class TransactionViewSet(viewsets.ModelViewSet):
                 purchases_request.is_complete = True
                 purchases_request.save()
    
-            # Fetch producer and recycler details
-            producer = Producer.objects.get(id=request.user.id)
-            recycler = Recycler.objects.get(id=data['recycler'])
+            # # Fetch producer and recycler details
+            # producer = Producer.objects.get(id=request.user.id)
+            # recycler = Recycler.objects.get(id=data['recycler'])
 
 
-            # comman field
-            email ='support@circle8.in'
-            contact_number = '+91 9620220013'
+            # # comman field
+            # email ='support@circle8.in'
+            # contact_number = '+91 9620220013'
 
             # # Email to Recycler (HTML)
             # recycler_subject = "New Transaction Created"
