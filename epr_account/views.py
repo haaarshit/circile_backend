@@ -1274,7 +1274,7 @@ class CounterCreditOfferViewSet(viewsets.ModelViewSet):
             if instance.quantity > instance.credit_offer.credit_available and request.data["status"] == "approved":
                 return Response({
                     "status": False,
-                    "error": f"Credit offer has only { instance.credit_offer.credit_available } credit than counter credit offer's { instance.quantity }"
+                    "error": f"Credit offer has only { instance.credit_offer.credit_available } credit for counter credit offer's { instance.quantity }"
                 }, status=status.HTTP_400_BAD_REQUEST)
 
             
