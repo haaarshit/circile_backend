@@ -35,7 +35,9 @@ from .serializers import RecyclerSerializer, ProducerSerializer,RecyclerUpdateSe
 from .authentication import CustomJWTAuthentication
 from epr_account.models import RecyclerEPR, ProducerEPR, EPRCredit, EPRTarget, CreditOffer, CounterCreditOffer, Transaction, PurchasesRequest
 
-
+from datetime import datetime
+import os
+import json
 
 
 class RegisterRecyclerView(generics.CreateAPIView):
@@ -552,6 +554,141 @@ class CheckProfileCompletionView(APIView):
                 {"status": False, "message": f"Error checking profile: {str(e)}"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+
+# contact us
+@api_view(['POST'])
+@permission_classes([AllowAny])  # Public route
+def send_contact_email(request):
+    """
+    Public endpoint to send contact email and save message to JSON file
+    """
+    try:
+        # Define required fields
+        required_fields = [
+            'full_name', 'company_name', 'email', 'mobile',
+            'profile', 'category', 'city', 'state', 'message'
+        ]
+        
+        # Validate all required fields are present
+        data = request.data
+        missing_fields = [field for field in required_fields if field not in data or not data[field]]
+        if missing_fields:
+            return Response({
+                "error": f"Missing required fields: {', '.join(missing_fields)}",
+                "status": False
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # Define JSON file path
+        json_dir = getattr(settings, 'CONTACT_JSON_DIR', os.path.join(settings.BASE_DIR, 'contact_messages'))
+        os.makedirs(json_dir, exist_ok=True)
+        json_file = os.path.join(json_dir, 'contact_messages.json')
+
+        # Prepare data entry
+        timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        entry = {
+            'timestamp': timestamp,
+            'full_name': data['full_name'],
+            'company_name': data['company_name'],
+            'email': data['email'],
+            'mobile': data['mobile'],
+            'profile': data['profile'],
+            'category': data['category'],
+            'city': data['city'],
+            'state': data['state'],
+            'message': data['message']
+        }
+
+        # Save to JSON file
+        try:
+            # Read existing data or create new list
+            if os.path.exists(json_file):
+                with open(json_file, 'r', encoding='utf-8') as f:
+                    existing_data = json.load(f)
+                if not isinstance(existing_data, list):
+                    existing_data = []
+            else:
+                existing_data = []
+
+            # Append new entry
+            existing_data.append(entry)
+
+            # Write back to file
+            with open(json_file, 'w', encoding='utf-8') as f:
+                json.dump(existing_data, f, indent=4)
+
+        except Exception as e:
+            return Response({
+                "error": f"Failed to save to JSON: {str(e)}",
+                "status": False
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        # Prepare email content for admin
+        subject = f"New Contact Message from {data['full_name']}"
+        message = f"""
+        New contact message received:
+        
+        Timestamp: {timestamp}
+        Full Name: {data['full_name']}
+        Company Name: {data['company_name']}
+        Email: {data['email']}
+        Mobile: {data['mobile']}
+        Profile: {data['profile']}
+        Category: {data['category']}
+        City: {data['city']}
+        State: {data['state']}
+        Message: {data['message']}
+        """
+        
+        # Send email to admin/support
+        admin_email = settings.DEFAULT_FROM_EMAIL
+        send_mail(
+            subject=subject,
+            message=message,
+            from_email=admin_email,
+            recipient_list=[admin_email],
+            fail_silently=False,
+        )
+        
+        # Send response email to user
+        response_subject = "Thank You for Contacting Us"
+        response_message = f"""
+        Dear {data['full_name']},
+        
+        Thank you for reaching out to us. We have received your message and will get back to you soon.
+        
+        Your Details:
+        Company Name: {data['company_name']}
+        Profile: {data['profile']}
+        Category: {data['category']}
+        City: {data['city']}
+        State: {data['state']}
+        Message: {data['message']}
+        
+        Regards,
+        [Your Company Name] Team
+        """
+        
+        send_mail(
+            subject=response_subject,
+            message=response_message,
+            from_email=admin_email,
+            recipient_list=[data['email']],
+            fail_silently=False,
+        )
+        
+        return Response({
+            "message": "Your message has been received. We'll get back to you soon!",
+            "status": True
+        }, status=status.HTTP_200_OK)
+    
+    except Exception as e:
+        print(f"Contact email error: {str(e)}")
+        return Response({
+            "error": f"Failed to process request: {str(e)}",
+            "status": False
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 @api_view(['POST'])
 def send_verification_email(request):

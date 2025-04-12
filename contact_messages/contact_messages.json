@@ -1,0 +1,14 @@
+[
+    {
+        "timestamp": "2025-04-12 06:44:36",
+        "full_name": "John Doe",
+        "company_name": "Example Corp",
+        "email": "harshittripathi730@gmail.com",
+        "mobile": "+1234567890",
+        "profile": "Recycler",
+        "category": "Plastic",
+        "city": "New York",
+        "state": "NY",
+        "message": "Hello, I have a question about your services"
+    }
+]

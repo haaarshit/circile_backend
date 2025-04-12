@@ -12,7 +12,8 @@ from .views import (
     ForgotPasswordView,
     ResetPasswordView,
     UserCountStatsView,
-    CheckProfileCompletionView
+    CheckProfileCompletionView,
+    send_contact_email
 )
 
 urlpatterns = [
@@ -37,5 +38,7 @@ urlpatterns = [
     path('send-verification-email/', send_verification_email, name='send-verification-email'),
     path('verify-email/<str:user_type>/<str:token>/', verify_email, name='verify-email'),
     path('counts/', UserCountStatsView.as_view(), name='user-epr-stats'),
+
+     path('contact/', send_contact_email, name='send_contact_email'),
 
 ]
