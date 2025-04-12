@@ -17,7 +17,8 @@ from django.conf import settings
 from django.core.mail import send_mail
 from django.db.models import F
 
-
+import os
+import json
 
 # EPR Account Models and Serializers (Assuming you have these in epr_account app)
 from epr_account.models import (
@@ -532,3 +533,63 @@ class CreditOfferPriceStatsView(APIView):
                 {"status": False, "error": str(e)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+        
+
+class ContactMessagesView(ResponseWrapperMixin, APIView):
+    authentication_classes = [SuperAdminJWTAuthentication]
+    permission_classes = [IsSuperAdmin]
+
+    def get(self, request):
+        try:
+            # Define JSON file path
+            json_dir = getattr(settings, 'CONTACT_JSON_DIR', os.path.join(settings.BASE_DIR, 'contact_messages'))
+            json_file = os.path.join(json_dir, 'contact_messages.json')
+
+            # Check if file exists
+            if not os.path.exists(json_file):
+                return Response(
+                    {
+                        "status": False,
+                        "message": "No contact messages found",
+                        "data": []
+                    },
+                    status=status.HTTP_404_NOT_FOUND
+                )
+
+            # Read JSON file
+            with open(json_file, 'r', encoding='utf-8') as f:
+                messages = json.load(f)
+
+            # Validate that messages is a list
+            if not isinstance(messages, list):
+                return Response(
+                    {
+                        "status": False,
+                        "message": "Invalid data format in JSON file",
+                        "data": []
+                    },
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
+
+            # Return messages
+            return Response(messages)
+
+        except json.JSONDecodeError:
+            return Response(
+                {
+                    "status": False,
+                    "message": "Error decoding JSON file",
+                    "data": []
+                },
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+        except Exception as e:
+            return Response(
+                {
+                    "status": False,
+                    "error": str(e),
+                    "data": []
+                },
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+

@@ -666,7 +666,7 @@ def send_contact_email(request):
         Message: {data['message']}
         
         Regards,
-        [Your Company Name] Team
+        Circle8 Team
         """
         
         send_mail(

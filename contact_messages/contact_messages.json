@@ -10,5 +10,17 @@
         "city": "New York",
         "state": "NY",
         "message": "Hello, I have a question about your services"
+    },
+    {
+        "timestamp": "2025-04-12 07:00:43",
+        "full_name": "John the descorp",
+        "company_name": "Example Cosrp",
+        "email": "harshittripathi730@gmail.com",
+        "mobile": "+1234567890",
+        "profile": "Recyclerss",
+        "category": "Plastisc",
+        "city": "New York",
+        "state": "NY",
+        "message": "Hello, I have a question about your services"
     }
 ]
