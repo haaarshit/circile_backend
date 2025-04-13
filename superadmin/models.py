@@ -2,6 +2,7 @@ from django.db import models
 from django.contrib.auth.hashers import make_password
 from django.core.validators import EmailValidator,MinValueValidator
 import uuid 
+from cloudinary.models import CloudinaryField
 
 class SuperAdmin(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -52,3 +53,24 @@ class TransactionFee(models.Model):
     class Meta:
         verbose_name = "Transaction Fee"
         verbose_name_plural = "Transaction Fees"
+
+
+class Blog(models.Model):
+    title = models.CharField(max_length=255)
+    sub_title = models.CharField(max_length=255)
+
+    content = models.TextField()
+
+    image = CloudinaryField('image', blank=True, null=True, folder='blogs')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    created_by = models.ForeignKey(
+        SuperAdmin,
+        on_delete=models.CASCADE, related_name='blogs',null=True
+    )
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return self.title

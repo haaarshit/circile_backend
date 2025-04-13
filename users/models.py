@@ -436,3 +436,95 @@ class Producer(BaseUserModel):
     class Meta:
         verbose_name = 'Producer'
         verbose_name_plural = 'Producers'
+
+
+# NEWS LETTER
+
+class Subscriber(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)  # UUID primary key
+
+    email = models.EmailField(unique=True)
+    is_subscribed = models.BooleanField(default=True)
+    subscribed_at = models.DateTimeField(auto_now_add=True)
+    unsubscribe_token = models.CharField(max_length=255, null=True, blank=True)
+    token_created_at = models.DateTimeField(null=True, blank=True)
+
+    def generate_unsubscribe_token(self):
+        self.unsubscribe_token = str(uuid.uuid4())
+        self.token_created_at = timezone.now()
+        self.save()
+
+    def send_unsubscribe_email(self):
+
+        FRONTEND_URL = os.getenv('FRONTEND_URL')
+        subject = "Subscribed to Circle8 Newsletter"
+        message = f"""
+        Dear Subscriber,
+        Thank you for subscribing our news letter.
+
+
+        To unsubscribe from our newsletter, please click the link below:
+        {FRONTEND_URL}/newsletter/unsubscribe/{self.unsubscribe_token}
+
+        If you did not request this, please ignore this email.
+
+        Regards,
+        Circle8 Team
+        """
+        # message = f"""
+        # Dear Subscriber,
+        # Thank you for subscribing our news letter.
+
+        # Regards,
+        # Circle8 Team
+        # """
+        send_mail(
+            subject=subject,
+            message=message,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[self.email],
+            fail_silently=False,
+        )
+
+    def __str__(self):
+        return self.email
+
+
+class Newsletter(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)  # UUID primary key
+
+    title = models.CharField(max_length=255)
+    content = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    sent_at = models.DateTimeField(null=True, blank=True)
+    is_sent = models.BooleanField(default=False)
+
+    def send_newsletter(self):
+        if self.is_sent:
+            return False
+
+        subscribers = Subscriber.objects.filter(is_subscribed=True)
+        subject = self.title
+        message = f"""
+            {self.content}
+            Regards,
+            Circle8 Team
+            """
+        from_email = settings.DEFAULT_FROM_EMAIL
+
+        for subscriber in subscribers:
+            send_mail(
+                subject=subject,
+                message=message,
+                from_email=from_email,
+                recipient_list=[subscriber.email],
+                fail_silently=True,
+            )
+
+        self.is_sent = True
+        self.sent_at = timezone.now()
+        self.save()
+        return True
+
+    def __str__(self):
+        return self.title

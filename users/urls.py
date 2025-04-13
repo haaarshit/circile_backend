@@ -13,7 +13,11 @@ from .views import (
     ResetPasswordView,
     UserCountStatsView,
     CheckProfileCompletionView,
-    send_contact_email
+    send_contact_email,
+    SubscribeView,
+    unsubscribe_view,
+    PublicBlogListView,
+    PublicBlogDetailView
 )
 
 urlpatterns = [
@@ -40,5 +44,13 @@ urlpatterns = [
     path('counts/', UserCountStatsView.as_view(), name='user-epr-stats'),
 
      path('contact/', send_contact_email, name='send_contact_email'),
+
+    #  news letter
+    path('newsletter/subscribe/', SubscribeView.as_view(), name='subscribe'),
+    path('newsletter/unsubscribe/<str:token>/', unsubscribe_view, name='unsubscribe'),
+
+    # blogs
+    path('blogs/', PublicBlogListView.as_view(), name='public-blog-list'),  
+    path('blogs/<int:pk>/', PublicBlogDetailView.as_view(), name='public-blog-detail'),
 
 ]

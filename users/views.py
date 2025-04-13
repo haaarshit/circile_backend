@@ -1,4 +1,4 @@
-from rest_framework import status, serializers,generics
+from rest_framework import status, serializers,generics,pagination
 from rest_framework.response import Response
 from rest_framework.decorators import api_view, authentication_classes, permission_classes
 from rest_framework_simplejwt.views import TokenObtainPairView
@@ -30,11 +30,12 @@ from django.core.mail import send_mail
 from django.utils import timezone
 from datetime import timedelta
 from .utils import validate_unique_email
-from .models import Recycler, Producer
-from .serializers import RecyclerSerializer, ProducerSerializer,RecyclerUpdateSerializer,ProducerUpdateSerializer,RecyclerDetailSerializer,ProducerDetailSerializer,ForgotPasswordSerializer,ResetPasswordSerializer
+from .models import Recycler, Producer, Subscriber
+from .serializers import RecyclerSerializer, ProducerSerializer,RecyclerUpdateSerializer,ProducerUpdateSerializer,RecyclerDetailSerializer,ProducerDetailSerializer,ForgotPasswordSerializer,ResetPasswordSerializer,SubscriberSerializer
 from .authentication import CustomJWTAuthentication
 from epr_account.models import RecyclerEPR, ProducerEPR, EPRCredit, EPRTarget, CreditOffer, CounterCreditOffer, Transaction, PurchasesRequest
-
+from superadmin.models import Blog
+from superadmin.serializers import BlogSerializer
 from datetime import datetime
 import os
 import json
@@ -556,6 +557,135 @@ class CheckProfileCompletionView(APIView):
             )
 
 
+# NEWSLETTER
+class SubscribeView(generics.CreateAPIView):
+    """
+    View for subscribing to the newsletter
+    """
+    queryset = Subscriber.objects.all()
+    serializer_class = SubscriberSerializer
+    permission_classes = [AllowAny]
+
+    def create(self, request, *args, **kwargs):
+        try:
+            serializer = self.get_serializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            subscriber = serializer.save()
+            subscriber.generate_unsubscribe_token()
+            subscriber.send_unsubscribe_email()
+
+            return Response(
+                {
+                    "message": "Successfully subscribed to the newsletter.",
+                    "data": serializer.data,
+                    "status": True
+                },
+                status=status.HTTP_201_CREATED
+            )
+        except Exception as e:
+            return Response(
+                {"error": str(e), "status": False},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def unsubscribe_view(request, token):
+    """
+    View for unsubscribing from the newsletter
+    """
+    try:
+        subscriber = get_object_or_404(Subscriber, unsubscribe_token=token)
+
+        # Check if token is expired 
+        if (timezone.now() - subscriber.token_created_at).total_seconds() > 7 * 24 * 3600:
+            return Response(
+                {"error": "Unsubscribe token has expired", "status": False},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        subscriber.is_subscribed = False
+        subscriber.unsubscribe_token = None
+        subscriber.save()
+
+        return Response(
+            {"message": "Successfully unsubscribed from the newsletter", "status": True},
+            status=status.HTTP_200_OK
+        )
+    except Exception as e:
+        return Response(
+            {"error": str(e), "status": False},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+# BLOGS
+class PublicBlogListView(generics.ListAPIView):
+    queryset = Blog.objects.all()
+    serializer_class = BlogSerializer
+    permission_classes = [AllowAny]
+    pagination_class = pagination.PageNumberPagination
+
+    def list(self, request, *args, **kwargs):
+        try:
+            queryset = self.filter_queryset(self.get_queryset())
+
+            page = self.paginate_queryset(queryset)
+            if page is not None:
+                serializer = self.get_serializer(page, many=True)
+                return self.get_paginated_response({
+                    "status": True,
+                    "data": serializer.data
+                })
+
+            serializer = self.get_serializer(queryset, many=True)
+            return Response({
+                "status": True,
+                "data": serializer.data
+            }, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response(
+                {"status": False, "error": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
+
+class PublicBlogDetailView(generics.RetrieveAPIView):
+    queryset = Blog.objects.all()
+    serializer_class = BlogSerializer
+    permission_classes = [AllowAny]
+
+    def get(self, request, *args, **kwargs):
+        try:
+            instance = self.get_object()  
+            serializer = self.get_serializer(instance)
+            return Response(
+                {
+                    "status": True,
+                    "data": serializer.data
+                },
+                status=status.HTTP_200_OK
+            )
+        except Blog.DoesNotExist:
+            return Response(
+                {
+                    "status": False,
+                    "error": "Blog not found"
+                },
+                status=status.HTTP_404_NOT_FOUND
+            )
+        except Exception as e:
+            return Response(
+                {
+                    "status": False,
+                    "error": str(e)
+                },
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+        
 # contact us
 @api_view(['POST'])
 @permission_classes([AllowAny])  # Public route

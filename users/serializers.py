@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Recycler, Producer
+from .models import Recycler, Producer, Subscriber
 from decouple import config
 cloud_name = config('CLOUDINARY_CLOUD_NAME')
 
@@ -247,3 +247,14 @@ class ForgotPasswordSerializer(serializers.Serializer):
 class ResetPasswordSerializer(serializers.Serializer):
     token = serializers.CharField(max_length=100)
     new_password = serializers.CharField(min_length=8)
+
+class SubscriberSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Subscriber
+        fields = ['email', 'is_subscribed', 'subscribed_at']
+        read_only_fields = ['subscribed_at', 'is_subscribed']
+
+    def validate_email(self, value):
+        if Subscriber.objects.filter(email=value).exists():
+            raise serializers.ValidationError("This email is already subscribed.")
+        return value

@@ -2,8 +2,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.tokens import RefreshToken
-from .models import SuperAdmin,TransactionFee
-from .serializers import SuperAdminSerializer, SuperAdminLoginSerializer,TransactionFeeSerializer
+from .models import SuperAdmin,TransactionFee,Blog
 from .authentication import SuperAdminJWTAuthentication
 from .permissions import IsSuperAdmin
 from .utils import ResponseWrapperMixin  # Import the mixin
@@ -16,6 +15,7 @@ from django.db.models import Max, Min, Avg
 from django.conf import settings
 from django.core.mail import send_mail
 from django.db.models import F
+from django.shortcuts import get_object_or_404
 
 import os
 import json
@@ -32,8 +32,12 @@ from epr_account.serializers import (
 )
 
 # User Models and Serializers (Assuming you have these in users app)
-from users.models import Recycler, Producer
+from users.models import Recycler, Producer,Newsletter
 from users.serializers import RecyclerSerializer, ProducerSerializer,ProducerDetailSerializer,RecyclerDetailSerializer
+
+from .serializers import SuperAdminSerializer, SuperAdminLoginSerializer,TransactionFeeSerializer,NewsletterSerializer,BlogSerializer
+
+
 
 # SuperAdmin Login View
 class SuperAdminLoginView(APIView):
@@ -593,3 +597,119 @@ class ContactMessagesView(ResponseWrapperMixin, APIView):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
+
+# NEWSLETTER
+
+class CreateNewsletterView(ResponseWrapperMixin, generics.CreateAPIView):
+    """
+    View for creating a newsletter (SuperAdmin only)
+    """
+    queryset = Newsletter.objects.all()
+    serializer_class = NewsletterSerializer
+    authentication_classes = [SuperAdminJWTAuthentication]
+    permission_classes = [IsSuperAdmin]
+
+    def create(self, request, *args, **kwargs):
+        try:
+            serializer = self.get_serializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            newsletter = serializer.save()
+
+            return Response(
+                    serializer.data,
+                    status=status.HTTP_201_CREATED
+
+            )
+        except Exception as e:
+            return Response(
+                {"error": str(e), "status": False},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+class SendNewsletterView(ResponseWrapperMixin, APIView):
+    """
+    View for sending a newsletter to all subscribers (SuperAdmin only)
+    """
+    authentication_classes = [SuperAdminJWTAuthentication]
+    permission_classes = [IsSuperAdmin]
+
+    def post(self, request, newsletter_id):
+        try:
+            newsletter = get_object_or_404(Newsletter, id=newsletter_id)
+            if newsletter.is_sent:
+                return Response(
+                    "This newsletter has already been sent",
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            if newsletter.send_newsletter():
+                return Response(
+                    "Newsletter sent successfully",
+                    status=status.HTTP_200_OK
+                )
+            else:
+                return Response(
+                    {"error": "Failed to send newsletter", "status": False},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+        except Exception as e:
+            return Response(
+                {"error": str(e), "status": False},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
+class ListNewslettersView(ResponseWrapperMixin, generics.ListAPIView):
+    """
+    View for listing all newsletters (SuperAdmin only)
+    """
+    queryset = Newsletter.objects.all()
+    serializer_class = NewsletterSerializer
+    authentication_classes = [SuperAdminJWTAuthentication]
+    permission_classes = [IsSuperAdmin]
+
+    def list(self, request, *args, **kwargs):
+        try:
+            queryset = self.get_queryset()
+            serializer = self.get_serializer(queryset, many=True)
+            return Response(
+                    serializer.data,
+                status=status.HTTP_200_OK
+            )
+        except Exception as e:
+            return Response(
+                {"error": str(e), "status": False},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+        
+# BLOGS
+
+class BlogListCreateView(ResponseWrapperMixin, generics.ListCreateAPIView):
+    queryset = Blog.objects.all()
+    serializer_class = BlogSerializer
+    authentication_classes = [SuperAdminJWTAuthentication]
+    permission_classes = [IsSuperAdmin]
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ['title', 'created_at']
+
+    def perform_create(self, serializer):
+        if not isinstance(self.request.user, SuperAdmin):
+            raise ValidationError("Only SuperAdmins can create blogs.")
+        serializer.save(created_by=self.request.user)
+
+class BlogDetailView(ResponseWrapperMixin, generics.RetrieveUpdateDestroyAPIView):
+    queryset = Blog.objects.all()
+
+    serializer_class = BlogSerializer
+    authentication_classes = [SuperAdminJWTAuthentication]
+    permission_classes = [IsSuperAdmin]
+
+    def perform_update(self, serializer):
+        if not isinstance(self.request.user, SuperAdmin):
+            raise ValidationError("Only SuperAdmins can update blogs.")
+        serializer.save()
+
+    def perform_destroy(self, instance):
+        if not isinstance(self.request.user, SuperAdmin):
+            raise ValidationError("Only SuperAdmins can delete blogs.")
+        instance.delete()

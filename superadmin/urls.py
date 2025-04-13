@@ -13,7 +13,9 @@ from .views import (
     PurchasesRequestListCreateView,PurchasesRequestDetailView,
     TransactionFeeListCreateView,TransactionFeeDetailView,
     SuperAdminCountStatsView,CreditOfferPriceStatsView,
-    ContactMessagesView
+    ContactMessagesView,
+    CreateNewsletterView,SendNewsletterView,ListNewslettersView,
+    BlogListCreateView,BlogDetailView
 )
 
 urlpatterns = [
@@ -71,5 +73,14 @@ urlpatterns = [
     path('credit-offer-price-stats/', CreditOfferPriceStatsView.as_view(), name='credit-offer-price-stats'),
 
     path('contact-messages/', ContactMessagesView.as_view(), name='contact_messages'),
+
+    # NEWSLETTER
+    path('newsletters/create/', CreateNewsletterView.as_view(), name='create-newsletter'),
+    path('newsletters/send/<uuid:newsletter_id>/', SendNewsletterView.as_view(), name='send-newsletter'),
+    path('newsletters/', ListNewslettersView.as_view(), name='list-newsletters'),
+
+    # Blogs
+    path('blogs/', BlogListCreateView.as_view(), name='blog-list-create'),
+    path('blogs/<int:pk>/', BlogDetailView.as_view(), name='blog-detail'),
 
 ]
