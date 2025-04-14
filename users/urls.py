@@ -51,6 +51,8 @@ urlpatterns = [
 
     # blogs
     path('blogs/', PublicBlogListView.as_view(), name='public-blog-list'),  
-    path('blogs/<int:pk>/', PublicBlogDetailView.as_view(), name='public-blog-detail'),
+    # path('blogs/<int:pk>/', PublicBlogDetailView.as_view(), name='public-blog-detail'),
+    path('blogs/<str:pk>/', PublicBlogDetailView.as_view(), name='public-blog-detail'),
+
 
 ]

@@ -68,8 +68,8 @@ class BlogSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Blog
-        fields = ['id', 'title', 'content', 'image', 'created_at', 'updated_at', 'created_by','sub_title']
-        read_only_fields = ['created_at', 'updated_at', 'created_by']
+        fields = ['id', 'title', 'content', 'image', 'created_at', 'updated_at', 'created_by','sub_title','slug']
+        read_only_fields = ['id','created_at', 'updated_at', 'created_by','slug']
 
     def validate(self, data):
         request = self.context.get('request')

@@ -81,6 +81,6 @@ urlpatterns = [
 
     # Blogs
     path('blogs/', BlogListCreateView.as_view(), name='blog-list-create'),
-    path('blogs/<int:pk>/', BlogDetailView.as_view(), name='blog-detail'),
+    path('blogs/<str:pk>/', BlogDetailView.as_view(), name='blog-detail'),
 
 ]

@@ -13,7 +13,6 @@ from rest_framework.parsers import JSONParser, MultiPartParser, FormParser
 # Import serializer for user updates
 
 from django.contrib.auth.hashers import check_password
-from rest_framework_simplejwt.tokens import RefreshToken
 
 
 from rest_framework.views import APIView
@@ -39,6 +38,7 @@ from superadmin.serializers import BlogSerializer
 from datetime import datetime
 import os
 import json
+from django.http import Http404
 
 
 class RegisterRecyclerView(generics.CreateAPIView):
@@ -654,22 +654,73 @@ class PublicBlogListView(generics.ListAPIView):
 
 
 class PublicBlogDetailView(generics.RetrieveAPIView):
+    # queryset = Blog.objects.all()
+    # serializer_class = BlogSerializer
+    # permission_classes = [AllowAny]
+
+    # def get(self, request, *args, **kwargs):
+    #     try:
+    #         instance = self.get_object()  
+    #         serializer = self.get_serializer(instance)
+    #         return Response(
+    #             {
+    #                 "status": True,
+    #                 "data": serializer.data
+    #             },
+    #             status=status.HTTP_200_OK
+    #         )
+    #     except Blog.DoesNotExist:
+    #         return Response(
+    #             {
+    #                 "status": False,
+    #                 "error": "Blog not found"
+    #             },
+    #             status=status.HTTP_404_NOT_FOUND
+    #         )
+    #     except Exception as e:
+    #         return Response(
+    #             {
+    #                 "status": False,
+    #                 "error": str(e)
+    #             },
+    #             status=status.HTTP_500_INTERNAL_SERVER_ERROR
+    #         )
     queryset = Blog.objects.all()
     serializer_class = BlogSerializer
     permission_classes = [AllowAny]
+    lookup_field = 'pk'  
 
-    def get(self, request, *args, **kwargs):
+    def get_object(self):
+        lookup_value = self.kwargs.get('pk', '')
+        if not lookup_value:
+            raise Http404("Blog identifier not provided")
+
+        # Try to fetch by ID (if numeric)
+        if lookup_value.isdigit():
+            try:
+                return Blog.objects.get(id=int(lookup_value))
+            except Blog.DoesNotExist:
+                pass  # Try slug next
+
+        # Try to fetch by slug
         try:
-            instance = self.get_object()  
+            return Blog.objects.get(slug=lookup_value)
+        except Blog.DoesNotExist:
+            raise Http404("Blog not found")
+
+    def retrieve(self, request, *args, **kwargs):
+        try:
+            instance = self.get_object()
             serializer = self.get_serializer(instance)
             return Response(
                 {
                     "status": True,
+                    "message": "Blog retrieved successfully",
                     "data": serializer.data
                 },
                 status=status.HTTP_200_OK
             )
-        except Blog.DoesNotExist:
+        except Http404:
             return Response(
                 {
                     "status": False,

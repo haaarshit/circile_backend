@@ -19,6 +19,8 @@ from django.shortcuts import get_object_or_404
 
 import os
 import json
+from django.http import Http404
+
 
 # EPR Account Models and Serializers (Assuming you have these in epr_account app)
 from epr_account.models import (
@@ -699,10 +701,25 @@ class BlogListCreateView(ResponseWrapperMixin, generics.ListCreateAPIView):
 
 class BlogDetailView(ResponseWrapperMixin, generics.RetrieveUpdateDestroyAPIView):
     queryset = Blog.objects.all()
-
     serializer_class = BlogSerializer
     authentication_classes = [SuperAdminJWTAuthentication]
     permission_classes = [IsSuperAdmin]
+    lookup_field = 'pk'  # Placeholder for ID or slug
+
+    def get_object(self):
+        lookup_value = self.kwargs.get('pk', '')
+        if not lookup_value:
+            raise Http404("Blog identifier not provided")
+
+        if lookup_value.isdigit():
+            try:
+                return Blog.objects.get(id=int(lookup_value))
+            except Blog.DoesNotExist:
+                pass  
+        try:
+            return Blog.objects.get(slug=lookup_value)
+        except Blog.DoesNotExist:
+            raise Http404("Blog not found")
 
     def perform_update(self, serializer):
         if not isinstance(self.request.user, SuperAdmin):

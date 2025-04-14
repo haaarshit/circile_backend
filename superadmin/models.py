@@ -3,6 +3,8 @@ from django.contrib.auth.hashers import make_password
 from django.core.validators import EmailValidator,MinValueValidator
 import uuid 
 from cloudinary.models import CloudinaryField
+from django.utils.text import slugify
+
 
 class SuperAdmin(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -61,6 +63,9 @@ class Blog(models.Model):
 
     content = models.TextField()
 
+    slug = models.SlugField(max_length=255, unique=True, blank=True)
+
+
     image = CloudinaryField('image', blank=True, null=True, folder='blogs')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -74,3 +79,15 @@ class Blog(models.Model):
 
     def __str__(self):
         return self.title
+    
+    def save(self, *args, **kwargs):
+        # Auto-generate slug from title if not provided
+        if not self.slug:
+            self.slug = slugify(self.title)
+            # Ensure slug is unique by appending a counter if necessary
+            original_slug = self.slug
+            counter = 1
+            while Blog.objects.filter(slug=self.slug).exclude(id=self.id).exists():
+                self.slug = f"{original_slug}-{counter}"
+                counter += 1
+        super().save(*args, **kwargs)
