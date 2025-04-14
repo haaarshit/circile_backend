@@ -100,7 +100,7 @@ class BlogSerializer(serializers.ModelSerializer):
     def to_representation(self, instance):
         representation = super().to_representation(instance)
         if instance.image:
-            if str(instance.image).startswith('http'):
+            if instance.image.url.startswith('http'):
                 representation['image'] = instance.image.url
             else:
                 representation['image'] = f'https://res.cloudinary.com/{cloud_name}/{instance.image.url}'
