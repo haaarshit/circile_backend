@@ -13,6 +13,8 @@ from rest_framework.parsers import JSONParser, MultiPartParser, FormParser
 # Import serializer for user updates
 
 from django.contrib.auth.hashers import check_password
+from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework import filters
 
 
 from rest_framework.views import APIView
@@ -39,7 +41,46 @@ from datetime import datetime
 import os
 import json
 from django.http import Http404
+# superadmin/pagination.py
+from rest_framework.pagination import PageNumberPagination
+from rest_framework.response import Response
+import math
+from .filter import BlogFilter
 
+
+class CustomPagination(PageNumberPagination):
+    page_size = 9  # Adjust as needed
+    page_size_query_param = 'page_size'
+    max_page_size = 100
+
+    def get_next_page_number(self):
+        if not self.page.has_next():
+            return None
+        return self.page.next_page_number()
+
+    def get_previous_page_number(self):
+        if not self.page.has_previous():
+            return None
+        return self.page.previous_page_number()
+    
+    def get_last_page_number(self):
+        if self.page.paginator.count == 0:
+            return None
+        return math.ceil(self.page.paginator.count / self.page.paginator.per_page)
+
+
+    def get_paginated_response(self, data):
+        return Response({
+            'status': True,
+            'message': 'Blogs retrieved successfully',
+            "pagination":{            
+            'total': self.page.paginator.count,
+            'next': self.get_next_page_number(),
+            'previous': self.get_previous_page_number(),
+            'last': self.get_last_page_number(),
+            },
+            'data': data
+        })
 
 class RegisterRecyclerView(generics.CreateAPIView):
     """
@@ -625,7 +666,11 @@ class PublicBlogListView(generics.ListAPIView):
     queryset = Blog.objects.all()
     serializer_class = BlogSerializer
     permission_classes = [AllowAny]
-    pagination_class = pagination.PageNumberPagination
+    pagination_class = CustomPagination
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter]
+    filterset_class = BlogFilter
+
+    search_fields = ['title', 'content']  # Keyword search fields
 
     def list(self, request, *args, **kwargs):
         try:
@@ -634,15 +679,11 @@ class PublicBlogListView(generics.ListAPIView):
             page = self.paginate_queryset(queryset)
             if page is not None:
                 serializer = self.get_serializer(page, many=True)
-                return self.get_paginated_response({
-                    "status": True,
-                    "data": serializer.data
-                })
+                return self.get_paginated_response( serializer.data)
 
             serializer = self.get_serializer(queryset, many=True)
             return Response({
-                "status": True,
-                "data": serializer.data
+                serializer.data
             }, status=status.HTTP_200_OK)
 
         except Exception as e:

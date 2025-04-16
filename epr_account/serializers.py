@@ -99,7 +99,7 @@ class ProducerEPRSerializer(serializers.ModelSerializer):
         return super().create(validated_data)
     
 class EPRCreditSerializer(serializers.ModelSerializer):
-    registered_name = serializers.SerializerMethodField()  # get registered date
+    registered_name = serializers.SerializerMethodField()  
 
     class Meta:
         model = EPRCredit

@@ -5,7 +5,6 @@ import uuid
 from cloudinary.models import CloudinaryField
 from django.utils.text import slugify
 
-
 class SuperAdmin(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     email = models.EmailField(
