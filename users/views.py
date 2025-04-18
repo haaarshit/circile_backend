@@ -46,41 +46,11 @@ from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 import math
 from .filter import BlogFilter
+from .pagination import CustomPagination
+from django.utils.decorators import method_decorator
+from django.views.decorators.cache import cache_page
 
 
-class CustomPagination(PageNumberPagination):
-    page_size = 9  # Adjust as needed
-    page_size_query_param = 'page_size'
-    max_page_size = 100
-
-    def get_next_page_number(self):
-        if not self.page.has_next():
-            return None
-        return self.page.next_page_number()
-
-    def get_previous_page_number(self):
-        if not self.page.has_previous():
-            return None
-        return self.page.previous_page_number()
-    
-    def get_last_page_number(self):
-        if self.page.paginator.count == 0:
-            return None
-        return math.ceil(self.page.paginator.count / self.page.paginator.per_page)
-
-
-    def get_paginated_response(self, data):
-        return Response({
-            'status': True,
-            'message': 'Blogs retrieved successfully',
-            "pagination":{            
-            'total': self.page.paginator.count,
-            'next': self.get_next_page_number(),
-            'previous': self.get_previous_page_number(),
-            'last': self.get_last_page_number(),
-            },
-            'data': data
-        })
 
 class RegisterRecyclerView(generics.CreateAPIView):
     """
@@ -672,6 +642,7 @@ class PublicBlogListView(generics.ListAPIView):
 
     search_fields = ['title', 'content']  # Keyword search fields
 
+    @method_decorator(cache_page(60 * 30))
     def list(self, request, *args, **kwargs):
         try:
             queryset = self.filter_queryset(self.get_queryset())
@@ -692,7 +663,24 @@ class PublicBlogListView(generics.ListAPIView):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
-
+class LatestBlogsView(generics.ListAPIView):
+    queryset = Blog.objects.all().order_by('-created_at')[:6]
+    serializer_class = BlogSerializer
+    permission_classes = [AllowAny]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter]
+    filterset_class = BlogFilter
+    search_fields = ['title', 'content']
+    @method_decorator(cache_page(60 * 60 * 2))
+    def list(self, request, *args, **kwargs):
+        try:
+            queryset = self.filter_queryset(self.get_queryset())
+            serializer = self.get_serializer(queryset, many=True)
+            return Response({"status":True,"data":serializer.data}, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response(
+                {"status": False, "error": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
 class PublicBlogDetailView(generics.RetrieveAPIView):
     # queryset = Blog.objects.all()

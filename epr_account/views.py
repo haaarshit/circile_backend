@@ -22,7 +22,8 @@ from django.db.models import F
 from superadmin.models import TransactionFee
 
 from django.conf import settings
-
+from django.utils.decorators import method_decorator
+from django.views.decorators.cache import cache_page
 
 class IsRecycler(permissions.BasePermission):
     """Custom permission to allow only recycler users"""
@@ -1633,6 +1634,7 @@ class CounterCreditOfferViewSet(viewsets.ModelViewSet):
 
 
 # PUBLIC VIEW FOR LISTING CREDIT OFFERS
+@method_decorator(cache_page(60 * 30), name='dispatch')
 class PublicCreditOfferListView(generics.ListAPIView):
     queryset = CreditOffer.objects.filter(is_sold=False).select_related('epr_account', 'epr_credit')
     serializer_class = CreditOfferSerializer
@@ -1665,6 +1667,7 @@ class PublicCreditOfferListView(generics.ListAPIView):
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 # New Detail View
+@method_decorator(cache_page(60 * 30), name='dispatch')
 class PublicCreditOfferDetailView(generics.RetrieveAPIView):
     queryset = CreditOffer.objects.filter(is_sold=False).select_related('epr_account', 'epr_credit')
     serializer_class = CreditOfferSerializer
@@ -2418,8 +2421,9 @@ class PurchasesRequestViewSet(viewsets.ModelViewSet):
             
             serializer = self.get_serializer(instance, data=request.data, partial=True)
             serializer.is_valid(raise_exception=True)
+            # TODO => CHECK THAT QUANITY SHOULD NOT EXCEED THE CREDIT AVAILABLE OF THE CREDIT OFFER
             purchase_request = serializer.save()
-            # TODO => SEND MAIL TO PRODUCER IF TRANSACTION REQUEST GET APPROVED
+    
 
 
             # Send email to Producer if Purchase Request is approved
@@ -2688,6 +2692,7 @@ class OrderDetailView(APIView):
 
 
 # WASTE FILTERS
+@method_decorator(cache_page(60 * 30), name='dispatch')
 class WasteTypeDetailView(APIView):
     def get(self, request, waste_type_name):
         try:
@@ -2706,6 +2711,7 @@ class WasteTypeDetailView(APIView):
             }
             return Response(response_data, status=status.HTTP_404_NOT_FOUND)
 
+@method_decorator(cache_page(60 * 30), name='dispatch')
 class WasteTypeListView(APIView):
     def get(self, request):
         waste_types = WasteType.objects.all()
@@ -2716,6 +2722,7 @@ class WasteTypeListView(APIView):
         }
         return Response(response_data, status=status.HTTP_200_OK)
 
+@method_decorator(cache_page(60 * 30), name='dispatch')
 class WasteTypeNamesView(APIView):
     def get(self, request):
         waste_types = WasteType.objects.all()

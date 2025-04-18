@@ -17,7 +17,8 @@ from .views import (
     SubscribeView,
     unsubscribe_view,
     PublicBlogListView,
-    PublicBlogDetailView
+    PublicBlogDetailView,
+    LatestBlogsView
 )
 
 urlpatterns = [
@@ -51,6 +52,7 @@ urlpatterns = [
 
     # blogs
     path('blogs/', PublicBlogListView.as_view(), name='public-blog-list'),  
+    path('blogs/latest/', LatestBlogsView.as_view(), name='latest-blog-list'),  
     # path('blogs/<int:pk>/', PublicBlogDetailView.as_view(), name='public-blog-detail'),
     path('blogs/<str:pk>/', PublicBlogDetailView.as_view(), name='public-blog-detail'),
 

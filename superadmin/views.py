@@ -16,7 +16,7 @@ from django.conf import settings
 from django.core.mail import send_mail
 from django.db.models import F
 from django.shortcuts import get_object_or_404
-
+from users.pagination import CustomPagination
 import os
 import json
 from django.http import Http404
@@ -97,6 +97,7 @@ class RecyclerEPRListCreateView(BaseSuperAdminModelView):
     queryset = RecyclerEPR.objects.all()
     serializer_class = RecyclerEPRSerializer
     filterset_fields = ['epr_registration_number', 'waste_type', 'recycler_type', 'city', 'state']
+    pagination_class = None
 
 class RecyclerEPRDetailView(BaseSuperAdminModelDetailView):
     queryset = RecyclerEPR.objects.all()
@@ -107,6 +108,8 @@ class ProducerEPRListCreateView(BaseSuperAdminModelView):
     queryset = ProducerEPR.objects.all()
     serializer_class = ProducerEPRSerializer
     filterset_fields = ['epr_registration_number', 'waste_type', 'producer_type', 'city', 'state']
+    pagination_class = None
+
 
 class ProducerEPRDetailView(BaseSuperAdminModelDetailView):
     queryset = ProducerEPR.objects.all()
@@ -117,6 +120,7 @@ class EPRCreditListCreateView(BaseSuperAdminModelView):
     queryset = EPRCredit.objects.all()
     serializer_class = EPRCreditSerializer
     filterset_fields = ['epr_registration_number', 'waste_type', 'product_type', 'credit_type', 'year']
+    pagination_class = None
 
 class EPRCreditDetailView(BaseSuperAdminModelDetailView):
     queryset = EPRCredit.objects.all()
@@ -127,6 +131,8 @@ class EPRTargetListCreateView(BaseSuperAdminModelView):
     queryset = EPRTarget.objects.all()
     serializer_class = EPRTargetSerializer
     filterset_fields = ['epr_registration_number', 'waste_type', 'product_type', 'credit_type', 'FY','is_achieved']
+    pagination_class = None
+
 
 class EPRTargetDetailView(BaseSuperAdminModelDetailView):
     queryset = EPRTarget.objects.all()
@@ -137,6 +143,7 @@ class CreditOfferListCreateView(BaseSuperAdminModelView):
     queryset = CreditOffer.objects.all()
     serializer_class = CreditOfferSerializer
     filterset_fields = ['epr_registration_number', 'waste_type', 'FY', 'is_approved', 'is_sold','epr_credit']
+    pagination_class = None
 
 class CreditOfferDetailView(BaseSuperAdminModelDetailView):
     queryset = CreditOffer.objects.all()
@@ -147,6 +154,7 @@ class CounterCreditOfferListCreateView(BaseSuperAdminModelView):
     queryset = CounterCreditOffer.objects.all()
     serializer_class = CounterCreditOfferSerializer
     filterset_fields = ['status', 'is_approved']
+    pagination_class = None
 
 class CounterCreditOfferDetailView(BaseSuperAdminModelDetailView):
     queryset = CounterCreditOffer.objects.all()
@@ -157,6 +165,8 @@ class TransactionListCreateView(BaseSuperAdminModelView):
     queryset = Transaction.objects.all()
     serializer_class = TransactionSerializer
     filterset_fields = ['order_id', 'waste_type', 'credit_type', 'status', 'is_complete']
+    pagination_class = None
+
 
 class TransactionDetailView(BaseSuperAdminModelDetailView):
     queryset = Transaction.objects.all()
@@ -391,6 +401,7 @@ class RecyclerListCreateView(BaseSuperAdminModelView):
     queryset = Recycler.objects.all()
     serializer_class = RecyclerDetailSerializer
     filterset_fields = ['email', 'unique_id', 'company_name', 'city', 'state', 'is_active', 'is_verified']
+    pagination_class = None
 
 class RecyclerDetailView(BaseSuperAdminModelDetailView):
     queryset = Recycler.objects.all()
@@ -401,6 +412,7 @@ class ProducerListCreateView(BaseSuperAdminModelView):
     queryset = Producer.objects.all()
     serializer_class = ProducerDetailSerializer
     filterset_fields = ['email', 'unique_id', 'company_name', 'city', 'state', 'is_active', 'is_verified']
+    pagination_class = None
 
 class ProducerDetailView(BaseSuperAdminModelDetailView):
     queryset = Producer.objects.all()
@@ -411,6 +423,7 @@ class PurchasesRequestListCreateView(BaseSuperAdminModelView):
     queryset = PurchasesRequest.objects.all()
     serializer_class = PurchasesRequestSerializer
     filterset_fields = ['status']  # Adjust fields as per your model
+    pagination_class = None
 
 class PurchasesRequestDetailView(BaseSuperAdminModelDetailView):
     queryset = PurchasesRequest.objects.all()
@@ -686,18 +699,37 @@ class ListNewslettersView(ResponseWrapperMixin, generics.ListAPIView):
         
 # BLOGS
 
-class BlogListCreateView(ResponseWrapperMixin, generics.ListCreateAPIView):
+class BlogListCreateView(generics.ListCreateAPIView):
     queryset = Blog.objects.all()
     serializer_class = BlogSerializer
     authentication_classes = [SuperAdminJWTAuthentication]
     permission_classes = [IsSuperAdmin]
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['title', 'created_at']
+    pagination_class = CustomPagination
 
     def perform_create(self, serializer):
         if not isinstance(self.request.user, SuperAdmin):
             raise ValidationError("Only SuperAdmins can create blogs.")
         serializer.save(created_by=self.request.user)
+    
+    def list(self, request, *args, **kwargs):
+        try:
+            queryset = self.filter_queryset(self.get_queryset())
+
+            page = self.paginate_queryset(queryset)
+            if page is not None:
+                serializer = self.get_serializer(page, many=True)
+                return self.get_paginated_response(serializer.data)
+
+            serializer = self.get_serializer(queryset, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response(
+                {"status": False, "error": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
 
 class BlogDetailView(ResponseWrapperMixin, generics.RetrieveUpdateDestroyAPIView):
     queryset = Blog.objects.all()
