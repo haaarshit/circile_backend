@@ -736,7 +736,7 @@ class PublicBlogDetailView(generics.RetrieveAPIView):
             return Blog.objects.get(slug=lookup_value)
         except Blog.DoesNotExist:
             raise Http404("Blog not found")
-
+    @method_decorator(cache_page(60 * 60 * 2))
     def retrieve(self, request, *args, **kwargs):
         try:
             instance = self.get_object()
