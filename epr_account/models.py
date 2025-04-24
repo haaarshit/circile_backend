@@ -238,7 +238,7 @@ class RecyclerEPR(models.Model):
         default='pending'
     )
 
-    
+    label = models.CharField(max_length=100,default="EPR Account")
     def clean(self):
         if self.waste_type in WASTE_CHOICES:
             valid_recycler_types = WASTE_CHOICES[self.waste_type]['recycler_types']
@@ -298,10 +298,10 @@ class ProducerEPR(models.Model):
         choices=STATUS_CHOICES,
         default='pending'
     )
-    
     created_at = models.DateTimeField(auto_now_add=True)
     is_approved = models.BooleanField(default=False) 
      
+    label = models.CharField(max_length=100,default="EPR Account")
 
 
     def clean(self):

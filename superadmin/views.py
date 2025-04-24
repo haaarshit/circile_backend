@@ -699,7 +699,7 @@ class ListNewslettersView(ResponseWrapperMixin, generics.ListAPIView):
         
 # BLOGS
 
-class BlogListCreateView(generics.ListCreateAPIView):
+class BlogListCreateView(ResponseWrapperMixin,generics.ListCreateAPIView):
     queryset = Blog.objects.all()
     serializer_class = BlogSerializer
     authentication_classes = [SuperAdminJWTAuthentication]

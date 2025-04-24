@@ -168,7 +168,7 @@ REST_FRAMEWORK = {
 
 }
 
-# AUTH_USER_MODEL = 'users.BaseUserMode'  
+# AUTH_USER_MODEL = 'users.CustomUser'  
 
 
 SIMPLE_JWT = {
