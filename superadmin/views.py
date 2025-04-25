@@ -91,6 +91,18 @@ class BaseSuperAdminModelView(ResponseWrapperMixin,generics.ListCreateAPIView):
 class BaseSuperAdminModelDetailView(ResponseWrapperMixin,generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [IsSuperAdmin]
     authentication_classes = [SuperAdminJWTAuthentication]
+    def destroy(self, request, *args, **kwargs):
+        try:
+            instance = self.get_object()
+            instance.delete()
+            return Response(
+                {"status": True, "message": "Successfully deleted"},
+                status=status.HTTP_200_OK
+            )
+        except Exception as e:
+            return Response(
+              f"Failed to delete: {str(e)}"
+            )
 
 # RecyclerEPR Views
 class RecyclerEPRListCreateView(BaseSuperAdminModelView):
@@ -208,19 +220,7 @@ class TransactionDetailView(BaseSuperAdminModelDetailView):
                     if epr_target.achieved_quantity == epr_target.target_quantity:
                         epr_target.is_achieved = True
                     epr_target.save()
-                
-                # if transaction.counter_credit_offer:
-                #     transaction.credit_offer.credit_available -= transaction.credit_quantity 
-                #     if transaction.credit_offer.credit_available == 0:
-                #         transaction.credit_offer.is_sold = True
-                #     transaction.credit_offer.save()
-                # else:
-                # transaction.credit_offer.credit_available -= transaction.credit_quantity 
-                # if transaction.credit_offer.credit_available == 0:
-                #     transaction.credit_offer.is_sold = True
-                # if transaction.credit_offer.credit_available < transaction.credit_offer.minimum_purchase:
-                #     transaction.credit_offer.credit_available = transaction.credit_offer.minimum_purchase
-                # transaction.credit_offer.save()
+
       
                 credit_offer.credit_available = credit_offer.credit_available - transaction.credit_quantity
                 if credit_offer.credit_available < credit_offer.minimum_purchase:
@@ -366,6 +366,84 @@ class TransactionDetailView(BaseSuperAdminModelDetailView):
                     html_message=recycler_html_message
                 )
             
+
+                        # Email to Producer (Stylish HTML)
+              
+                producer_subject = "Transaction Approved by SuperAdmin"
+                producer_html_message = (
+                    f"<!DOCTYPE html>"
+                    f"<html>"
+                    f"<head>"
+                    f"    <meta charset='UTF-8'>"
+                    f"    <meta name='viewport' content='width=device-width, initial-scale=1.0'>"
+                    f"    <title>Transaction Approval Notification</title>"
+                    f"    <style>"
+                    f"        body {{ font-family: Arial, sans-serif; margin: 0; padding: 20px; background-color: #f4f4f4; }}"
+                    f"        .container {{ max-width: 600px; background: #ffffff; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0, 0, 0, 0.1); }}"
+                    f"        h2 {{ color: #2c3e50; text-align: center; }}"
+                    f"        .details {{ margin: 20px 0; }}"
+                    f"        .details table {{ width: 100%; border-collapse: collapse; }}"
+                    f"        .details th, .details td {{ border: 1px solid #ddd; padding: 8px; text-align: left; }}"
+                    f"        .details th {{ background-color: #3498db; color: white; }}"
+                    f"        .status {{ text-align: center; padding: 10px; font-weight: bold; background-color: #27ae60; color: white; border-radius: 4px; }}"
+                    f"        .cta {{ text-align: center; margin-top: 20px; }}"
+                    f"        .cta a {{ text-decoration: none; background: #27ae60; color: white; padding: 10px 20px; border-radius: 5px; display: inline-block; }}"
+                    f"    </style>"
+                    f"</head>"
+                    f"<body>"
+                    f"    <div class='container'>"
+                    f"        <h2>📢 Transaction Approval Notification</h2>"
+                    f"        <p>Dear <strong>{producer.full_name}</strong>,</p>"
+                    f"        <p>Your transaction has been approved by the SuperAdmin. Below are the details:</p>"
+                    f"        <div class='details'>"
+                    f"            <h3>🛠 Transaction Details</h3>"
+                    f"            <table>"
+                    f"                <tr><th>Offered By</th><td>{recycler.unique_id}</td></tr>"
+                    f"                <tr><th>Work Order ID</th><td>{transaction.order_id}</td></tr>"
+                    f"                <tr><th>Work Order Date</th><td>{transaction.work_order_date}</td></tr>"
+                    f"                <tr><th>Waste Type</th><td>{transaction.waste_type}</td></tr>"
+                    f"                <tr><th>Credit Type</th><td>{transaction.credit_type}</td></tr>"
+                    f"                <tr><th>Price per Credit</th><td>{transaction.price_per_credit}</td></tr>"
+                    f"                <tr><th>Product Type</th><td>{transaction.product_type}</td></tr>"
+                    f"                <tr><th>Producer Type</th><td>{transaction.producer_type}</td></tr>"
+                    f"                <tr><th>Credit Quantity</th><td>{transaction.credit_quantity}</td></tr>"
+                    f"                <tr><th>Total Price</th><td>{transaction.total_price}</td></tr>"
+                    f"            </table>"
+                    f"        </div>"
+                    f"        <div class='details'>"
+                    f"            <h3>♻️ Recycler Details</h3>"
+                    f"            <table>"
+                    f"                <tr><th>EPR Registration Number</th><td>{transaction.credit_offer.epr_account.epr_registration_number}</td></tr>"
+                    f"                <tr><th>EPR Registered Name</th><td>{transaction.credit_offer.epr_account.epr_registered_name}</td></tr>"
+                    f"                <tr><th>Email</th><td><a href='mailto:{email}'>{email}</a></td></tr>"
+                    f"                <tr><th>Contact Number</th><td>{contact_number}</td></tr>"
+                    f"            </table>"
+                    f"        </div>"
+                    f"        <div class='details'>"
+                    f"            <h3>📁 Trail Documents</h3>"
+                    f"            <ul>"
+                    f"                  {''.join([f'<li>✅ {doc}</li>' for doc in transaction.credit_offer.trail_documents if doc.strip()])}"
+                    f"            </ul>"
+                    f"        </div>"
+                    f"        <div class='status'>Status: {transaction.status}</div>"
+                    f"        <div class='cta'>"
+                    f"            <a href='#'>Proceed with Transaction</a>"
+                    f"        </div>"
+                    f"        <p style='color: #7f8c8d; font-size: 12px; text-align: center; margin-top: 20px;'>"
+                    f"            This is an automated message. Please do not reply directly to this email."
+                    f"        </p>"
+                    f"    </div>"
+                    f"</body>"
+                    f"</html>"
+                )
+                send_mail(
+                    subject=producer_subject,
+                    message="",
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    recipient_list=[producer.email],
+                    fail_silently=False,
+                    html_message=producer_html_message
+                )
             return Response( serializer.data, status=status.HTTP_200_OK)
         
         except serializers.ValidationError as e:

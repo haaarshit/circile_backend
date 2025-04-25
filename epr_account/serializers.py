@@ -62,6 +62,7 @@ class RecyclerEPRSerializer(serializers.ModelSerializer):
 
 class ProducerEPRSerializer(serializers.ModelSerializer):
     epr_certificate = serializers.SerializerMethodField()
+    targets = serializers.SerializerMethodField()
     class Meta:
         model = ProducerEPR
         fields = '__all__'
@@ -78,6 +79,13 @@ class ProducerEPRSerializer(serializers.ModelSerializer):
                 return f'https://res.cloudinary.com/{cloud_name}/{obj.epr_certificate.url}'
                 
         return None
+    
+    def get_targets(self, obj):
+        targets = EPRTarget.objects.filter(epr_account=obj)
+        if targets.exists():
+            return EPRTargetSerializer(targets, many=True).data
+        else:
+            return []
     
     def validate(self, data):
         """
@@ -579,8 +587,8 @@ class TransactionSerializer(serializers.ModelSerializer):
                     raise serializers.ValidationError("Recycler can only update 'trail_documents' and 'recycler_transfer_proof'")
                 if not self.instance.is_approved:
                     raise serializers.ValidationError("Transaction must be approved by Superadmin before Recycler can upload documents")
-                if 'trail_documents' not in request.FILES and 'recycler_transfer_proof' not in request.FILES:
-                    raise serializers.ValidationError("At least one proof document is required from Recycler")
+                if 'trail_documents' not in request.FILES or 'recycler_transfer_proof' not in request.FILES:
+                    raise serializers.ValidationError("Trail Documents and Transafer Proof both are required from Recycler")
             
             else:
                 raise serializers.ValidationError("Unauthorized to update transaction")
