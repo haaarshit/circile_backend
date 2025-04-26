@@ -573,17 +573,20 @@ class TransactionSerializer(serializers.ModelSerializer):
             
             # Producer check
             elif isinstance(user, Producer):
+                print("entered producer check")
                 allowed_fields = {'transaction_proof', 'producer_transfer_proof'}
-                if any(k not in allowed_fields for k in data.keys()):
+                combined_keys = set(data.keys()) | set(request.FILES.keys())
+                if any(k not in allowed_fields for k in combined_keys):
                     raise serializers.ValidationError("Producer can only update 'transaction_proof' and 'producer_transfer_proof'")
-                if not self.instance.transaction_proof and not self.instance.producer_transfer_proof:
-                    if 'transaction_proof' not in request.FILES and 'producer_transfer_proof' not in request.FILES:
-                        raise serializers.ValidationError("At least one proof document is required from Producer transaction_proof or producer_transfer_proof")
+                if not self.instance.transaction_proof :
+                    if 'transaction_proof' not in request.FILES:
+                        raise serializers.ValidationError("Producer must provide Transaction Proof document")
             
             # Recycler check
             elif isinstance(user, Recycler):
                 allowed_fields = {'trail_documents', 'recycler_transfer_proof'}
-                if any(k not in allowed_fields for k in data.keys()):
+                combined_keys = set(data.keys()) | set(request.FILES.keys())
+                if any(k not in allowed_fields for k in combined_keys):
                     raise serializers.ValidationError("Recycler can only update 'trail_documents' and 'recycler_transfer_proof'")
                 if not self.instance.is_approved:
                     raise serializers.ValidationError("Transaction must be approved by Superadmin before Recycler can upload documents")
