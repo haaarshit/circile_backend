@@ -131,7 +131,7 @@ class ProducerEPRDetailView(BaseSuperAdminModelDetailView):
 class EPRCreditListCreateView(BaseSuperAdminModelView):
     queryset = EPRCredit.objects.all()
     serializer_class = EPRCreditSerializer
-    filterset_fields = ['epr_registration_number', 'waste_type', 'product_type', 'credit_type', 'year']
+    filterset_fields = ['recycler','epr_registration_number', 'waste_type', 'product_type', 'credit_type', 'year']
     pagination_class = None
 
 class EPRCreditDetailView(BaseSuperAdminModelDetailView):
@@ -142,7 +142,7 @@ class EPRCreditDetailView(BaseSuperAdminModelDetailView):
 class EPRTargetListCreateView(BaseSuperAdminModelView):
     queryset = EPRTarget.objects.all()
     serializer_class = EPRTargetSerializer
-    filterset_fields = ['epr_registration_number', 'waste_type', 'product_type', 'credit_type', 'FY','is_achieved']
+    filterset_fields = ['producer','epr_registration_number', 'waste_type', 'product_type', 'credit_type', 'FY','is_achieved']
     pagination_class = None
 
 
