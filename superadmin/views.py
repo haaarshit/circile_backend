@@ -108,7 +108,7 @@ class BaseSuperAdminModelDetailView(ResponseWrapperMixin,generics.RetrieveUpdate
 class RecyclerEPRListCreateView(BaseSuperAdminModelView):
     queryset = RecyclerEPR.objects.all()
     serializer_class = RecyclerEPRSerializer
-    filterset_fields = ['epr_registration_number', 'waste_type', 'recycler_type', 'city', 'state']
+    filterset_fields = ['recycler','epr_registration_number', 'waste_type', 'recycler_type', 'city', 'state']
     pagination_class = None
 
 class RecyclerEPRDetailView(BaseSuperAdminModelDetailView):
@@ -119,7 +119,7 @@ class RecyclerEPRDetailView(BaseSuperAdminModelDetailView):
 class ProducerEPRListCreateView(BaseSuperAdminModelView):
     queryset = ProducerEPR.objects.all()
     serializer_class = ProducerEPRSerializer
-    filterset_fields = ['epr_registration_number', 'waste_type', 'producer_type', 'city', 'state']
+    filterset_fields = ['producer','epr_registration_number', 'waste_type', 'producer_type', 'city', 'state']
     pagination_class = None
 
 
@@ -521,9 +521,38 @@ class SuperAdminCountStatsView(APIView):
                     {"error": "User is not a SuperAdmin", "status": False},
                     status=status.HTTP_403_FORBIDDEN
                 )
+            
+            recycler_id = request.query_params.get('recycler_id')
+            producer_id = request.query_params.get('producer_id')
 
             # Aggregate counts from all relevant tables
-            stats = {
+            # stats = {
+            #     "total_superadmins": SuperAdmin.objects.count(),
+            #     "total_recyclers": Recycler.objects.count(),
+            #     "total_producers": Producer.objects.count(),
+            #     "total_recycler_epr_accounts": RecyclerEPR.objects.count(),
+            #     "total_producer_epr_accounts": ProducerEPR.objects.count(),
+            #     "total_epr_credits": EPRCredit.objects.count(),
+            #     "total_epr_targets": EPRTarget.objects.count(),
+            #     "total_achieved_targets": EPRTarget.objects.filter(is_achieved=True).count(),
+            #     "total_credit_offers": CreditOffer.objects.count(),
+            #     "total_counter_credit_offers": CounterCreditOffer.objects.count(),
+            #     "total_transactions": Transaction.objects.count(),
+            #     "total_completed_transactions": Transaction.objects.filter(is_complete=True).count(),
+            #     "total_pending_transactions": Transaction.objects.filter(is_complete=False).count(),
+            #     "total_direct_purchases": PurchasesRequest.objects.count()
+            # }
+
+            # return Response(
+            #     {
+            #         "status": True,
+            #         "message": "SuperAdmin statistics retrieved successfully",
+            #         "data": stats
+            #     },
+            #     status=status.HTTP_200_OK
+            # )
+
+            general_stats = {
                 "total_superadmins": SuperAdmin.objects.count(),
                 "total_recyclers": Recycler.objects.count(),
                 "total_producers": Producer.objects.count(),
@@ -540,14 +569,64 @@ class SuperAdminCountStatsView(APIView):
                 "total_direct_purchases": PurchasesRequest.objects.count()
             }
 
-            return Response(
-                {
-                    "status": True,
-                    "message": "SuperAdmin statistics retrieved successfully",
-                    "data": stats
-                },
-                status=status.HTTP_200_OK
-            )
+            # Initialize response data with general stats
+            response_data = {
+                "status": True,
+                "message": "SuperAdmin statistics retrieved successfully",
+                "data": general_stats
+            }
+
+            # Add specific stats for a recycler if recycler_id is provided
+            if recycler_id:
+                try:
+                    recycler = Recycler.objects.get(id=recycler_id)
+                    specific_stats = {
+                        "recycler_id": recycler.id,
+                        "recycler_epr_accounts": RecyclerEPR.objects.filter(recycler=recycler).count(),
+                        "epr_credits": EPRCredit.objects.filter(recycler=recycler).count(),
+                        "epr_targets": 0,
+                        "achieved_targets": 0,
+                        "credit_offers": CreditOffer.objects.filter(recycler=recycler).count(),
+                        "counter_credit_offers": CounterCreditOffer.objects.filter(recycler=recycler).count(),
+                        "transactions": Transaction.objects.filter(recycler=recycler).count(),
+                        "completed_transactions": Transaction.objects.filter(recycler=recycler, is_complete=True).count(),
+                        "pending_transactions": Transaction.objects.filter(recycler=recycler, is_complete=False).count(),
+                        "direct_purchases": PurchasesRequest.objects.filter(recycler=recycler).count()
+                    }
+                    response_data["data"] = specific_stats
+                    response_data["message"] = "SuperAdmin and Recycler statistics retrieved successfully"
+                except Recycler.DoesNotExist:
+                    return Response(
+                        {"error": f"Recycler with id {recycler_id} does not exist", "status": False},
+                        status=status.HTTP_404_NOT_FOUND
+                    )
+
+            # Add specific stats for a producer if producer_id is provided
+            elif producer_id:
+                try:
+                    producer = Producer.objects.get(id=producer_id)
+                    specific_stats = {
+                        "producer_id": producer.id,
+                        "producer_epr_accounts": ProducerEPR.objects.filter(producer=producer).count(),
+                        "epr_credits": 0,
+                        "epr_targets": EPRTarget.objects.filter(producer=producer).count(),
+                        "achieved_targets": EPRTarget.objects.filter(producer=producer, is_achieved=True).count(),
+                        "credit_offers":0,
+                        "counter_credit_offers": CounterCreditOffer.objects.filter(producer=producer).count(),
+                        "transactions": Transaction.objects.filter(producer=producer).count(),
+                        "completed_transactions": Transaction.objects.filter(producer=producer, is_complete=True).count(),
+                        "pending_transactions": Transaction.objects.filter(producer=producer, is_complete=False).count(),
+                        "direct_purchases": PurchasesRequest.objects.filter(producer=producer).count()
+                    }
+                    response_data["data"]= specific_stats
+                    response_data["message"] = "SuperAdmin and Producer statistics retrieved successfully"
+                except Producer.DoesNotExist:
+                    return Response(
+                        {"error": f"Producer with id {producer_id} does not exist", "status": False},
+                        status=status.HTTP_404_NOT_FOUND
+                    )
+
+            return Response(response_data, status=status.HTTP_200_OK)
 
         except Exception as e:
             return Response(

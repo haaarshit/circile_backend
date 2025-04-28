@@ -42,6 +42,19 @@ class CreditOfferFilter(filters.FilterSet):
     minimum_purchase = filters.RangeFilter()
     is_sold = filters.BooleanFilter()
 
+    has_availability_proof = filters.BooleanFilter(
+        method='filter_has_availability_proof',
+        label='Has Availability Proof'
+    )
+    
+    def filter_has_availability_proof(self, queryset, name, value):
+
+        if value is True:
+            return queryset.exclude(availability_proof__exact="").filter(availability_proof__isnull=False)
+        elif value is False:
+            return queryset.filter(Q(availability_proof__exact="") | Q(availability_proof__isnull=True))
+        return queryset
+
     def filter_trail_documents(self, queryset, name, value):
         """
         Custom filter method to filter CreditOffers where trail_documents contains any of the selected values.
@@ -71,6 +84,7 @@ class CreditOfferFilter(filters.FilterSet):
             'credit_available',
             'minimum_purchase',
             'is_sold',
+            'has_availability_proof',
         ]
         # Override JSONField handling to avoid AssertionError
         filter_overrides = {
