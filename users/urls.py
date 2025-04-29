@@ -18,7 +18,8 @@ from .views import (
     unsubscribe_view,
     PublicBlogListView,
     PublicBlogDetailView,
-    LatestBlogsView
+    LatestBlogsView,
+    battery_contact_email
 )
 
 urlpatterns = [
@@ -44,11 +45,12 @@ urlpatterns = [
     path('verify-email/<str:user_type>/<str:token>/', verify_email, name='verify-email'),
     path('counts/', UserCountStatsView.as_view(), name='user-epr-stats'),
 
-     path('contact/', send_contact_email, name='send_contact_email'),
+    path('contact/', send_contact_email, name='send_contact_email'),
+    path('contact/battery/', battery_contact_email, name='battery_contact_email'),
 
     #  news letter
     path('newsletter/subscribe/', SubscribeView.as_view(), name='subscribe'),
-    path('newsletter/unsubscribe/<str:token>/', unsubscribe_view, name='unsubscribe'),
+    path('newsletter/unsubscribe/<str:token>/', battery_contact_email, name='unsubscribe'),
 
     # blogs
     path('blogs/', PublicBlogListView.as_view(), name='public-blog-list'),  
