@@ -35,17 +35,41 @@ class RecyclerUpdateSerializer(serializers.ModelSerializer):
     
     def validate(self, data):
         request = self.context.get('request')
+        instance = self.instance  
+
+
         if request and request.method in ['PATCH', 'PUT']:
             # For partial updates, only validate fields that are being updated
-            if 'company_logo' in request.FILES and not request.FILES.get('company_logo'):
-                raise serializers.ValidationError({"company_logo": "Company logo file is required."})
+            # if 'company_logo' in request.FILES and not request.FILES.get('company_logo'):
+            #     raise serializers.ValidationError({"company_logo": "Company logo file is required."})
                 
-            if 'pcb_doc' in request.FILES and not request.FILES.get('pcb_doc'):
-                raise serializers.ValidationError({"pcb_doc": "PCB document file is required."})
+            # if 'pcb_doc' in request.FILES and not request.FILES.get('pcb_doc'):
+            #     raise serializers.ValidationError({"pcb_doc": "PCB document file is required."})
             
                             
-            if 'canceled_check_proof' in request.FILES and not request.FILES.get('canceled_check_proof'):
-                raise serializers.ValidationError({"canceled_check_proof": " canceled_check_proof is required."})
+            # if 'canceled_check_proof' in request.FILES and not request.FILES.get('canceled_check_proof'):
+            #     raise serializers.ValidationError({"canceled_check_proof": " canceled_check_proof is required."})
+
+            if 'company_logo' in request.FILES:
+                if not request.FILES.get('company_logo'):
+                    raise serializers.ValidationError({"company_logo": "Company logo file is required."})
+                # Check if company_logo is already set
+                if instance and instance.company_logo:
+                    raise serializers.ValidationError({"company_logo": "Company logo is already set and cannot be updated."})
+                
+            if 'pcb_doc' in request.FILES:
+                if not request.FILES.get('pcb_doc'):
+                    raise serializers.ValidationError({"pcb_doc": "PCB document file is required."})
+                # Check if pcb_doc is already set
+                if instance and instance.pcb_doc:
+                    raise serializers.ValidationError({"pcb_doc": "PCB document is already set and cannot be updated."})
+            
+            if 'canceled_check_proof' in request.FILES:
+                if not request.FILES.get('canceled_check_proof'):
+                    raise serializers.ValidationError({"canceled_check_proof": "Canceled check proof is required."})
+                # Check if canceled_check_proof is already set
+                if instance and instance.canceled_check_proof:
+                    raise serializers.ValidationError({"canceled_check_proof": "Canceled check proof is already set and cannot be updated."})
              
         return data
     
@@ -84,17 +108,39 @@ class ProducerUpdateSerializer(serializers.ModelSerializer):
     
     def validate(self, data):
         request = self.context.get('request')
+        instance = self.instance  
+
         if request and request.method in ['PATCH', 'PUT']:
             # For partial updates, only validate fields that are being updated
-            if 'company_logo' in request.FILES and not request.FILES.get('company_logo'):
-                raise serializers.ValidationError({"company_logo": "Company logo file is required."})
+            # if 'company_logo' in request.FILES and not request.FILES.get('company_logo'):
+            #     raise serializers.ValidationError({"company_logo": "Company logo file is required."})
                 
-            if 'pcb_doc' in request.FILES and not request.FILES.get('pcb_doc'):
-                raise serializers.ValidationError({"pcb_doc": "PCB document file is required."})
+            # if 'pcb_doc' in request.FILES and not request.FILES.get('pcb_doc'):
+            #     raise serializers.ValidationError({"pcb_doc": "PCB document file is required."})
             
                                         
-            if 'canceled_check_proof' in request.FILES and not request.FILES.get('canceled_check_proof'):
-                raise serializers.ValidationError({"canceled_check_proof": " canceled_check_proof is required."})
+            # if 'canceled_check_proof' in request.FILES and not request.FILES.get('canceled_check_proof'):
+            #     raise serializers.ValidationError({"canceled_check_proof": " canceled_check_proof is required."})
+            if 'company_logo' in request.FILES:
+                if not request.FILES.get('company_logo'):
+                    raise serializers.ValidationError("Company logo file is required.")
+                # Check if company_logo is already set
+                if instance and instance.company_logo:
+                    raise serializers.ValidationError({"company_logo": "Company logo is already set and cannot be updated."})
+                
+            if 'pcb_doc' in request.FILES:
+                if not request.FILES.get('pcb_doc'):
+                    raise serializers.ValidationError({"pcb_doc": "PCB document file is required."})
+                # Check if pcb_doc is already set
+                if instance and instance.pcb_doc:
+                    raise serializers.ValidationError({"pcb_doc": "PCB document is already set and cannot be updated."})
+            
+            if 'canceled_check_proof' in request.FILES:
+                if not request.FILES.get('canceled_check_proof'):
+                    raise serializers.ValidationError({"canceled_check_proof": "Canceled check proof is required."})
+                # Check if canceled_check_proof is already set
+                if instance and instance.canceled_check_proof:
+                    raise serializers.ValidationError({"canceled_check_proof": "Canceled check proof is already set and cannot be updated."})
              
             
         return data

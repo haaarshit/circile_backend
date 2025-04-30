@@ -8,7 +8,8 @@ from .views import (
     CreditOfferViewSet,
     CounterCreditOfferViewSet,
     PublicCreditOfferListView,PublicCreditOfferDetailView,
-    TransactionViewSet,WasteTypeDetailView, WasteTypeListView,WasteTypeNamesView,PurchasesRequestViewSet, OrderDetailView
+    TransactionViewSet,WasteTypeDetailView, WasteTypeListView,WasteTypeNamesView,PurchasesRequestViewSet, OrderDetailView,ProducerTypeListView,
+    RecyclerTypeListView,ProductTypeListView,CreditTypeListView
 )
 from rest_framework.routers import DefaultRouter
 
@@ -36,6 +37,10 @@ urlpatterns = [
     path('waste-types/', WasteTypeListView.as_view(), name='waste-type-list'),
     path('waste-type-names/', WasteTypeNamesView.as_view(), name='waste-type-names'),  # New route
     path('order/<uuid:record_id>/', OrderDetailView.as_view(), name='order_detail'),
-
+    # New URLs for Specific Tables
+    path('producer-types/', ProducerTypeListView.as_view(), name='producer-type-list'),
+    path('recycler-types/', RecyclerTypeListView.as_view(), name='recycler-type-list'),
+    path('product-types/', ProductTypeListView.as_view(), name='product-type-list'),
+    path('credit-types/', CreditTypeListView.as_view(), name='credit-type-list'),
 ]
 

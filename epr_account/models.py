@@ -474,6 +474,9 @@ class CreditOffer(models.Model):
     credit_type = models.CharField()
     product_type = models.CharField()
     is_sold = models.BooleanField(default=False)
+    
+    blocked_credit = models.FloatField(default=0.0)
+
 
     created_at = models.DateTimeField(default=timezone.now)
 

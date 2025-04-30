@@ -1,8 +1,8 @@
 from rest_framework import viewsets, permissions, status, serializers,generics
 from rest_framework.response import Response
 from users.authentication import CustomJWTAuthentication
-from .models import RecyclerEPR, ProducerEPR,EPRCredit,EPRTarget,CreditOffer,CounterCreditOffer,Transaction,WasteType,PurchasesRequest
-from .serializers import RecyclerEPRSerializer, ProducerEPRSerializer, EPRCreditSerializer,EPRTargetSerializer, CreditOfferSerializer,CounterCreditOfferSerializer,TransactionSerializer, WasteTypeSerializer, WasteTypeNameSerializer, PurchasesRequestSerializer
+from .models import RecyclerEPR, ProducerEPR,EPRCredit,EPRTarget,CreditOffer,CounterCreditOffer,Transaction,WasteType,PurchasesRequest, ProducerType,RecyclerType,ProductType,CreditType
+from .serializers import RecyclerEPRSerializer, ProducerEPRSerializer, EPRCreditSerializer,EPRTargetSerializer, CreditOfferSerializer,CounterCreditOfferSerializer,TransactionSerializer, WasteTypeSerializer, WasteTypeNameSerializer, PurchasesRequestSerializer, ProducerTypeSerializer, RecyclerTypeSerializer, ProductTypeSerializer, CreditTypeSerializer
 from users.models import Recycler, Producer
 from rest_framework.exceptions import ValidationError
 from django.core.exceptions import ValidationError as DjangoValidationError, ObjectDoesNotExist
@@ -1666,13 +1666,15 @@ class CounterCreditOfferViewSet(viewsets.ModelViewSet):
                  # Validate quantity against credit_available
    
                 credit_available = get_credit_offer.credit_available
+                blocked_credit = get_credit_offer.blocked_credit
+                unblocked_credit = credit_available - blocked_credit
 
                 if quantity is None:
                     raise ValidationError("Quantity is required to create a counter credit offer.")
 
-                if quantity > credit_available:
+                if quantity  > unblocked_credit:
                     raise ValidationError({
-                        f"Quantity ({quantity}) exceeds available credits ({credit_available}) in the credit offer."
+                        f"Quantity ({quantity}) exceeds available unblocked credits ({unblocked_credit}) in the credit offer."
                     })
 
                 serializer.save(
@@ -2042,7 +2044,20 @@ class TransactionViewSet(viewsets.ModelViewSet):
             
             # Add producer_epr to data
             data['producer_epr'] = producer_epr.id
-            print(data['producer_epr'])
+            # Validate available credits (credit_available - blocked_amount)
+            credit_offer = purchases_request.credit_offer if purchases_request else counter_credit_offer.credit_offer
+                # Lock the credit_offer row to prevent race conditions
+            credit_offer = CreditOffer.objects.get(id=credit_offer.id)
+            available_after_blocked = credit_offer.credit_available - credit_offer.blocked_credit
+            if available_after_blocked < float(data['credit_quantity']):
+                    return Response({
+                        "status": False,
+                        "error": f"Not enough unblocked credits available. Available: {available_after_blocked}, Requested: {data['credit_quantity']}"
+                    }, status=status.HTTP_400_BAD_REQUEST)
+
+                # Block the credit amount
+            credit_offer.blocked_credit += float(data['credit_quantity'])
+            credit_offer.save()
 
             # Serialize and save the data
             serializer = self.get_serializer(data=data)
@@ -2223,33 +2238,6 @@ class TransactionViewSet(viewsets.ModelViewSet):
             serializer.is_valid(raise_exception=True)
             transaction = serializer.save()
    
-            # TODO => ADD CHECK IF TRANSACTION IS ALREADY APPROVED
-            
-            # if transaction.status == 'approved':
-            #     epr_target = EPRTarget.objects.filter(
-            #         epr_account=transaction.producer_epr,
-            #         waste_type=transaction.waste_type,
-            #         product_type=transaction.product_type,
-            #         credit_type=transaction.credit_type,
-            #         is_achieved=False
-            #     ).first()
-
-            #     if epr_target:
-            #         epr_target.achieved_quantity += int(transaction.credit_quantity)
-            #         if epr_target.achieved_quantity == epr_target.target_quantity:
-            #             epr_target.is_achieved = True
-            #         epr_target.save()  
-            #     if transaction.counter_credit_offer:
-            #         transaction.credit_offer.credit_available -= transaction.credit_quantity 
-            #         if transaction.credit_offer.credit_available == 0:
-            #             transaction.credit_offer.is_sold = True
-
-            #         transaction.credit_offer.save()
-
-            #     else:
-            #         transaction.credit_offer.is_sold = True
-            #         transaction.credit_offer.credit_available = 0
-            #         transaction.credit_offer.save()
             
             return Response({"data":serializer.data,"status":True})
         
@@ -2871,7 +2859,7 @@ class OrderDetailView(APIView):
 
 
 # WASTE FILTERS
-@method_decorator(cache_page(60 * 30), name='dispatch')
+@method_decorator(cache_page(60 * 60 * 24), name='dispatch')
 class WasteTypeDetailView(APIView):
     def get(self, request, waste_type_name):
         try:
@@ -2890,7 +2878,7 @@ class WasteTypeDetailView(APIView):
             }
             return Response(response_data, status=status.HTTP_404_NOT_FOUND)
 
-@method_decorator(cache_page(60 * 30), name='dispatch')
+@method_decorator(cache_page(60 * 60 * 24), name='dispatch')
 class WasteTypeListView(APIView):
     def get(self, request):
         waste_types = WasteType.objects.all()
@@ -2901,11 +2889,57 @@ class WasteTypeListView(APIView):
         }
         return Response(response_data, status=status.HTTP_200_OK)
 
-@method_decorator(cache_page(60 * 30), name='dispatch')
+@method_decorator(cache_page(60 * 60 * 24), name='dispatch')
 class WasteTypeNamesView(APIView):
     def get(self, request):
         waste_types = WasteType.objects.all()
         serializer = WasteTypeNameSerializer(waste_types, many=True)
+        response_data = {
+            "status": True,
+            "data": serializer.data
+        }
+        return Response(response_data, status=status.HTTP_200_OK)
+    
+
+
+@method_decorator(cache_page(60 * 30), name='dispatch')
+class ProducerTypeListView(APIView):
+    def get(self, request):
+        producer_types = ProducerType.objects.all()
+        serializer = ProducerTypeSerializer(producer_types, many=True)
+        response_data = {
+            "status": True,
+            "data": serializer.data
+        }
+        return Response(response_data, status=status.HTTP_200_OK)
+
+@method_decorator(cache_page(60 * 30), name='dispatch')
+class RecyclerTypeListView(APIView):
+    def get(self, request):
+        recycler_types = RecyclerType.objects.all()
+        serializer = RecyclerTypeSerializer(recycler_types, many=True)
+        response_data = {
+            "status": True,
+            "data": serializer.data
+        }
+        return Response(response_data, status=status.HTTP_200_OK)
+
+@method_decorator(cache_page(60 * 30), name='dispatch')
+class ProductTypeListView(APIView):
+    def get(self, request):
+        product_types = ProductType.objects.all()
+        serializer = ProductTypeSerializer(product_types, many=True)
+        response_data = {
+            "status": True,
+            "data": serializer.data
+        }
+        return Response(response_data, status=status.HTTP_200_OK)
+
+@method_decorator(cache_page(60 * 30), name='dispatch')
+class CreditTypeListView(APIView):
+    def get(self, request):
+        credit_types = CreditType.objects.all()
+        serializer = CreditTypeSerializer(credit_types, many=True)
         response_data = {
             "status": True,
             "data": serializer.data

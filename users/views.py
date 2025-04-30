@@ -233,40 +233,26 @@ class UpdateUserProfileView(APIView):
                             )
 
                 if isinstance(user, Recycler):
-                    serializer = RecyclerUpdateSerializer(user, data=request.data, partial=partial)
+                    serializer = RecyclerUpdateSerializer(user, data=request.data, partial=partial, context={'request': request})
                 elif isinstance(user, Producer):
-                    serializer = ProducerUpdateSerializer(user, data=request.data, partial=partial)
+                    serializer = ProducerUpdateSerializer(user, data=request.data, partial=partial,  context={'request': request})
                 else:
                     return Response({"error": "Invalid user type","status":False}, status=status.HTTP_400_BAD_REQUEST)
 
-                if serializer.is_valid():
-                    try:
-                        serializer.save()  # This triggers model save() and clean()
-                        return Response(
+                serializer.is_valid(raise_exception=True)
+                serializer.save()  # This triggers model save() and clean()
+                return Response(
                             {"message": "Profile updated successfully", "data": serializer.data, "status": True},
                             status=status.HTTP_200_OK
                         )
-                    except ValidationError as e:
-                        # Handle validation errors from the model's clean() method
-                        error_dict = e.message_dict if hasattr(e, 'message_dict') else {'general': str(e)}
-                        return Response(
-                            {
-                                "error": "Validation failed",
-                                "details": error_dict,
-                                "status": False
-                            },
-                            status=status.HTTP_400_BAD_REQUEST
-                        )
+  
 
-                else:
-                    return Response(
-                        {
-                            "error": "Invalid data",
-                            "details": serializer.errors,
-                            "status": False
-                        },
-                        status=status.HTTP_400_BAD_REQUEST
-                    )
+
+            except serializers.ValidationError as e:
+                  return Response({
+                "status": False,
+                "error": e.detail if hasattr(e, 'detail') else str(e)
+            }, status=status.HTTP_400_BAD_REQUEST)
             except Exception as e:
                     print(f"Registration error: {str(e)}")
                     return Response(

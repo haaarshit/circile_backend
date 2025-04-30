@@ -131,7 +131,7 @@ class ProducerEPRDetailView(BaseSuperAdminModelDetailView):
 class EPRCreditListCreateView(BaseSuperAdminModelView):
     queryset = EPRCredit.objects.all()
     serializer_class = EPRCreditSerializer
-    filterset_fields = ['recycler','epr_registration_number', 'waste_type', 'product_type', 'credit_type', 'year']
+    filterset_fields = ['recycler','epr_account','epr_registration_number', 'waste_type', 'product_type', 'credit_type', 'year']
     pagination_class = None
 
 class EPRCreditDetailView(BaseSuperAdminModelDetailView):
@@ -142,7 +142,7 @@ class EPRCreditDetailView(BaseSuperAdminModelDetailView):
 class EPRTargetListCreateView(BaseSuperAdminModelView):
     queryset = EPRTarget.objects.all()
     serializer_class = EPRTargetSerializer
-    filterset_fields = ['producer','epr_registration_number', 'waste_type', 'product_type', 'credit_type', 'FY','is_achieved']
+    filterset_fields = ['producer','epr_account','epr_registration_number', 'waste_type', 'product_type', 'credit_type', 'FY','is_achieved']
     pagination_class = None
 
 
@@ -192,8 +192,8 @@ class TransactionDetailView(BaseSuperAdminModelDetailView):
             serializer.is_valid(raise_exception=True)
             transaction = serializer.save()
 
+            credit_offer = transaction.credit_offer
             if transaction.status == 'approved' and isinstance(request.user, SuperAdmin):
-                credit_offer = transaction.credit_offer
 
                 if credit_offer.credit_available < transaction.credit_quantity:
                             raise ValidationError(f"Not enough credit is available in credit offer for this transaction. Available credit {credit_offer.credit_available}. Required credit {transaction.credit_quantity} ")
@@ -223,6 +223,7 @@ class TransactionDetailView(BaseSuperAdminModelDetailView):
 
       
                 credit_offer.credit_available = credit_offer.credit_available - transaction.credit_quantity
+                credit_offer.blocked_credit -= transaction.credit_quantity
                 if credit_offer.credit_available < credit_offer.minimum_purchase:
                     credit_offer.minimum_purchase = credit_offer.credit_available
                 credit_offer.is_sold = credit_offer.credit_available == 0
@@ -444,6 +445,11 @@ class TransactionDetailView(BaseSuperAdminModelDetailView):
                     fail_silently=False,
                     html_message=producer_html_message
                 )
+            
+            elif transaction.status == 'rejected' and isinstance(request.user, SuperAdmin):
+                    credit_offer.blocked_credit -= transaction.credit_quantity
+                    credit_offer.save()
+
             return Response( serializer.data, status=status.HTTP_200_OK)
         
         except serializers.ValidationError as e:
