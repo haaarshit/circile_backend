@@ -390,6 +390,8 @@ class EPRTarget(models.Model):
     achieved_quantity = models.IntegerField(default=0)  # New field
     is_achieved = models.BooleanField(default=False) 
 
+    blocked_target = models.FloatField(default=0.0)
+
     created_at = models.DateTimeField(default=timezone.now)
 
     

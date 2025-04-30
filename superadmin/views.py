@@ -204,7 +204,7 @@ class TransactionDetailView(BaseSuperAdminModelDetailView):
                     credit_type=transaction.credit_type,
                     is_achieved=False
                 ).annotate(
-                remaining_quantity=F('target_quantity') - F('achieved_quantity')
+                    remaining_quantity=F('target_quantity') - F('achieved_quantity') - F('blocked_target')
                 ).filter(
                     remaining_quantity__gte=transaction.credit_quantity
                 ).first()
@@ -217,7 +217,10 @@ class TransactionDetailView(BaseSuperAdminModelDetailView):
 
                 if epr_target:
                     epr_target.achieved_quantity += int(transaction.credit_quantity)
-                    if epr_target.achieved_quantity == epr_target.target_quantity:
+                    epr_target.blocked_target -= float(transaction.credit_quantity)
+                    if epr_target.blocked_target < 0:
+                        epr_target.blocked_target = 0  
+                    if epr_target.achieved_quantity >= epr_target.target_quantity:
                         epr_target.is_achieved = True
                     epr_target.save()
 
@@ -447,6 +450,19 @@ class TransactionDetailView(BaseSuperAdminModelDetailView):
                 )
             
             elif transaction.status == 'rejected' and isinstance(request.user, SuperAdmin):
+                epr_target = EPRTarget.objects.filter(
+                    epr_account=transaction.producer_epr,
+                    waste_type=transaction.waste_type,
+                    product_type=transaction.product_type,
+                    credit_type=transaction.credit_type,
+                    is_achieved=False
+                ).first()
+
+                if epr_target:
+                    epr_target.blocked_target -= float(transaction.credit_quantity)
+                    if epr_target.blocked_target < 0:
+                        epr_target.blocked_target = 0  # Ensure blocked_target doesn't go negative
+                    epr_target.save()
                     credit_offer.blocked_credit -= transaction.credit_quantity
                     credit_offer.save()
 

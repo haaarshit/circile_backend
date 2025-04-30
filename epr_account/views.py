@@ -1650,7 +1650,7 @@ class CounterCreditOfferViewSet(viewsets.ModelViewSet):
                     credit_type=get_credit_offer.credit_type,
                     is_achieved=False
                 ).annotate(
-                remaining_quantity=F('target_quantity') - F('achieved_quantity')
+                    remaining_quantity=F('target_quantity') - F('achieved_quantity') - F('blocked_target')
                 ).filter(
                     remaining_quantity__gte=quantity
                 ).first()
@@ -2022,7 +2022,7 @@ class TransactionViewSet(viewsets.ModelViewSet):
                 credit_type=data.get('credit_type'),
                 is_achieved=False
                 ).annotate(
-                remaining_quantity=F('target_quantity') - F('achieved_quantity')
+                remaining_quantity=F('target_quantity') - F('achieved_quantity') - F('blocked_target')
                 ).filter(
                     remaining_quantity__gte=data.get('credit_quantity')
                 ).first()
@@ -2033,6 +2033,8 @@ class TransactionViewSet(viewsets.ModelViewSet):
                     "error":  f"No matching EPR Target found. Please create an EPR target for the given EPR account where credit type should be {data.get('credit_type')}, product type should be {data.get('product_type')} and waste type {data['waste_type']} and remaining Target quantity is higher than {data.get('credit_quantity')}"
                 }, status=status.HTTP_400_BAD_REQUEST)
 
+            epr_target.blocked_target += float(data['credit_quantity'])
+            epr_target.save()
             # Validate credit_quantity against EPRTarget
             # remaining_quantity = epr_target.target_quantity - epr_target.achieved_quantity
             # if float(data['credit_quantity']) > remaining_quantity:
@@ -2386,8 +2388,8 @@ class PurchasesRequestViewSet(viewsets.ModelViewSet):
             # if credit_offer.minimum_purchase < credit_offer.credit_available:
             if int(quantity) < int(credit_offer.minimum_purchase):
                     raise ValidationError("quantity should be greater than or equal to minimum purchase")
-            elif int(quantity) > int(credit_offer.credit_available):
-                    raise ValidationError( "quantity should be less than or equal to credit availabe")
+            elif int(quantity) > int(credit_offer.credit_available - credit_offer.blocked_credit):
+                    raise ValidationError( f"Not enough unblocked credits available. Available: {credit_offer.credit_available - credit_offer.blocked_credit}, Requested: {quantity}")
 
             if not producer_epr_id:
                 raise ValidationError({"error": "producer_epr is required in the request body"})
@@ -2409,7 +2411,7 @@ class PurchasesRequestViewSet(viewsets.ModelViewSet):
                     credit_type=credit_offer.credit_type,
                     is_achieved=False
                 ).annotate(
-                remaining_quantity=F('target_quantity') - F('achieved_quantity')
+                        remaining_quantity=F('target_quantity') - F('achieved_quantity') - F('blocked_target')
                 ).filter(
                     remaining_quantity__gte=quantity
                 ).first()
