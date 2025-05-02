@@ -586,6 +586,11 @@ class TransactionSerializer(serializers.ModelSerializer):
                 
                 if 'producer_transfer_proof' in request.FILES and not self.instance.is_approved and not self.instance.status == 'approved':
                         raise serializers.ValidationError("Producer Transfer Proof can only be uploaded after transaction is approved by Superadmin")
+                
+                if self.instance.producer_transfer_proof and request.FILES.get('producer_transfer_proof'):
+                    raise serializers.ValidationError("Producer Transfer Proof can only be uploaded once")
+                if self.instance.transaction_proof and request.FILES.get('transaction_proof'):
+                    raise serializers.ValidationError("Transaction Proof can only be uploaded once")
             
             # Recycler check
             elif isinstance(user, Recycler):
@@ -597,6 +602,10 @@ class TransactionSerializer(serializers.ModelSerializer):
                     raise serializers.ValidationError("Transaction must be approved by Superadmin before Recycler can upload documents")
                 if 'trail_documents' not in request.FILES or 'recycler_transfer_proof' not in request.FILES:
                     raise serializers.ValidationError("Trail Documents and Transafer Proof both are required from Recycler")
+                if self.instance.trail_documents and request.FILES.get('trail_documents'):
+                    raise serializers.ValidationError("Trail Documents can only be uploaded once")
+                if self.instance.recycler_transfer_proof and request.FILES.get('recycler_transfer_proof'):  
+                    raise serializers.ValidationError("Recycler Transfer Proof can only be uploaded once")
             
             else:
                 raise serializers.ValidationError("Unauthorized to update transaction")
