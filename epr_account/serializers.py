@@ -569,11 +569,13 @@ class TransactionSerializer(serializers.ModelSerializer):
                 if any(k not in allowed_fields for k in data.keys()):
                     raise serializers.ValidationError("Superadmin can only update 'is_approved' and 'status'")
                 if data.get('status') == 'approved' and not (self.instance.transaction_proof):
-                    raise serializers.ValidationError("Cannot approve transaction without Producer documents")
+                    raise serializers.ValidationError("Cannot approve transaction without Producer Transaction Proof")
             
             # Producer check
             elif isinstance(user, Producer):
-                print("entered producer check")
+                if self.instance.status == 'rejected':
+                    raise serializers.ValidationError("Transaction is already rejected")
+
                 allowed_fields = {'transaction_proof', 'producer_transfer_proof'}
                 combined_keys = set(data.keys()) | set(request.FILES.keys())
                 if any(k not in allowed_fields for k in combined_keys):
@@ -581,6 +583,9 @@ class TransactionSerializer(serializers.ModelSerializer):
                 if not self.instance.transaction_proof :
                     if 'transaction_proof' not in request.FILES:
                         raise serializers.ValidationError("Producer must provide Transaction Proof document")
+                
+                if 'producer_transfer_proof' in request.FILES and not self.instance.is_approved and not self.instance.status == 'approved':
+                        raise serializers.ValidationError("Producer Transfer Proof can only be uploaded after transaction is approved by Superadmin")
             
             # Recycler check
             elif isinstance(user, Recycler):

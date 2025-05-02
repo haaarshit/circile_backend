@@ -463,37 +463,41 @@ class TransactionDetailView(BaseSuperAdminModelDetailView):
                     if epr_target.blocked_target < 0:
                         epr_target.blocked_target = 0  # Ensure blocked_target doesn't go negative
                     epr_target.save()
-                    credit_offer.blocked_credit -= transaction.credit_quantity
-                    credit_offer.save()
+                credit_offer.blocked_credit -= transaction.credit_quantity
+                if credit_offer.blocked_credit < 0:
+                    credit_offer.blocked_credit = 0
+                credit_offer.save()
 
             return Response( serializer.data, status=status.HTTP_200_OK)
         
         except serializers.ValidationError as e:
 
             if isinstance(e.detail, dict):
-            # Flatten dictionary errors
+                # Flatten dictionary errors
                 error_messages = []
                 for key, value in e.detail.items():
-                        if isinstance(value, list):
-                            # Extract string from each ErrorDetail object
-                            error_messages.extend(str(err) for err in value)
-                        else:
-                            error_messages.append(str(value))
+                    if isinstance(value, list) and value:
+                        # Extract string from each ErrorDetail object
+                        error_messages.append(str(value[0]))
+                    else:
+                        error_messages.append(str(value))
                 error_message = error_messages[0] if error_messages else "An unknown error occurred."
-            elif isinstance(e.detail, list):
-                    # Handle list of ErrorDetail objects
-                    error_message = str(e.detail[0]) if e.detail else "An unknown error occurred."
-            else:
-                    error_message = str(e)
 
-            return Response({
-                error_message
-            }, status=status.HTTP_400_BAD_REQUEST)
+            elif isinstance(e.detail, list):
+                # Handle list of ErrorDetail objects
+                error_message = str(e.detail[0]) if e.detail else "An unknown error occurred."
+
+            else:
+                error_message = str(e)
+
+            return Response(
+                 error_message
+            , status=status.HTTP_400_BAD_REQUEST)
+
         except Exception as e:
             
             return Response({
-                "status": False,
-                "error": str(e)
+              str(e)
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 # Recycler Views
