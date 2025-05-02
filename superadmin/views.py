@@ -227,6 +227,8 @@ class TransactionDetailView(BaseSuperAdminModelDetailView):
       
                 credit_offer.credit_available = credit_offer.credit_available - transaction.credit_quantity
                 credit_offer.blocked_credit -= transaction.credit_quantity
+                if credit_offer.blocked_credit < 0:
+                    credit_offer.blocked_credit = 0
                 if credit_offer.credit_available < credit_offer.minimum_purchase:
                     credit_offer.minimum_purchase = credit_offer.credit_available
                 credit_offer.is_sold = credit_offer.credit_available == 0
