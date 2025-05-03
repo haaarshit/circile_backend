@@ -24,6 +24,9 @@ from superadmin.models import TransactionFee
 from django.conf import settings
 from django.utils.decorators import method_decorator
 from django.views.decorators.cache import cache_page
+from decouple import config 
+
+transaction_email = config('TRANSACTION_EMAIL') 
 
 class IsRecycler(permissions.BasePermission):
     """Custom permission to allow only recycler users"""
@@ -1387,17 +1390,6 @@ class CounterCreditOfferViewSet(viewsets.ModelViewSet):
                     f"                <tr><th>Quantity</th><td>{instance.quantity}</td></tr>"
                     f"            </table>"
                     f"        </div>"
-                    f"        "
-                    f"        <div class='details'>"
-                    f"            <h3>♻️ Recycler Details</h3>"
-                    f"            <table>"
-                    f"                <tr><th>EPR Registration Number</th><td>{instance.credit_offer.epr_account.epr_registration_number}</td></tr>"
-                    f"                <tr><th>EPR Registered Name</th><td>{instance.credit_offer.epr_account.epr_registered_name}</td></tr>"
-                    f"                <tr><th>Email</th><td><a href='mailto:{email}'>{email}</a></td></tr>"
-                    f"                <tr><th>Contact Number</th><td>{contact_number}</td></tr>"
-                    f"            </table>"
-                    f"        </div>"
-                    f"        "
                     f"        <div class='details'>"
                     f"            <h3>📁 Trail Documents</h3>"
                     f"            <ul>"
@@ -1421,7 +1413,7 @@ class CounterCreditOfferViewSet(viewsets.ModelViewSet):
                 send_mail(
                     subject=producer_subject,
                     message="",
-                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    from_email=transaction_email,
                     recipient_list=[producer.email],
                     fail_silently=False,
                     html_message=producer_html_message
@@ -1742,15 +1734,6 @@ class CounterCreditOfferViewSet(viewsets.ModelViewSet):
                     f"            </table>"
                     f"        </div>"
                     f"        <div class='details'>"
-                    f"            <h3>🏭 Producer Details</h3>"
-                    f"            <table>"
-                    f"                <tr><th>EPR Registration Number</th><td>{counter_credit_offer.producer_epr.epr_registration_number}</td></tr>"
-                    f"                <tr><th>EPR Registered Name</th><td>{counter_credit_offer.producer_epr.epr_registered_name}</td></tr>"
-                    f"                <tr><th>Email</th><td><a href='mailto:{email}'>{email}</a></td></tr>"
-                    f"                <tr><th>Contact Number</th><td>{contact_number}</td></tr>"
-                    f"            </table>"
-                    f"        </div>"
-                    f"        <div class='details'>"
                     f"            <h3>📁 Trail Documents</h3>"
                     f"            <ul>"
                     f"                   {''.join([f'<li>✅ {doc}</li>' for doc in counter_credit_offer.credit_offer.trail_documents if doc.strip()])}"
@@ -1770,7 +1753,7 @@ class CounterCreditOfferViewSet(viewsets.ModelViewSet):
                 send_mail(
                     subject=recycler_subject,
                     message="",
-                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    from_email=transaction_email,
                     recipient_list=[recycler.email],
                     fail_silently=False,
                     html_message=recycler_html_message
@@ -2592,15 +2575,6 @@ class PurchasesRequestViewSet(viewsets.ModelViewSet):
                     f"            </table>"
                     f"        </div>"
                     f"        <div class='details'>"
-                    f"            <h3>🏭 Producer Details</h3>"
-                    f"            <table>"
-                    f"                <tr><th>EPR Registration Number</th><td>{purchase_request.producer_epr.epr_registration_number}</td></tr>"
-                    f"                <tr><th>EPR Registered Name</th><td>{purchase_request.producer_epr.epr_registered_name}</td></tr>"
-                    f"                <tr><th>Email</th><td><a href='mailto:{email}'>{email}</a></td></tr>"
-                    f"                <tr><th>Contact Number</th><td>{contact_number}</td></tr>"
-                    f"            </table>"
-                    f"        </div>"
-                    f"        <div class='details'>"
                     f"            <h3>📁 Trail Documents</h3>"
                     f"            <ul>{trail_documents_html}</ul>"
                     f"        </div>"
@@ -2618,7 +2592,7 @@ class PurchasesRequestViewSet(viewsets.ModelViewSet):
             send_mail(
                     subject=recycler_subject,
                     message="",
-                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    from_email=transaction_email,
                     recipient_list=[recycler.email],
                     fail_silently=False,
                     html_message=recycler_html_message
@@ -2807,17 +2781,6 @@ class PurchasesRequestViewSet(viewsets.ModelViewSet):
                 f"                <tr><th>Quantity</th><td>{purchase_request.quantity}</td></tr>"
                 f"            </table>"
                 f"        </div>"
-                f"        "
-                f"        <div class='details'>"
-                f"            <h3>♻️ Recycler Details</h3>"
-                f"            <table>"
-                f"                <tr><th>EPR Registration Number</th><td>{purchase_request.credit_offer.epr_account.epr_registration_number}</td></tr>"
-                f"                <tr><th>EPR Registered Name</th><td>{purchase_request.credit_offer.epr_account.epr_registered_name}</td></tr>"
-                f"                <tr><th>Email</th><td><a href='mailto:{email}'>{email}</a></td></tr>"
-                f"                <tr><th>Contact Number</th><td>{contact_number}</td></tr>"
-                f"            </table>"
-                f"        </div>"
-                f"        "
                 f"        <div class='details'>"
                 f"            <h3>📁 Trail Documents</h3>"
                 f"            <ul>"
@@ -2841,7 +2804,7 @@ class PurchasesRequestViewSet(viewsets.ModelViewSet):
                 send_mail(
                     subject=producer_subject,
                     message="",
-                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    from_email=transaction_email,
                     recipient_list=[producer.email],
                     fail_silently=False,
                     html_message=producer_html_message

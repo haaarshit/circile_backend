@@ -20,7 +20,7 @@ from users.pagination import CustomPagination
 import os
 import json
 from django.http import Http404
-
+from decouple import config 
 
 # EPR Account Models and Serializers (Assuming you have these in epr_account app)
 from epr_account.models import (
@@ -39,6 +39,7 @@ from users.serializers import RecyclerSerializer, ProducerSerializer,ProducerDet
 
 from .serializers import SuperAdminSerializer, SuperAdminLoginSerializer,TransactionFeeSerializer,NewsletterSerializer,BlogSerializer
 
+transaction_email = config('TRANSACTION_EMAIL') 
 
 
 # SuperAdmin Login View
@@ -366,7 +367,7 @@ class TransactionDetailView(BaseSuperAdminModelDetailView):
                 send_mail(
                     subject=recycler_subject,
                     message="",
-                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    from_email=transaction_email,
                     recipient_list=[recycler.email],
                     fail_silently=False,
                     html_message=recycler_html_message
@@ -445,7 +446,7 @@ class TransactionDetailView(BaseSuperAdminModelDetailView):
                 send_mail(
                     subject=producer_subject,
                     message="",
-                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    from_email=transaction_email,
                     recipient_list=[producer.email],
                     fail_silently=False,
                     html_message=producer_html_message
