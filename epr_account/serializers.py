@@ -199,7 +199,11 @@ class CreditOfferSerializer(serializers.ModelSerializer):
     
     def get_gst(self, obj):
         if obj.price_per_credit and obj.minimum_purchase:
-            return (obj.price_per_credit*obj.minimum_purchase)*0.18
+            value = obj.price_per_credit*obj.minimum_purchase
+            processing_fee = 0.05 * value
+            gst = (value+processing_fee)*0.18
+            return gst
+            # return (obj.price_per_credit*obj.minimum_purchase)*0.18
         return 0
     
     def get_total(self, obj):
@@ -208,7 +212,11 @@ class CreditOfferSerializer(serializers.ModelSerializer):
         if fees:
             fee = fees.transaction_fee 
         if obj.price_per_credit and obj.minimum_purchase:
-            return  obj.price_per_credit*obj.minimum_purchase + ( obj.price_per_credit*obj.minimum_purchase)*0.18 +fee
+            value = obj.price_per_credit*obj.minimum_purchase
+            processing_fee = 0.05 * value
+            gst = (value+processing_fee)*0.18
+            return  value + processing_fee + gst + fee  
+            # return  obj.price_per_credit*obj.minimum_purchase + ( obj.price_per_credit*obj.minimum_purchase)*0.18 +fee
         return 0
     
     def get_product_image(self, obj):
@@ -364,7 +372,10 @@ class CounterCreditOfferSerializer(serializers.ModelSerializer):
         price = obj.offer_price 
         quantity = obj.quantity
         if price and quantity:
-            return (price*quantity)*0.18
+            value = price*quantity
+            processing_fee = 0.05 * value
+            gst = (value+processing_fee)*0.18
+            return gst
         return 0
     
     def get_total(self, obj):
@@ -376,7 +387,11 @@ class CounterCreditOfferSerializer(serializers.ModelSerializer):
         price = obj.offer_price 
         quantity = obj.quantity
         if price and quantity:
-            return (price*quantity) + (price*quantity)*0.18 + fee
+            value = price*quantity
+            processing_fee = 0.05 * value
+            gst = (value+processing_fee)*0.18
+            return  value + processing_fee + gst 
+            # return (price*quantity) + (price*quantity)*0.18 + fee
         return 0
 
 
@@ -465,7 +480,11 @@ class PurchasesRequestSerializer(serializers.ModelSerializer):
         price = obj.credit_offer.price_per_credit 
         quantity = obj.quantity
         if price and quantity:
-            return (price*quantity)*0.18
+            value = price*quantity
+            processing_fee = 0.05 * value
+            gst = (value+processing_fee)*0.18
+            return gst
+            # return (price*quantity)*0.18
         return 0
     
     def get_total(self, obj):
@@ -477,7 +496,11 @@ class PurchasesRequestSerializer(serializers.ModelSerializer):
         price = obj.credit_offer.price_per_credit 
         quantity = obj.quantity
         if price and quantity:
-            return (price*quantity) + (price*quantity)*0.18 + fee
+            value = price*quantity
+            processing_fee = 0.05 * value
+            gst = (value+processing_fee)*0.18
+            return  value + processing_fee + gst 
+            # return (price*quantity) + (price*quantity)*0.18 + fee
         return 0
 
 

@@ -1304,7 +1304,15 @@ class CounterCreditOfferViewSet(viewsets.ModelViewSet):
 
                 # Email to Producer (Stylish HTML)
                 producer_subject = "Counter Credit Offer Approved"
-                total_price = (instance.credit_offer.price_per_credit*instance.quantity) +  (instance.credit_offer.price_per_credit*instance.quantity)*0.18 + fee
+                
+                # calculate total price
+                price_per_credit = instance.credit_offer.price_per_credit
+                quantity = instance.quantity
+                value = price_per_credit*quantity
+                processing_fee = value*0.05
+                gst = (value+processing_fee)*0.18
+                total_price = value + processing_fee + gst
+
                 producer_html_message = (
 
                     f"<!DOCTYPE html>"
@@ -1388,6 +1396,12 @@ class CounterCreditOfferViewSet(viewsets.ModelViewSet):
                     f"                <tr><th>Product Type</th><td>{instance.credit_offer.product_type}</td></tr>"
                     f"                <tr><th>Producer Type</th><td>{instance.producer_epr.producer_type}</td></tr>"
                     f"                <tr><th>Quantity</th><td>{instance.quantity}</td></tr>"
+                    f"            </table>"
+                    f"        </div>"
+                    f"        <div class='details'>"
+                    f"            <table>"
+                    f"                <tr><th>Email</th><td><a href='mailto:{email}'>{email}</a></td></tr>"
+                    f"                <tr><th>Contact Number</th><td>{contact_number}</td></tr>"
                     f"            </table>"
                     f"        </div>"
                     f"        <div class='details'>"
@@ -1734,6 +1748,12 @@ class CounterCreditOfferViewSet(viewsets.ModelViewSet):
                     f"            </table>"
                     f"        </div>"
                     f"        <div class='details'>"
+                    f"            <table>"
+                    f"                <tr><th>Email</th><td><a href='mailto:{email}'>{email}</a></td></tr>"
+                    f"                <tr><th>Contact Number</th><td>{contact_number}</td></tr>"
+                    f"            </table>"
+                    f"        </div>"
+                    f"        <div class='details'>"
                     f"            <h3>📁 Trail Documents</h3>"
                     f"            <ul>"
                     f"                   {''.join([f'<li>✅ {doc}</li>' for doc in counter_credit_offer.credit_offer.trail_documents if doc.strip()])}"
@@ -2016,6 +2036,7 @@ class TransactionViewSet(viewsets.ModelViewSet):
             # Populate data from purchase request
             if purchases_request_id:
                 try:
+
                     if purchases_request.is_complete:
                          return Response({
                             "status": False,
@@ -2028,13 +2049,22 @@ class TransactionViewSet(viewsets.ModelViewSet):
                             "status": False,
                             "error": "Purchase request does not have an associated credit offer"
                         }, status=status.HTTP_400_BAD_REQUEST)
+
+                    # calculate total price
+                    price_per_credit =  credit_offer.price_per_credit 
+                    quantity = data['credit_quantity']
+                    value = price_per_credit*quantity
+                    processing_fee = value*0.05
+                    gst = (value+processing_fee)*0.18
+                    total_price = value + processing_fee + gst
+
                     data['counter_credit_offer'] = None
                     data['credit_offer'] = credit_offer.id
                     data['recycler'] = credit_offer.recycler.id
                     data['credit_quantity'] = purchases_request.quantity
                     data['waste_type'] = credit_offer.waste_type
                     data['recycler_type'] = credit_offer.epr_account.recycler_type
-                    data['total_price'] = float(data['credit_quantity']) * credit_offer.price_per_credit + (float(data['credit_quantity']) * credit_offer.price_per_credit)*0.18 + fee
+                    data['total_price'] = total_price
                     data['price_per_credit'] = credit_offer.price_per_credit
                     data['credit_type'] = credit_offer.epr_credit.credit_type
                     data['product_type'] = credit_offer.epr_credit.product_type
@@ -2061,13 +2091,22 @@ class TransactionViewSet(viewsets.ModelViewSet):
                             "status": False,
                             "error": "Counter credit offer must be approved"
                         }, status=status.HTTP_400_BAD_REQUEST)
+
+                    # calculate total price
+                    price_per_credit =  counter_credit_offer.offer_price 
+                    quantity = data['credit_quantity']
+                    value = price_per_credit*quantity
+                    processing_fee = value*0.05
+                    gst = (value+processing_fee)*0.18
+                    total_price = value + processing_fee + gst
+                    
                     data['counter_credit_offer'] = counter_credit_offer.id
                     data['credit_offer'] = counter_credit_offer.credit_offer.id
                     data['recycler'] = counter_credit_offer.recycler.id
                     data['credit_quantity'] = counter_credit_offer.quantity  
                     data['waste_type'] = counter_credit_offer.credit_offer.waste_type
                     data['recycler_type'] = counter_credit_offer.credit_offer.epr_account.recycler_type
-                    data['total_price'] = float(data['credit_quantity']) * counter_credit_offer.offer_price + (float(data['credit_quantity']) * counter_credit_offer.offer_price)*0.18 + fee
+                    data['total_price'] = total_price
                     data['price_per_credit'] = counter_credit_offer.offer_price
                     data['credit_type'] = counter_credit_offer.credit_offer.epr_credit.credit_type
                     data['product_type'] = counter_credit_offer.credit_offer.epr_credit.product_type
@@ -2574,6 +2613,14 @@ class PurchasesRequestViewSet(viewsets.ModelViewSet):
                     f"                <tr><th>Quantity</th><td>{purchase_request.quantity}</td></tr>"
                     f"            </table>"
                     f"        </div>"
+                    f"        "
+                    f"        <div class='details'>"
+                    f"            <table>"
+                    f"                <tr><th>Email</th><td><a href='mailto:{email}'>{email}</a></td></tr>"
+                    f"                <tr><th>Contact Number</th><td>{contact_number}</td></tr>"
+                    f"            </table>"
+                    f"        </div>"
+                    f"        "
                     f"        <div class='details'>"
                     f"            <h3>📁 Trail Documents</h3>"
                     f"            <ul>{trail_documents_html}</ul>"
@@ -2779,6 +2826,12 @@ class PurchasesRequestViewSet(viewsets.ModelViewSet):
                 f"                <tr><th>Total Price (Including GST)</th><td>{total_price}</td></tr>"
                 f"                <tr><th>Product Type</th><td>{purchase_request.credit_offer.product_type}</td></tr>"
                 f"                <tr><th>Quantity</th><td>{purchase_request.quantity}</td></tr>"
+                f"            </table>"
+                f"        </div>"
+                f"        <div class='details'>"
+                f"            <table>"
+                f"                <tr><th>Email</th><td><a href='mailto:{email}'>{email}</a></td></tr>"
+                f"                <tr><th>Contact Number</th><td>{contact_number}</td></tr>"
                 f"            </table>"
                 f"        </div>"
                 f"        <div class='details'>"
