@@ -2052,7 +2052,7 @@ class TransactionViewSet(viewsets.ModelViewSet):
 
                     # calculate total price
                     price_per_credit =  credit_offer.price_per_credit 
-                    quantity = data['credit_quantity']
+                    quantity = purchases_request.quantity
                     value = price_per_credit*quantity
                     processing_fee = value*0.05
                     gst = (value+processing_fee)*0.18
@@ -2094,7 +2094,7 @@ class TransactionViewSet(viewsets.ModelViewSet):
 
                     # calculate total price
                     price_per_credit =  counter_credit_offer.offer_price 
-                    quantity = data['credit_quantity']
+                    quantity = counter_credit_offer.quantity  
                     value = price_per_credit*quantity
                     processing_fee = value*0.05
                     gst = (value+processing_fee)*0.18
