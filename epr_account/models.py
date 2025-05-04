@@ -339,6 +339,7 @@ class EPRCredit(models.Model):
     credit_type = models.CharField()
     year = models.DateTimeField()
     processing_capacity =models.DecimalField(max_digits=10, decimal_places=2)
+    current_processing = models.FloatField(default=0.0)
     comulative_certificate_potential = models.FloatField()
     available_certificate_value = models.FloatField()
     state = models.CharField(max_length=100)

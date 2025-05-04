@@ -554,11 +554,14 @@ class CreditOfferViewSet(viewsets.ModelViewSet):
             get_epr_account = RecyclerEPR.objects.get(id=epr_account_id)
             get_epr_credit = EPRCredit.objects.get(id=epr_credit_id)
 
-            serializer.save(
+
+            credit_offer = serializer.save(
                 recycler=self.request.user,
                 epr_account=get_epr_account,
                 epr_credit=get_epr_credit,
             )
+            get_epr_credit.current_processing += credit_offer.credit_available
+            get_epr_credit.save()
 
         except RecyclerEPR.DoesNotExist:
             raise ValidationError({"error": "Invalid epr_account_id or not authorized."})
@@ -650,7 +653,14 @@ class CreditOfferViewSet(viewsets.ModelViewSet):
                 request_data = {key: value[0] if isinstance(value, list) and value else value for key, value in self.request.data.items()}
                 
                 # TODO -> ADD SOME ERROR REPSONSE IF EPR's reg number != epr_credit's reg number
-
+                
+                # Validate credit_available against comulative_certificate_potential
+                credit_available = float(request_data.get("credit_available", 0.0))
+                if credit_available + epr_credit.current_processing > epr_credit.comulative_certificate_potential:
+                    raise ValidationError(
+                       f"Credit offer exceeds cumulative certificate potential. Current: {epr_credit.current_processing}, Requested: {credit_available}, Potential: {epr_credit.comulative_certificate_potential}"
+                    )
+                
                 # Add additional fields
                 request_data.update({
                     "epr_account": get_epr_account.id,
