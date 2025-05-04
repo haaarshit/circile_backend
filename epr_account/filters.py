@@ -272,6 +272,16 @@ class CreditOfferFilter(filters.FilterSet):
                 query |= Q(trail_documents__contains=[doc])
             return queryset.filter(query)
         return queryset
+    def filter_state(self, queryset, name, value):
+        """
+        Filter CreditOffers where epr_account__state is any of the selected Indian states.
+        """
+        if value:
+            query = Q()
+            for state in value:
+                query |= Q(epr_account__state__iexact=state)
+            return queryset.filter(query)
+        return queryset
 
     class Meta:
         model = CreditOffer
