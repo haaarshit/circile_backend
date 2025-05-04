@@ -9,7 +9,7 @@ from .views import (
     CounterCreditOfferViewSet,
     PublicCreditOfferListView,PublicCreditOfferDetailView,
     TransactionViewSet,WasteTypeDetailView, WasteTypeListView,WasteTypeNamesView,PurchasesRequestViewSet, OrderDetailView,ProducerTypeListView,
-    RecyclerTypeListView,ProductTypeListView,CreditTypeListView
+    RecyclerTypeListView,ProductTypeListView,CreditTypeListView, AllTypesView
 )
 from rest_framework.routers import DefaultRouter
 
@@ -42,5 +42,6 @@ urlpatterns = [
     path('recycler-types/', RecyclerTypeListView.as_view(), name='recycler-type-list'),
     path('product-types/', ProductTypeListView.as_view(), name='product-type-list'),
     path('credit-types/', CreditTypeListView.as_view(), name='credit-type-list'),
+     path('all-types/', AllTypesView.as_view(), name='all-types'),
 ]
 

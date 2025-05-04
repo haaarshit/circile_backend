@@ -3144,3 +3144,35 @@ class CreditTypeListView(APIView):
             "data": serializer.data
         }
         return Response(response_data, status=status.HTTP_200_OK)
+    
+
+@method_decorator(cache_page(60 * 30 * 24), name='dispatch')  
+class AllTypesView(APIView):
+    def get(self, request):
+        # Fetch all data
+        waste_types = WasteType.objects.all()
+        producer_types = ProducerType.objects.all()
+        recycler_types = RecyclerType.objects.all()
+        product_types = ProductType.objects.all()
+        credit_types = CreditType.objects.all()
+
+        # Serialize the data
+        waste_serializer = WasteTypeNameSerializer(waste_types, many=True)
+        producer_serializer = ProducerTypeSerializer(producer_types, many=True)
+        recycler_serializer = RecyclerTypeSerializer(recycler_types, many=True)
+        product_serializer = ProductTypeSerializer(product_types, many=True)
+        credit_serializer = CreditTypeSerializer(credit_types, many=True)
+
+        # Construct the response
+        response_data = {
+            "status": True,
+            "data": {
+                "waste_types": waste_serializer.data,
+                "producer_types": producer_serializer.data,
+                "recycler_types": recycler_serializer.data,
+                "product_types": product_serializer.data,
+                "credit_types": credit_serializer.data
+            }
+        }
+
+        return Response(response_data, status=status.HTTP_200_OK)
