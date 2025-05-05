@@ -560,8 +560,8 @@ class CreditOfferViewSet(viewsets.ModelViewSet):
                 epr_account=get_epr_account,
                 epr_credit=get_epr_credit,
             )
-            get_epr_credit.current_processing += credit_offer.credit_available
-            get_epr_credit.save()
+            # get_epr_credit.current_processing += credit_offer.credit_available
+            # get_epr_credit.save()
 
         except RecyclerEPR.DoesNotExist:
             raise ValidationError({"error": "Invalid epr_account_id or not authorized."})
@@ -656,9 +656,9 @@ class CreditOfferViewSet(viewsets.ModelViewSet):
                 
                 # Validate credit_available against comulative_certificate_potential
                 credit_available = float(request_data.get("credit_available", 0.0))
-                if credit_available + epr_credit.current_processing > epr_credit.comulative_certificate_potential:
+                if credit_available > epr_credit.comulative_certificate_potential:
                     raise ValidationError(
-                       f"Credit offer exceeds cumulative certificate potential. Current: {epr_credit.current_processing}, Requested: {credit_available}, Potential: {epr_credit.comulative_certificate_potential}"
+                       f"Credit offer's credit {credit_available} can exceed comulative certificate potential {epr_credit.comulative_certificate_potential}"
                     )
                 
                 # Add additional fields
@@ -1741,7 +1741,7 @@ class CounterCreditOfferViewSet(viewsets.ModelViewSet):
                     f"    <div class='container'>"
                     f"        <h2>📢 Counter Credit Offer Approval Notification</h2>"
                     f"        <p>Dear <strong>{recycler.full_name}</strong>,</p>"
-                    f"        <p>You have approved a counter credit offer from <strong>{producer.full_name}</strong>. Below are the details:</p>"
+                    f"        <p>You have a counter credit offer from <strong>{producer.full_name}</strong>. Below are the details:</p>"
                     f"        <div class='details'>"
                     f"            <h3>🛠 Counter Offer Details</h3>"
                     f"            <table>" 
@@ -2608,7 +2608,7 @@ class PurchasesRequestViewSet(viewsets.ModelViewSet):
                     f"    <div class='container'>"
                     f"        <h2>📢 Purchase Request Notification</h2>"
                     f"        <p>Dear <strong>{recycler.full_name}</strong>,</p>"
-                    f"        <p>You have approved a purchase request from <strong>{producer.full_name}</strong>. Below are the details:</p>"
+                    f"        <p>You have a purchase request from <strong>{producer.full_name}</strong>. Below are the details:</p>"
                     f"        <div class='details'>"
                     f"            <h3>🛠 Purchase Request Details</h3>"
                     f"            <table>"

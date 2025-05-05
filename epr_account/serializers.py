@@ -33,10 +33,20 @@ class RecyclerEPRSerializer(serializers.ModelSerializer):
         Check that the EPR certificate file is provided.
         """
         request = self.context.get('request')
+        user = request.user
+
         if request and request.method in ['POST', 'PUT']:
             print(request.FILES)
             if 'epr_certificate' not in request.FILES:
                 raise serializers.ValidationError({"epr_certificate": "EPR certificate file is required."})
+        if 'is_approved' in data or 'status' in data:
+            if  not isinstance(user, SuperAdmin):
+                raise serializers.ValidationError("Only SuperAdmin can set is_approved or status fields.")
+
+        if data.get('status') == 'approved' and not data.get('is_approved'):
+            raise serializers.ValidationError("is_approved must be True when status is 'approved'.")
+        if data.get('status') == 'rejected' and  data.get('is_approved'):
+            raise serializers.ValidationError("is_approved must be False when status is 'rejected'.")
         return data
     def create(self, validated_data): 
 
@@ -92,9 +102,21 @@ class ProducerEPRSerializer(serializers.ModelSerializer):
         Check that the EPR certificate file is provided.
         """
         request = self.context.get('request')
+        user = request.user
+
         if request and request.method in ['POST', 'PUT']:
             if 'epr_certificate' not in request.FILES:
                 raise serializers.ValidationError({"epr_certificate": "EPR certificate file is required."})
+
+        if 'is_approved' in data or 'status' in data:
+              if  not isinstance(user, SuperAdmin):
+                raise serializers.ValidationError("Only SuperAdmin can set is_approved or status fields.")
+        # Ensure is_approved is True if status is approved
+        if data.get('status') == 'approved' and not data.get('is_approved'):
+            raise serializers.ValidationError("is_approved must be True when status is 'approved'.")
+        if data.get('status') == 'rejected' and  data.get('is_approved'):
+            raise serializers.ValidationError("is_approved must be False when status is 'rejected'.")
+
         return data
     def create(self, validated_data): 
 
@@ -572,7 +594,14 @@ class TransactionSerializer(serializers.ModelSerializer):
             return "Complete"
 
         return "Pending"
-
+    
+    def to_representation(self, instance):
+        # Get the default serialized data
+        data = super().to_representation(instance)
+        # Replace the 'status' field with the capitalized display value
+        data['status'] = instance.get_status_display()
+        return data
+    
     class Meta:
         model = Transaction
         fields = '__all__'
