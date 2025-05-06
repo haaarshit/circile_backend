@@ -25,7 +25,7 @@ from django.conf import settings
 from django.utils.decorators import method_decorator
 from django.views.decorators.cache import cache_page
 from decouple import config 
-
+from .filters import indian_states
 transaction_email = config('TRANSACTION_EMAIL') 
 
 class IsRecycler(permissions.BasePermission):
@@ -3161,15 +3161,16 @@ class AllTypesView(APIView):
     def get(self, request):
         # Fetch all data
         waste_types = WasteType.objects.all()
-        producer_types = ProducerType.objects.all()
+        # producer_types = ProducerType.objects.all()
         recycler_types = RecyclerType.objects.all()
         product_types = ProductType.objects.all()
         credit_types = CreditType.objects.all()
         formatted_allowed_docs = [{"name": doc} for doc in allowed_docs]
+        states = [{"name": s} for s in indian_states]
 
         # Serialize the data
         waste_serializer = WasteTypeNameSerializer(waste_types, many=True)
-        producer_serializer = ProducerTypeSerializer(producer_types, many=True)
+        # producer_serializer = ProducerTypeSerializer(producer_types, many=True)
         recycler_serializer = RecyclerTypeSerializer(recycler_types, many=True)
         product_serializer = ProductTypeSerializer(product_types, many=True)
         credit_serializer = CreditTypeSerializer(credit_types, many=True)
@@ -3178,12 +3179,12 @@ class AllTypesView(APIView):
         response_data = {
             "status": True,
             "data": {
-                "waste_types": waste_serializer.data,
-                "producer_types": producer_serializer.data,
-                "recycler_types": recycler_serializer.data,
-                "product_types": product_serializer.data,
-                "credit_types": credit_serializer.data,
-                "trail_documents": formatted_allowed_docs
+                "waste_type": waste_serializer.data,
+                "recycler_type": recycler_serializer.data,
+                "product_type": product_serializer.data,
+                "credit_type": credit_serializer.data,
+                "trail_documents": formatted_allowed_docs,
+                "state": states
             }
         }
 
