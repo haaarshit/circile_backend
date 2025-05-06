@@ -3183,7 +3183,7 @@ class AllTypesView(APIView):
                 "recycler_types": recycler_serializer.data,
                 "product_types": product_serializer.data,
                 "credit_types": credit_serializer.data,
-                "allowed_docs": formatted_allowed_docs
+                "trail_documents": formatted_allowed_docs
             }
         }
 
