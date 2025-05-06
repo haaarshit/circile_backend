@@ -1,7 +1,7 @@
 from rest_framework import viewsets, permissions, status, serializers,generics
 from rest_framework.response import Response
 from users.authentication import CustomJWTAuthentication
-from .models import RecyclerEPR, ProducerEPR,EPRCredit,EPRTarget,CreditOffer,CounterCreditOffer,Transaction,WasteType,PurchasesRequest, ProducerType,RecyclerType,ProductType,CreditType
+from .models import RecyclerEPR, ProducerEPR,EPRCredit,EPRTarget,CreditOffer,CounterCreditOffer,Transaction,WasteType,PurchasesRequest, ProducerType,RecyclerType,ProductType,CreditType, allowed_docs
 from .serializers import RecyclerEPRSerializer, ProducerEPRSerializer, EPRCreditSerializer,EPRTargetSerializer, CreditOfferSerializer,CounterCreditOfferSerializer,TransactionSerializer, WasteTypeSerializer, WasteTypeNameSerializer, PurchasesRequestSerializer, ProducerTypeSerializer, RecyclerTypeSerializer, ProductTypeSerializer, CreditTypeSerializer
 from users.models import Recycler, Producer
 from rest_framework.exceptions import ValidationError
@@ -3181,8 +3181,14 @@ class AllTypesView(APIView):
                 "producer_types": producer_serializer.data,
                 "recycler_types": recycler_serializer.data,
                 "product_types": product_serializer.data,
-                "credit_types": credit_serializer.data
+                "credit_types": credit_serializer.data,
+                "allowed_docs": allowed_docs
             }
         }
 
         return Response(response_data, status=status.HTTP_200_OK)
+
+@method_decorator(cache_page(60 * 30 * 24), name='dispatch')  
+class AllowedDocsView(APIView):
+    def get(self, request):
+        return Response({'allowed_docs': allowed_docs,"status":True}, status=status.HTTP_200_OK)

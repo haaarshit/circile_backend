@@ -12,7 +12,18 @@ import datetime
 class CustomCloudinaryField(CloudinaryField):
      pass
 
-
+allowed_docs = [
+        "Tax Invoice",
+        "E-wayBIll",
+        "Loading slip",
+        "Unloading Slip",
+        "Lorry Receipt copy",
+        "Recycling Certificate Copy",
+        "Co-Processing Certificate",
+        "Lorry Photographs",
+        "Credit Transfer Proof",
+        "EPR Registration Certificate"
+    ]
 
 product_credit_type_for_e_waste = ["EEE Code wise","ITEW1 - Centralized Data Processing: Mainframe and Minicomputers",
                                         "ITEW2 - Personal Computing: Personal Computers (Central Processing Unit with input and output devices)",
@@ -422,18 +433,6 @@ class EPRTarget(models.Model):
         super().save(*args, **kwargs)
 
 def validate_doc_choices(value):
-    allowed_docs = [
-        "Tax Invoice",
-        "E-wayBIll",
-        "Loading slip",
-        "Unloading Slip",
-        "Lorry Receipt copy",
-        "Recycling Certificate Copy",
-        "Co-Processing Certificate",
-        "Lorry Photographs",
-        "Credit Transfer Proof",
-        "EPR Registration Certificate"
-    ]
     
     # Check if all values are in allowed_docs
     invalid_docs = [doc for doc in value if doc not in allowed_docs]
