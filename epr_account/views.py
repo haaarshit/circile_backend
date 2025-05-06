@@ -3162,9 +3162,9 @@ class AllTypesView(APIView):
         # Fetch all data
         waste_types = WasteType.objects.all()
         # producer_types = ProducerType.objects.all()
-        recycler_types = RecyclerType.objects.all()
-        product_types = ProductType.objects.all()
-        credit_types = CreditType.objects.all()
+        recycler_types = RecyclerType.objects.values('name').distinct()
+        product_types = ProductType.objects.values('name').distinct()
+        credit_types = CreditType.objects.values('name').distinct()
         formatted_allowed_docs = [{"name": doc} for doc in allowed_docs]
         states = [{"name": s} for s in indian_states]
 
