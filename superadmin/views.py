@@ -193,6 +193,13 @@ class TransactionDetailView(BaseSuperAdminModelDetailView):
             serializer.is_valid(raise_exception=True)
             transaction = serializer.save()
 
+            recycler = transaction.recycler
+            producer = transaction.producer
+                            
+                # Common fields
+            email = 'support@circle8.in'
+            contact_number = '+91 9620220013'
+            
             credit_offer = transaction.credit_offer
             if transaction.status == 'approved' and isinstance(request.user, SuperAdmin):
 
@@ -235,13 +242,8 @@ class TransactionDetailView(BaseSuperAdminModelDetailView):
                 credit_offer.is_sold = credit_offer.credit_available == 0
                 credit_offer.save()
 
-                  # Email to Recycler
-                recycler = transaction.recycler
-                producer = transaction.producer
-                
-                # Common fields
-                email = 'support@circle8.in'
-                contact_number = '+91 9620220013'
+
+
 
                 # Email to Recycler (Stylish HTML)
                 recycler_subject = "Transaction Approved by SuperAdmin"
