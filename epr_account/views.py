@@ -3165,6 +3165,7 @@ class AllTypesView(APIView):
         recycler_types = RecyclerType.objects.all()
         product_types = ProductType.objects.all()
         credit_types = CreditType.objects.all()
+        formatted_allowed_docs = [{"name": doc} for doc in allowed_docs]
 
         # Serialize the data
         waste_serializer = WasteTypeNameSerializer(waste_types, many=True)
@@ -3182,7 +3183,7 @@ class AllTypesView(APIView):
                 "recycler_types": recycler_serializer.data,
                 "product_types": product_serializer.data,
                 "credit_types": credit_serializer.data,
-                "allowed_docs": allowed_docs
+                "allowed_docs": formatted_allowed_docs
             }
         }
 
