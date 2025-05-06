@@ -161,6 +161,8 @@ class CreditOfferFilter(filters.FilterSet):
         method='filter_waste_type',
         label='Waste Type'
     )
+    # waste_type = filters.CharFilter(method='filter_waste_type', label='Waste Type')
+
     # Dynamic choices for recycler_type
     recycler_type = filters.MultipleChoiceFilter(
         choices=[(rt.name, f"{rt.name} ({rt.waste_type.name})") for rt in RecyclerType.objects.all()],
@@ -227,6 +229,15 @@ class CreditOfferFilter(filters.FilterSet):
                 query |= Q(waste_type__iexact=wt)
             return queryset.filter(query)
         return queryset
+    # def filter_waste_type(self, queryset, name, value):
+    #     if value:
+    #         value_list = value.split(',')  # support comma-separated values
+    #         query = Q()
+    #         for wt in value_list:
+    #             query |= Q(waste_type__iexact=wt)
+    #         return queryset.filter(query)
+    #     return queryset
+
 
     def filter_recycler_type(self, queryset, name, value):
         """

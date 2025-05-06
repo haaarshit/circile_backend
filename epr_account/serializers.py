@@ -39,9 +39,9 @@ class RecyclerEPRSerializer(serializers.ModelSerializer):
             print(request.FILES)
             if 'epr_certificate' not in request.FILES:
                 raise serializers.ValidationError({"epr_certificate": "EPR certificate file is required."})
-        if 'is_approved' in data or 'status' in data:
-            if  not isinstance(user, SuperAdmin):
-                raise serializers.ValidationError("Only SuperAdmin can set is_approved or status fields.")
+        # if 'is_approved' in data or 'status' in data:
+        #     if  not isinstance(user, SuperAdmin):
+        #         raise serializers.ValidationError("Only SuperAdmin can set is_approved or status fields.")
 
         if data.get('status') == 'approved' and not data.get('is_approved'):
             raise serializers.ValidationError("is_approved must be True when status is 'approved'.")
@@ -108,9 +108,9 @@ class ProducerEPRSerializer(serializers.ModelSerializer):
             if 'epr_certificate' not in request.FILES:
                 raise serializers.ValidationError({"epr_certificate": "EPR certificate file is required."})
 
-        if 'is_approved' in data or 'status' in data:
-              if  not isinstance(user, SuperAdmin):
-                raise serializers.ValidationError("Only SuperAdmin can set is_approved or status fields.")
+        # if 'is_approved' in data or 'status' in data:
+        #       if  not isinstance(user, SuperAdmin):
+        #         raise serializers.ValidationError("Only SuperAdmin can set is_approved or status fields.")
         # Ensure is_approved is True if status is approved
         if data.get('status') == 'approved' and not data.get('is_approved'):
             raise serializers.ValidationError("is_approved must be True when status is 'approved'.")

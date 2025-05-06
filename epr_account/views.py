@@ -658,7 +658,7 @@ class CreditOfferViewSet(viewsets.ModelViewSet):
                 credit_available = float(request_data.get("credit_available", 0.0))
                 if credit_available > epr_credit.comulative_certificate_potential:
                     raise ValidationError(
-                       f"Credit offer's credit {credit_available} can exceed comulative certificate potential {epr_credit.comulative_certificate_potential}"
+                       f"Credit offer's credit {credit_available} can't exceed comulative certificate potential {epr_credit.comulative_certificate_potential}"
                     )
                 
                 # Add additional fields
