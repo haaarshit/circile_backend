@@ -500,8 +500,6 @@ class TransactionDetailView(BaseSuperAdminModelDetailView):
                     f"        <div class='details'>"
                     f"            <h3>♻️ Recycler Details</h3>"
                     f"            <table>"
-                    f"                <tr><th>EPR Registration Number</th><td>{transaction.credit_offer.epr_account.epr_registration_number}</td></tr>"
-                    f"                <tr><th>EPR Registered Name</th><td>{transaction.credit_offer.epr_account.epr_registered_name}</td></tr>"
                     f"                <tr><th>Email</th><td><a href='mailto:{email}'>{email}</a></td></tr>"
                     f"                <tr><th>Contact Number</th><td>{contact_number}</td></tr>"
                     f"            </table>"
