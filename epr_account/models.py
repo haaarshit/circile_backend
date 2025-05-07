@@ -145,76 +145,87 @@ producer_types_for_oil = [
     "P9 - Manufactures and sells Re-refined /Recycled Base Oil under its brand/ Co-brand"
     ]
 
+producer_types_for_tyre = [
+      "P1: Manufactures and sells new tyre domestically",
+      "P2: Sells domestically under its own brand, new tyre manufactured by other manufacturers or suppliers",
+      "P3: Sells imported new tyre",
+      "P4: Imports vehicles fitted with new tyres",
+      "P5: Automobile manufacturers importing new tyre for use in new vehicles sold domestically",
+      "P6: Imports waste tyre"
+    ]
+
+ 
+
 WASTE_CHOICES = {
-  "Plastic": {
-    "producer_types": ["Producer (P)", "Importer (I)", "Brand Owner (BO)"],
-    "recycler_types": ["Recycler", "Co-processor (Cement)", "Co-processor (WtE)", "Co-processor (WtO)", "Industrial Composting"],
-    "product_types": ["Category I", "Category II", "Category III", "Category IV"],
-    "credit_types": [
-      "Recycling",
-      "EoL",
-    ]
-  },
-  "E-waste": {
-    "producer_types": ["Producer (PEW)", "Manufacturer"],
-    "recycler_types": ["Recycler (REW)", "Refurbisher (RfEW)"],
-    "product_types":product_credit_type_for_e_waste,
-    "credit_types": [
-        "Aluminium (Al)",
-        "Iron (Fe)",
+    "Plastic": {
+        "producer_types": ["Producer (P)", "Importer (I)", "Brand Owner (BO)"],
+        "recycler_types": ["Recycler", "Co-processor (Cement)", "Co-processor (WtE)", "Co-processor (WtO)", "Industrial Composting"],
+        "product_types": ["Category I", "Category II", "Category III", "Category IV"],
+        "credit_types": [
+        "Recycling",
+        "EoL",
+        ]
+    },
+    "E-waste": {
+        "producer_types": ["Producer (PEW)", "Manufacturer (MEW)"],
+        "recycler_types": ["Recycler (REW)", "Refurbisher (RfEW)"],
+        "product_types":product_credit_type_for_e_waste,
+        "credit_types": [
+                "Aluminium (Al)",
+                "Iron (Fe)",
+                "Copper (Cu)",
+                "Gold (Au)",
+                ]+ product_credit_type_for_e_waste
+    },
+    "Battery": {
+        "producer_types":  ["Producer (PBW)", "Manufacturer (MBW)", "Importer (IBW)"],
+        "recycler_types": ["Recycler (R)", "Refurbisher (Refurb)"],
+        "product_types": ["Portable Battery", "Automotive Battery", "Industrial Battery", "EV Battery"],
+        "credit_types": [
+        "Lead (Pb)",
+        "Lithium (Li)",
+        "Cobalt (Co)",
+        "Nickel (Ni)",
+        "Manganese (Mn)",
+        "Zinc (Zn)",
         "Copper (Cu)",
-        "Gold (Au)",
-        ]+ product_credit_type_for_e_waste
-  },
-  "Battery": {
-    "producer_types": ["Producer (PBW)"],
-    "recycler_types": ["Recycler (R)", "Refurbisher (Refurb)"],
-    "product_types": ["Portable Battery", "Automotive Battery", "Industrial Battery", "EV Battery"],
-    "credit_types": [
-      "Lead (Pb)",
-      "Lithium (Li)",
-      "Cobalt (Co)",
-      "Nickel (Ni)",
-      "Manganese (Mn)",
-      "Zinc (Zn)",
-      "Copper (Cu)",
-      "Cadmium (Cd)",
-      "Aluminium (Al)",
-      "Iron (Fe)"
-    ]
-  },
-  "Tyre": {
-    "producer_types": ["Producer (PWT)"],
-    "recycler_types": ["Recycler (RWT)", "Retreader (RtWT)"],
-    "product_types": ["Domestic New Tyre", "Imported New Tyre", "Imported Waste Tyre"],
-    "credit_types": [
-      "Reclaimed Rubber (ReR)",
-      "Recovered Carbon Black-(RCB)",
-      "Crumb Rubber Modified Bitumen (CRMB)",
-      "Crumb Rubber (CR)",
-      "Pyrolysis Oil and Char-(PO&C)",
-      "Retreading Certificate"
-    ]
-  },
-  "Oil": {
-    "producer_types": producer_types_for_oil,
-    "recycler_types": ["Recyclers", "Co-processors (Energy Recovery)", "Co-processors (Resource Recovery)"],
-    "product_types": [
-      "Virgin base oil",
-      "White Oil",
-      "Hydraulic Oil",
-      "Transformer Oil",
-      "Cutting Oil",
-      "Rubber Processing Oil",
-      "Thermal Fluids"
-    ],
-    "credit_types": [
-      "Recycling",
-      "Co-processing (ER)",
-      "Co-processing (RR)"
-    ]
-  }
-}
+        "Cadmium (Cd)",
+        "Aluminium (Al)",
+        "Iron (Fe)"
+        ]
+    },
+    "Tyre": {
+        "producer_types": producer_types_for_tyre,
+        "recycler_types": ["Recycler (RWT)", "Retreader (RtWT)"],
+        "product_types": ["Domestic New Tyre", "Imported New Tyre", "Imported Waste Tyre"],
+        "credit_types": [
+        "Reclaimed Rubber (ReR)",
+        "Recovered Carbon Black-(RCB)",
+        "Crumb Rubber Modified Bitumen (CRMB)",
+        "Crumb Rubber (CR)",
+        "Pyrolysis Oil and Char-(PO&C)",
+        "Retreading Certificate"
+        ]
+    },
+    "Oil": {
+        "producer_types": producer_types_for_oil,
+        "recycler_types": ["Recyclers", "Co-processors (Energy Recovery)", "Co-processors (Resource Recovery)"],
+        "product_types": [
+        "Virgin base oil",
+        "White Oil",
+        "Hydraulic Oil",
+        "Transformer Oil",
+        "Cutting Oil",
+        "Rubber Processing Oil",
+        "Thermal Fluids"
+        ],
+        "credit_types": [
+        "Recycling",
+        "Co-processing (ER)",
+        "Co-processing (RR)"
+        ]
+    }
+    }
 
 def get_current_year_start():
     return datetime.date.today().replace(month=1, day=1)
