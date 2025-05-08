@@ -1851,7 +1851,6 @@ class PublicCreditOfferListView(generics.ListAPIView):
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 # New Detail View
-@method_decorator(cache_page(60 * 15), name='dispatch')
 class PublicCreditOfferDetailView(generics.RetrieveAPIView):
     queryset = CreditOffer.objects.filter(is_sold=False).select_related('epr_account', 'epr_credit')
     serializer_class = CreditOfferSerializer
