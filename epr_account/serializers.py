@@ -429,10 +429,14 @@ class CounterCreditOfferSerializer(serializers.ModelSerializer):
 
         if isinstance(request.user,Recycler):  
             if "status" in validated_data and len(validated_data) == 1:
+                if instance.status == 'rejected':
+                    raise serializers.ValidationError("Counter offer is already rejected")
                 if request.user == instance.recycler:
                     instance.status = validated_data["status"]
                     if(validated_data['status']=='approved'):
                         instance.is_approved=True
+                    if(validated_data['status']=='rejected'):
+                        instance.is_approved=False
                     instance.save()
                     return instance
                 else:
@@ -533,9 +537,12 @@ class PurchasesRequestSerializer(serializers.ModelSerializer):
         if self.instance:  # Update
             if not isinstance(request.user, Recycler):
                 raise serializers.ValidationError("Only Recycler can update PurchasesRequest")
+            if self.instance.status == 'rejected':
+                raise serializers.ValidationError("Request is already rejected")
             if any(k not in ['status', 'is_approved'] for k in data.keys()):
                 raise serializers.ValidationError("Only status and is_approved can be updated by Recycler")
-            
+        if data.get('status') == 'rejected':
+            data['is_approved'] = False
         if data.get('status') == 'approved':
             data['is_approved'] = True
 

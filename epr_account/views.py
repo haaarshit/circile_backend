@@ -1298,31 +1298,32 @@ class CounterCreditOfferViewSet(viewsets.ModelViewSet):
             serializer.is_valid(raise_exception=True)
             self.perform_update(serializer)
 
-              # Send email to Producer if Counter Credit Offer is approved
+            producer = instance.producer
+            recycler = instance.recycler
+
+            fee = 0
+            fees = TransactionFee.objects.first()
+            if fees:
+                fee = fees.transaction_fee
+                
+            # Common fields
+            email = 'support@circle8.in'
+            contact_number = '+91 9620220013'
+
+            # Email to Producer (Stylish HTML)
+            producer_subject = "Counter Credit Offer"
+                
+            # calculate total price
+            price_per_credit = instance.credit_offer.price_per_credit
+            quantity = instance.quantity
+            value = price_per_credit*quantity
+            processing_fee = value*0.05
+            gst = (value+processing_fee)*0.18
+            total_price = value + processing_fee + gst
+
             if instance.status == 'approved' and instance.is_approved:
-                producer = instance.producer
-                recycler = instance.recycler
 
-                fee = 0
-                fees = TransactionFee.objects.first()
-                if fees:
-                    fee = fees.transaction_fee
-                
-                # Common fields
-                email = 'support@circle8.in'
-                contact_number = '+91 9620220013'
-
-                # Email to Producer (Stylish HTML)
-                producer_subject = "Counter Credit Offer Approved"
-                
-                # calculate total price
-                price_per_credit = instance.credit_offer.price_per_credit
-                quantity = instance.quantity
-                value = price_per_credit*quantity
-                processing_fee = value*0.05
-                gst = (value+processing_fee)*0.18
-                total_price = value + processing_fee + gst
-
+              # Send email to Producer if Counter Credit Offer is approved
                 producer_html_message = (
 
                     f"<!DOCTYPE html>"
@@ -1518,7 +1519,128 @@ class CounterCreditOfferViewSet(viewsets.ModelViewSet):
                 #     fail_silently=False,
                 #     html_message=recycler_html_message
                 # )
+            if instance.status == 'rejected':
 
+              # Send email to Producer if Counter Credit Offer is rejected
+                producer_html_message = (
+
+                    f"<!DOCTYPE html>"
+                    f"<html>"
+                    f"<head>"
+                    f"    <meta charset='UTF-8'>"
+                    f"    <meta name='viewport' content='width=device-width, initial-scale=1.0'>"
+                    f"    <title>Counter Credit Offer Approval Notification</title>"
+                    f"    <style>"
+                    f"        body {{"
+                    f"            font-family: Arial, sans-serif;"
+                    f"            margin: 0;"
+                    f"            padding: 20px;"
+                    f"            background-color: #f4f4f4;"
+                    f"        }}"
+                    f"        .container {{"
+                    f"            max-width: 600px;"
+                    f"            background: #ffffff;"
+                    f"            padding: 20px;"
+                    f"            border-radius: 8px;"
+                    f"            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);"
+                    f"        }}"
+                    f"        h2 {{"
+                    f"            color: #2c3e50;"
+                    f"            text-align: center;"
+                    f"        }}"
+                    f"        .details {{"
+                    f"            margin: 20px 0;"
+                    f"        }}"
+                    f"        .details table {{"
+                    f"            width: 100%;"
+                    f"            border-collapse: collapse;"
+                    f"        }}"
+                    f"        .details th, .details td {{"
+                    f"            border: 1px solid #ddd;"
+                    f"            padding: 8px;"
+                    f"            text-align: left;"
+                    f"        }}"
+                    f"        .details th {{"
+                    f"            background-color: #3498db;"
+                    f"            color: white;"
+                    f"        }}"
+                    f"        .status {{"
+                    f"            text-align: center;"
+                    f"            padding: 10px;"
+                    f"            font-weight: bold;"
+                    f"            background-color: #27ae60;"
+                    f"            color: white;"
+                    f"            border-radius: 4px;"
+                    f"        }}"
+                    f"        .cta {{"
+                    f"            text-align: center;"
+                    f"            margin-top: 20px;"
+                    f"        }}"
+                    f"        .cta a {{"
+                    f"            text-decoration: none;"
+                    f"            background: #27ae60;"
+                    f"            color: white;"
+                    f"            padding: 10px 20px;"
+                    f"            border-radius: 5px;"
+                    f"            display: inline-block;"
+                    f"        }}"
+                    f"    </style>"
+                    f"</head>"
+                    f"<body>"
+                    f"    <div class='container'>"
+                    f"        <h2>📢 Counter Credit Offer Rejection Notification</h2>"
+                    f"        <p>Dear <strong>{producer.full_name}</strong>,</p>"
+                    f"        <p>Your counter credit offer has been rejected by <strong>{recycler.full_name}</strong>. Below are the details:</p>"
+                    f"        "
+                    f"        <div class='details'>"
+                    f"            <h3>🛠 Counter Offer Details</h3>"
+                    f"            <table>"
+                    f"                <tr><th>Offered By</th><td>{recycler.unique_id}</td></tr>"
+                    f"                <tr><th>Work Order Date</th><td>{instance.created_at}</td></tr>"
+                    f"                <tr><th>Credit Offer Title</th><td>{instance.credit_offer.offer_title}</td></tr>"
+                    f"                <tr><th>Waste Type</th><td>{instance.credit_offer.waste_type}</td></tr>"
+                    f"                <tr><th>Credit Type</th><td>{instance.credit_offer.credit_type}</td></tr>"
+                    f"                <tr><th>Price per Credit</th><td>{instance.offer_price}</td></tr>"
+                    f"                <tr><th>Total Price (Including GST and Fee)</th><td>{total_price}</td></tr>"
+                    f"                <tr><th>Product Type</th><td>{instance.credit_offer.product_type}</td></tr>"
+                    f"                <tr><th>Producer Type</th><td>{instance.producer_epr.producer_type}</td></tr>"
+                    f"                <tr><th>Quantity</th><td>{instance.quantity}</td></tr>"
+                    f"            </table>"
+                    f"        </div>"
+                    f"        <div class='details'>"
+                    f"            <table>"
+                    f"                <tr><th>Email</th><td><a href='mailto:{email}'>{email}</a></td></tr>"
+                    f"                <tr><th>Contact Number</th><td>{contact_number}</td></tr>"
+                    f"            </table>"
+                    f"        </div>"
+                    f"        <div class='details'>"
+                    f"            <h3>📁 Trail Documents</h3>"
+                    f"            <ul>"
+                    f"                   {''.join([f'<li>✅ {doc}</li>' for doc in instance.credit_offer.trail_documents if doc.strip()])}"
+                    f"            </ul>"
+                    f"        </div>"
+                    f"        "
+                    f"        <div class='status'>Status: {instance.status}</div>"
+                    f"        "
+                    f"        <div class='cta'>"
+                    f"            <a href='#'>Proceed with Transaction</a>"
+                    f"        </div>"
+                    f"        "
+                    f"        <p style='color: #7f8c8d; font-size: 12px; text-align: center; margin-top: 20px;'>"
+                    f"            This is an automated message. Please do not reply directly to this email."
+                    f"        </p>"
+                    f"    </div>"
+                    f"</body>"
+                    f"</html>"
+                )
+                send_mail(
+                    subject=producer_subject,
+                    message="",
+                    from_email=transaction_email,
+                    recipient_list=[producer.email],
+                    fail_silently=False,
+                    html_message=producer_html_message
+                )
 
 
             return Response({
@@ -2732,21 +2854,21 @@ class PurchasesRequestViewSet(viewsets.ModelViewSet):
     
 
 
+            producer = purchase_request.producer
+            recycler = purchase_request.recycler
+
+            fee = 0
+            fees = TransactionFee.objects.first()
+            if fees:
+                fee = fees.transaction_fee
+                
+            # Common fields
+            email = 'support@circle8.in'
+            contact_number = '+91 9620220013'
+
+            trail_documents_html = "".join([f"<li>✅ {doc}</li>" for doc in purchase_request.credit_offer.trail_documents])
             # Send email to Producer if Purchase Request is approved
             if purchase_request.status == 'approved' and purchase_request.is_approved:
-                producer = purchase_request.producer
-                recycler = purchase_request.recycler
-
-                fee = 0
-                fees = TransactionFee.objects.first()
-                if fees:
-                    fee = fees.transaction_fee
-                
-                # Common fields
-                email = 'support@circle8.in'
-                contact_number = '+91 9620220013'
-
-                trail_documents_html = "".join([f"<li>✅ {doc}</li>" for doc in purchase_request.credit_offer.trail_documents])
 
 
                 # Email to Producer (Stylish HTML)
@@ -2946,7 +3068,127 @@ class PurchasesRequestViewSet(viewsets.ModelViewSet):
                 #     html_message=recycler_html_message
                 # )
 
-
+            if purchase_request.status == 'rejected':
+                producer_subject = "Purchase Request Rejected"
+                total_price = (purchase_request.credit_offer.price_per_credit*purchase_request.quantity) +  (purchase_request.credit_offer.price_per_credit*purchase_request.quantity)*0.18 + fee
+                producer_html_message = (
+    
+                    f"<!DOCTYPE html>"
+                    f"<html>"
+                    f"<head>"
+                    f"    <meta charset='UTF-8'>"
+                    f"    <meta name='viewport' content='width=device-width, initial-scale=1.0'>"
+                    f"    <title>Purchase Request Approval Notification</title>"
+                    f"    <style>"
+                    f"        body {{"
+                    f"            font-family: Arial, sans-serif;"
+                    f"            margin: 0;"
+                    f"            padding: 20px;"
+                    f"            background-color: #f4f4f4;"
+                    f"        }}"
+                    f"        .container {{"
+                    f"            max-width: 600px;"
+                    f"            background: #ffffff;"
+                    f"            padding: 20px;"
+                    f"            border-radius: 8px;"
+                    f"            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);"
+                    f"        }}"
+                    f"        h2 {{"
+                    f"            color: #2c3e50;"
+                    f"            text-align: center;"
+                    f"        }}"
+                    f"        .details {{"
+                    f"            margin: 20px 0;"
+                    f"        }}"
+                    f"        .details table {{"
+                    f"            width: 100%;"
+                    f"            border-collapse: collapse;"
+                    f"        }}"
+                    f"        .details th, .details td {{"
+                    f"            border: 1px solid #ddd;"
+                    f"            padding: 8px;"
+                    f"            text-align: left;"
+                    f"        }}"
+                    f"        .details th {{"
+                    f"            background-color: #3498db;"
+                    f"            color: white;"
+                    f"        }}"
+                    f"        .status {{"
+                    f"            text-align: center;"
+                    f"            padding: 10px;"
+                    f"            font-weight: bold;"
+                    f"            background-color: #27ae60;"
+                    f"            color: white;"
+                    f"            border-radius: 4px;"
+                    f"        }}"
+                    f"        .cta {{"
+                    f"            text-align: center;"
+                    f"            margin-top: 20px;"
+                    f"        }}"
+                    f"        .cta a {{"
+                    f"            text-decoration: none;"
+                    f"            background: #27ae60;"
+                    f"            color: white;"
+                    f"            padding: 10px 20px;"
+                    f"            border-radius: 5px;"
+                    f"            display: inline-block;"
+                    f"        }}"
+                    f"    </style>"
+                    f"</head>"
+                    f"<body>"
+                    f"    <div class='container'>"
+                    f"        <h2>📢 Purchase Request Rejection Notification</h2>"
+                    f"        <p>Dear <strong>{producer.full_name}</strong>,</p>"
+                    f"        <p>Your purchase request has been rejected by <strong>{recycler.full_name}</strong>. Below are the details:</p>"
+                    f"        "
+                    f"        <div class='details'>"
+                    f"            <h3>🛠 Purchase Request Details</h3>"
+                    f"            <table>"
+                    f"                <tr><th>Offered By</th><td>{recycler.unique_id}</td></tr>"
+                    f"                <tr><th>Work Order Date</th><td>{purchase_request.created_at}</td></tr>"
+                    f"                <tr><th>Credit Offer Title</th><td>{purchase_request.credit_offer.offer_title}</td></tr>"
+                    f"                <tr><th>Waste Type</th><td>{purchase_request.credit_offer.waste_type}</td></tr>"
+                    f"                <tr><th>Credit Type</th><td>{purchase_request.credit_offer.credit_type}</td></tr>"
+                    f"                <tr><th>Price per Credit</th><td>{purchase_request.credit_offer.price_per_credit}</td></tr>"
+                    f"                <tr><th>Total Price (Including GST)</th><td>{total_price}</td></tr>"
+                    f"                <tr><th>Product Type</th><td>{purchase_request.credit_offer.product_type}</td></tr>"
+                    f"                <tr><th>Quantity</th><td>{purchase_request.quantity}</td></tr>"
+                    f"            </table>"
+                    f"        </div>"
+                    f"        <div class='details'>"
+                    f"            <table>"
+                    f"                <tr><th>Email</th><td><a href='mailto:{email}'>{email}</a></td></tr>"
+                    f"                <tr><th>Contact Number</th><td>{contact_number}</td></tr>"
+                    f"            </table>"
+                    f"        </div>"
+                    f"        <div class='details'>"
+                    f"            <h3>📁 Trail Documents</h3>"
+                    f"            <ul>"
+                    f"                {trail_documents_html}"
+                    f"            </ul>"
+                    f"        </div>"
+                    f"        "
+                    f"        <div class='status'>Status: {purchase_request.status}</div>"
+                    f"        "
+                    f"        <div class='cta'>"
+                    f"            <a href='#'>Proceed with Transaction</a>"
+                    f"        </div>"
+                    f"        "
+                    f"        <p style='color: #7f8c8d; font-size: 12px; text-align: center; margin-top: 20px;'>"
+                    f"            This is an automated message. Please do not reply directly to this email."
+                    f"        </p>"
+                    f"    </div>"
+                    f"</body>"
+                    f"</html>"
+                )
+                send_mail(
+                    subject=producer_subject,
+                    message="",
+                    from_email=transaction_email,
+                    recipient_list=[producer.email],
+                    fail_silently=False,
+                    html_message=producer_html_message
+                )
             return Response({
                 "status": True,
                 "data": serializer.data
