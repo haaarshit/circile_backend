@@ -11,6 +11,7 @@ from rest_framework import generics, status,serializers
 from rest_framework.exceptions import ValidationError
 from .utils import ResponseWrapperMixin
 from django.db.models import Max, Min, Avg
+from rest_framework.filters import SearchFilter
 
 from django.conf import settings
 from django.core.mail import send_mail
@@ -41,7 +42,10 @@ from .serializers import SuperAdminSerializer, SuperAdminLoginSerializer,Transac
 
 transaction_email = config('TRANSACTION_EMAIL') 
 
-
+class CaseInsensitiveSearchFilter(SearchFilter):
+    def get_search_terms(self, request):
+        terms = super().get_search_terms(request)
+        return [term.lower() for term in terms]
 # SuperAdmin Login View
 class SuperAdminLoginView(APIView):
     def post(self, request):
@@ -109,6 +113,10 @@ class BaseSuperAdminModelDetailView(ResponseWrapperMixin,generics.RetrieveUpdate
 class RecyclerEPRListCreateView(BaseSuperAdminModelView):
     queryset = RecyclerEPR.objects.all()
     serializer_class = RecyclerEPRSerializer
+
+    filter_backends = [DjangoFilterBackend, CaseInsensitiveSearchFilter]
+    search_fields = ['epr_registration_number', 'epr_registered_name', 'city', 'state', 'address']
+
     filterset_fields = ['recycler','epr_registration_number', 'waste_type', 'recycler_type', 'city', 'state']
     pagination_class = None
 
@@ -120,6 +128,11 @@ class RecyclerEPRDetailView(BaseSuperAdminModelDetailView):
 class ProducerEPRListCreateView(BaseSuperAdminModelView):
     queryset = ProducerEPR.objects.all()
     serializer_class = ProducerEPRSerializer
+
+        
+    filter_backends = [DjangoFilterBackend, CaseInsensitiveSearchFilter]
+    search_fields = ['epr_registration_number', 'epr_registered_name', 'city', 'state', 'address']
+
     filterset_fields = ['producer','epr_registration_number', 'waste_type', 'producer_type', 'city', 'state']
     pagination_class = None
 
@@ -132,6 +145,10 @@ class ProducerEPRDetailView(BaseSuperAdminModelDetailView):
 class EPRCreditListCreateView(BaseSuperAdminModelView):
     queryset = EPRCredit.objects.all()
     serializer_class = EPRCreditSerializer
+        
+    filter_backends = [DjangoFilterBackend, CaseInsensitiveSearchFilter]
+    search_fields = ['recycler', 'epr_account', 'epr_registration_number', 'waste_type', 'product_type','credit_type', 'year']
+
     filterset_fields = ['recycler','epr_account','epr_registration_number', 'waste_type', 'product_type', 'credit_type', 'year']
     pagination_class = None
 
@@ -143,6 +160,10 @@ class EPRCreditDetailView(BaseSuperAdminModelDetailView):
 class EPRTargetListCreateView(BaseSuperAdminModelView):
     queryset = EPRTarget.objects.all()
     serializer_class = EPRTargetSerializer
+
+    filter_backends = [DjangoFilterBackend, CaseInsensitiveSearchFilter]
+    search_fields = ['producer','epr_account','epr_registration_number', 'waste_type', 'product_type', 'credit_type', 'FY','is_achieved']
+
     filterset_fields = ['producer','epr_account','epr_registration_number', 'waste_type', 'product_type', 'credit_type', 'FY','is_achieved']
     pagination_class = None
 
@@ -155,6 +176,10 @@ class EPRTargetDetailView(BaseSuperAdminModelDetailView):
 class CreditOfferListCreateView(BaseSuperAdminModelView):
     queryset = CreditOffer.objects.all()
     serializer_class = CreditOfferSerializer
+
+    filter_backends = [DjangoFilterBackend, CaseInsensitiveSearchFilter]
+    search_fields = ['epr_registration_number', 'waste_type', 'FY', 'is_approved', 'is_sold','epr_credit']
+
     filterset_fields = ['epr_registration_number', 'waste_type', 'FY', 'is_approved', 'is_sold','epr_credit']
     pagination_class = None
 
@@ -166,6 +191,11 @@ class CreditOfferDetailView(BaseSuperAdminModelDetailView):
 class CounterCreditOfferListCreateView(BaseSuperAdminModelView):
     queryset = CounterCreditOffer.objects.all()
     serializer_class = CounterCreditOfferSerializer
+
+    filter_backends = [DjangoFilterBackend, CaseInsensitiveSearchFilter]
+    search_fields = ['status', 'is_approved']
+
+
     filterset_fields = ['status', 'is_approved']
     pagination_class = None
 
@@ -177,6 +207,10 @@ class CounterCreditOfferDetailView(BaseSuperAdminModelDetailView):
 class TransactionListCreateView(BaseSuperAdminModelView):
     queryset = Transaction.objects.all()
     serializer_class = TransactionSerializer
+
+    filter_backends = [DjangoFilterBackend, CaseInsensitiveSearchFilter]
+    search_fields = ['order_id', 'waste_type', 'credit_type', 'status', 'is_complete']
+
     filterset_fields = ['order_id', 'waste_type', 'credit_type', 'status', 'is_complete']
     pagination_class = None
 
@@ -583,6 +617,10 @@ class TransactionDetailView(BaseSuperAdminModelDetailView):
 class RecyclerListCreateView(BaseSuperAdminModelView):
     queryset = Recycler.objects.all()
     serializer_class = RecyclerDetailSerializer
+
+    filter_backends = [DjangoFilterBackend, CaseInsensitiveSearchFilter]
+    search_fields = ['email', 'unique_id', 'company_name', 'city', 'state', 'is_active', 'is_verified']
+
     filterset_fields = ['email', 'unique_id', 'company_name', 'city', 'state', 'is_active', 'is_verified']
     pagination_class = None
 
@@ -594,6 +632,10 @@ class RecyclerDetailView(BaseSuperAdminModelDetailView):
 class ProducerListCreateView(BaseSuperAdminModelView):
     queryset = Producer.objects.all()
     serializer_class = ProducerDetailSerializer
+
+    filter_backends = [DjangoFilterBackend, CaseInsensitiveSearchFilter]
+    search_fields = ['email', 'unique_id', 'company_name', 'city', 'state', 'is_active', 'is_verified']
+    
     filterset_fields = ['email', 'unique_id', 'company_name', 'city', 'state', 'is_active', 'is_verified']
     pagination_class = None
 
