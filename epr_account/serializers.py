@@ -91,14 +91,12 @@ class ProducerEPRSerializer(serializers.ModelSerializer):
         return None
     
     def get_targets(self, obj):
-        
         fy = self.context['request'].query_params.get('FY', None)
 
         targets = EPRTarget.objects.filter(epr_account=obj)
 
         if fy:
             targets = targets.filter(FY=fy)
-            
         if targets.exists():
             return EPRTargetSerializer(targets, many=True).data
         else:

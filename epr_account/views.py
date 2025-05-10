@@ -20,6 +20,7 @@ from django_filters.rest_framework import DjangoFilterBackend
 from django.db.models import F
 
 from superadmin.models import TransactionFee
+from superadmin.views import CaseInsensitiveSearchFilter
 
 from django.conf import settings
 from django.utils.decorators import method_decorator
@@ -54,7 +55,9 @@ class RecyclerEPRViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated,IsRecycler]
     parser_classes = (MultiPartParser, FormParser,JSONParser)
  # Fields that can be used for ordering
-    filter_backends = [OrderingFilter]
+    filter_backends = [DjangoFilterBackend, CaseInsensitiveSearchFilter, OrderingFilter]
+    filterset_fields = ['waste_type', 'is_approved', 'city', 'state']  
+    search_fields = ['epr_registration_number', 'epr_registered_name', 'city', 'state', 'address']  
     ordering_fields = ['created_at']  # Adjust this to match your model's field name
     ordering = ['-created_at']  # '-' indicates descending order
 
@@ -243,7 +246,8 @@ class EPRCreditViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated, IsRecycler]
     parser_classes = (MultiPartParser, FormParser,JSONParser)
      # Fields that can be used for ordering
-    filter_backends = [OrderingFilter]
+    filter_backends = [DjangoFilterBackend, CaseInsensitiveSearchFilter, OrderingFilter]
+    search_fields = ['epr_registration_number', 'waste_type', 'product_type', 'state', 'credit_type'] 
     ordering_fields = ['created_at']  # Adjust this to match your model's field name
     ordering = ['-created_at']  # '-' indicates descending order
 
@@ -462,7 +466,8 @@ class CreditOfferViewSet(viewsets.ModelViewSet):
     parser_classes = (MultiPartParser, FormParser,JSONParser)
 
       # Fields that can be used for ordering
-    filter_backends = [OrderingFilter]
+    filter_backends = [DjangoFilterBackend, CaseInsensitiveSearchFilter, OrderingFilter]
+    search_fields = ['epr_registration_number', 'waste_type', 'product_type', 'offer_title', 'credit_type','price_per_credit']
     ordering_fields = ['created_at']  # Adjust this to match your model's field name
     ordering = ['-created_at']  # '-' indicates descending order
 
@@ -748,7 +753,9 @@ class ProducerEPRViewSet(viewsets.ModelViewSet):
     filterset_fields = ['waste_type']
 
        # Fields that can be used for ordering
-    filter_backends = [OrderingFilter]
+    filter_backends = [DjangoFilterBackend, CaseInsensitiveSearchFilter, OrderingFilter]
+    filterset_fields = ['waste_type', 'is_approved', 'city', 'state']  
+    search_fields = ['epr_registration_number', 'epr_registered_name', 'city', 'state', 'address'] 
     ordering_fields = ['created_at']  # Adjust this to match your model's field name
     ordering = ['-created_at']  # '-' indicates descending order
 
@@ -957,7 +964,8 @@ class EPRTargetViewSet(viewsets.ModelViewSet):
     parser_classes = (MultiPartParser, FormParser,JSONParser)
 
     # Fields that can be used for ordering
-    filter_backends = [OrderingFilter]
+    filter_backends = [DjangoFilterBackend, CaseInsensitiveSearchFilter, OrderingFilter]
+    search_fields = ['epr_registration_number', 'waste_type', 'product_type', 'FY', 'credit_type','state']
     ordering_fields = ['created_at']  # Adjust this to match your model's field name
     ordering = ['-created_at']  # '-' indicates descending order
 
@@ -1160,7 +1168,8 @@ class CounterCreditOfferViewSet(viewsets.ModelViewSet):
     parser_classes = (MultiPartParser, FormParser,JSONParser)  
 
      # Fields that can be used for ordering
-    filter_backends = [OrderingFilter]
+    filter_backends = [DjangoFilterBackend, CaseInsensitiveSearchFilter, OrderingFilter]
+    search_fields = ['FY','status','offer_price','quantity','credit_offer__waste_type','credit_offer__product_type','credit_offer__credit_type']
     ordering_fields = ['created_at']  # Adjust this to match your model's field name
     ordering = ['-created_at']  # '-' indicates descending order
 
@@ -2002,7 +2011,8 @@ class TransactionViewSet(viewsets.ModelViewSet):
     authentication_classes = [CustomJWTAuthentication]
 
       # Fields that can be used for ordering
-    filter_backends = [OrderingFilter]
+    filter_backends = [DjangoFilterBackend, CaseInsensitiveSearchFilter, OrderingFilter]
+    search_fields = ['status','credit_quantity','order_id','waste_type','product_type','credit_type','producer_type','recycler_type']
     ordering_fields = ['created_at']  # Adjust this to match your model's field name
     ordering = ['-created_at']  # '-' indicates descending order
     
@@ -2549,7 +2559,8 @@ class PurchasesRequestViewSet(viewsets.ModelViewSet):
     authentication_classes = [CustomJWTAuthentication]
 
          # Fields that can be used for ordering
-    filter_backends = [OrderingFilter]
+    filter_backends = [DjangoFilterBackend, CaseInsensitiveSearchFilter, OrderingFilter]
+    search_fields = ['FY','status','quantity','credit_offer__waste_type','credit_offer__product_type','credit_offer__credit_type']
     ordering_fields = ['created_at']  # Adjust this to match your model's field name
     ordering = ['-created_at']  # '-' indicates descending order
 
@@ -2568,7 +2579,7 @@ class PurchasesRequestViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         user = self.request.user
         if isinstance(user, Recycler):
-            return PurchasesRequest.objects.filter(recycler=user)
+            return PurchasesRequest.objects.filter(recycler=user).exclude(status="rejected")
         elif isinstance(user, Producer):
             return PurchasesRequest.objects.filter(producer=user)
         return PurchasesRequest.objects.none()
