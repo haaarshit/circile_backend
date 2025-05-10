@@ -57,7 +57,7 @@ class RecyclerEPRViewSet(viewsets.ModelViewSet):
  # Fields that can be used for ordering
     filter_backends = [DjangoFilterBackend, CaseInsensitiveSearchFilter, OrderingFilter]
     filterset_fields = ['waste_type', 'is_approved', 'city', 'state']  
-    search_fields = ['epr_registration_number', 'epr_registered_name', 'city', 'state', 'address']  
+    search_fields = ['epr_registration_number', 'epr_registered_name','epr_registration_date', 'city', 'state', 'address']  
     ordering_fields = ['created_at']  # Adjust this to match your model's field name
     ordering = ['-created_at']  # '-' indicates descending order
 
@@ -247,7 +247,7 @@ class EPRCreditViewSet(viewsets.ModelViewSet):
     parser_classes = (MultiPartParser, FormParser,JSONParser)
      # Fields that can be used for ordering
     filter_backends = [DjangoFilterBackend, CaseInsensitiveSearchFilter, OrderingFilter]
-    search_fields = ['epr_registration_number', 'waste_type', 'product_type', 'state', 'credit_type'] 
+    search_fields = ['epr_registration_number', 'waste_type', 'product_type', 'state', 'credit_type','year'] 
     ordering_fields = ['created_at']  # Adjust this to match your model's field name
     ordering = ['-created_at']  # '-' indicates descending order
 
@@ -467,7 +467,7 @@ class CreditOfferViewSet(viewsets.ModelViewSet):
 
       # Fields that can be used for ordering
     filter_backends = [DjangoFilterBackend, CaseInsensitiveSearchFilter, OrderingFilter]
-    search_fields = ['epr_registration_number', 'waste_type', 'product_type', 'offer_title', 'credit_type','price_per_credit']
+    search_fields = ['epr_registration_number', 'waste_type', 'product_type', 'offer_title', 'credit_type','price_per_credit','FY']
     ordering_fields = ['created_at']  # Adjust this to match your model's field name
     ordering = ['-created_at']  # '-' indicates descending order
 
@@ -755,7 +755,7 @@ class ProducerEPRViewSet(viewsets.ModelViewSet):
        # Fields that can be used for ordering
     filter_backends = [DjangoFilterBackend, CaseInsensitiveSearchFilter, OrderingFilter]
     filterset_fields = ['waste_type', 'is_approved', 'city', 'state']  
-    search_fields = ['epr_registration_number', 'epr_registered_name', 'city', 'state', 'address'] 
+    search_fields = ['epr_registration_number', 'epr_registered_name','epr_registration_date', 'city', 'state', 'address'] 
     ordering_fields = ['created_at']  # Adjust this to match your model's field name
     ordering = ['-created_at']  # '-' indicates descending order
 

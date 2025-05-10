@@ -115,9 +115,9 @@ class RecyclerEPRListCreateView(BaseSuperAdminModelView):
     serializer_class = RecyclerEPRSerializer
 
     filter_backends = [DjangoFilterBackend, CaseInsensitiveSearchFilter]
-    search_fields = ['epr_registration_number', 'epr_registered_name', 'city', 'state', 'address']
+    search_fields = ['epr_registration_number','epr_registration_date', 'epr_registered_name', 'city', 'state', 'address']
 
-    filterset_fields = ['recycler','epr_registration_number', 'waste_type', 'recycler_type', 'city', 'state']
+    filterset_fields = ['recycler','epr_registration_number','epr_registration_date', 'waste_type', 'recycler_type', 'city', 'state']
     pagination_class = None
 
 class RecyclerEPRDetailView(BaseSuperAdminModelDetailView):
@@ -131,7 +131,7 @@ class ProducerEPRListCreateView(BaseSuperAdminModelView):
 
         
     filter_backends = [DjangoFilterBackend, CaseInsensitiveSearchFilter]
-    search_fields = ['epr_registration_number', 'epr_registered_name', 'city', 'state', 'address']
+    search_fields = ['epr_registration_number', 'epr_registered_name','epr_registration_date', 'city', 'state', 'address']
 
     filterset_fields = ['producer','epr_registration_number', 'waste_type', 'producer_type', 'city', 'state']
     pagination_class = None
@@ -147,7 +147,7 @@ class EPRCreditListCreateView(BaseSuperAdminModelView):
     serializer_class = EPRCreditSerializer
         
     filter_backends = [DjangoFilterBackend, CaseInsensitiveSearchFilter]
-    search_fields = ['recycler', 'epr_account', 'epr_registration_number', 'waste_type', 'product_type','credit_type', 'year']
+    search_fields = [  'epr_registration_number', 'waste_type', 'product_type','credit_type', 'year']
 
     filterset_fields = ['recycler','epr_account','epr_registration_number', 'waste_type', 'product_type', 'credit_type', 'year']
     pagination_class = None
@@ -162,7 +162,7 @@ class EPRTargetListCreateView(BaseSuperAdminModelView):
     serializer_class = EPRTargetSerializer
 
     filter_backends = [DjangoFilterBackend, CaseInsensitiveSearchFilter]
-    search_fields = ['producer','epr_account','epr_registration_number', 'waste_type', 'product_type', 'credit_type', 'FY','is_achieved']
+    search_fields = ['epr_registration_number', 'waste_type', 'product_type', 'credit_type', 'FY','is_achieved']
 
     filterset_fields = ['producer','epr_account','epr_registration_number', 'waste_type', 'product_type', 'credit_type', 'FY','is_achieved']
     pagination_class = None
@@ -209,7 +209,7 @@ class TransactionListCreateView(BaseSuperAdminModelView):
     serializer_class = TransactionSerializer
 
     filter_backends = [DjangoFilterBackend, CaseInsensitiveSearchFilter]
-    search_fields = ['order_id', 'waste_type', 'credit_type', 'status', 'is_complete']
+    search_fields = ['order_id', 'waste_type', 'credit_type', 'status', 'is_complete','work_order_date']
 
     filterset_fields = ['order_id', 'waste_type', 'credit_type', 'status', 'is_complete']
     pagination_class = None
