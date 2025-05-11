@@ -619,7 +619,7 @@ class RecyclerListCreateView(BaseSuperAdminModelView):
     serializer_class = RecyclerDetailSerializer
 
     filter_backends = [DjangoFilterBackend, CaseInsensitiveSearchFilter]
-    search_fields = ['email', 'unique_id', 'company_name', 'city', 'state', 'is_active', 'is_verified']
+    search_fields = ['email', 'unique_id', 'company_name', 'city', 'state', 'is_active', 'is_verified','registration_date']
 
     filterset_fields = ['email', 'unique_id', 'company_name', 'city', 'state', 'is_active', 'is_verified']
     pagination_class = None
@@ -634,7 +634,7 @@ class ProducerListCreateView(BaseSuperAdminModelView):
     serializer_class = ProducerDetailSerializer
 
     filter_backends = [DjangoFilterBackend, CaseInsensitiveSearchFilter]
-    search_fields = ['email', 'unique_id', 'company_name', 'city', 'state', 'is_active', 'is_verified']
+    search_fields = ['email', 'unique_id', 'company_name', 'city', 'state', 'is_active', 'is_verified','registration_date']
     
     filterset_fields = ['email', 'unique_id', 'company_name', 'city', 'state', 'is_active', 'is_verified']
     pagination_class = None
