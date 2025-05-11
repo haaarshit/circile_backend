@@ -467,7 +467,7 @@ class CreditOfferViewSet(viewsets.ModelViewSet):
 
       # Fields that can be used for ordering
     filter_backends = [DjangoFilterBackend, CaseInsensitiveSearchFilter, OrderingFilter]
-    search_fields = ['epr_registration_number', 'waste_type', 'product_type', 'offer_title', 'credit_type','price_per_credit','FY']
+    search_fields = ['epr_registration_number', 'waste_type', 'product_type', 'offer_title', 'credit_type','FY']
     ordering_fields = ['created_at']  # Adjust this to match your model's field name
     ordering = ['-created_at']  # '-' indicates descending order
 
@@ -1169,7 +1169,7 @@ class CounterCreditOfferViewSet(viewsets.ModelViewSet):
 
      # Fields that can be used for ordering
     filter_backends = [DjangoFilterBackend, CaseInsensitiveSearchFilter, OrderingFilter]
-    search_fields = ['FY','status','offer_price','quantity','credit_offer__waste_type','credit_offer__product_type','credit_offer__credit_type']
+    search_fields = ['FY','status','credit_offer__waste_type','credit_offer__product_type','credit_offer__credit_type']
     ordering_fields = ['created_at']  # Adjust this to match your model's field name
     ordering = ['-created_at']  # '-' indicates descending order
 
@@ -2012,7 +2012,7 @@ class TransactionViewSet(viewsets.ModelViewSet):
 
       # Fields that can be used for ordering
     filter_backends = [DjangoFilterBackend, CaseInsensitiveSearchFilter, OrderingFilter]
-    search_fields = ['status','credit_quantity','order_id','waste_type','product_type','credit_type','producer_type','recycler_type']
+    search_fields = ['status','credit_quantity','order_id','waste_type','product_type','credit_type','producer_type','recycler_type','work_order_date']
     ordering_fields = ['created_at']  # Adjust this to match your model's field name
     ordering = ['-created_at']  # '-' indicates descending order
     
@@ -2560,7 +2560,7 @@ class PurchasesRequestViewSet(viewsets.ModelViewSet):
 
          # Fields that can be used for ordering
     filter_backends = [DjangoFilterBackend, CaseInsensitiveSearchFilter, OrderingFilter]
-    search_fields = ['FY','status','quantity','credit_offer__waste_type','credit_offer__product_type','credit_offer__credit_type']
+    search_fields = ['FY','status','credit_offer__waste_type','credit_offer__product_type','credit_offer__credit_type']
     ordering_fields = ['created_at']  # Adjust this to match your model's field name
     ordering = ['-created_at']  # '-' indicates descending order
 
