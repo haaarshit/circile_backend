@@ -21,6 +21,7 @@ from django.db.models import F
 
 from superadmin.models import TransactionFee
 from superadmin.views import CaseInsensitiveSearchFilter
+from django.http import Http404
 
 from django.conf import settings
 from django.utils.decorators import method_decorator
@@ -305,6 +306,11 @@ class EPRCreditViewSet(viewsets.ModelViewSet):
                 "status": True,
                 "data": serializer.data
             }, status=status.HTTP_200_OK)
+        except Http404:
+            return Response({
+            "status": False,
+            "error": "No Epr Credit matches the given id"
+        }, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
             return Response({
                 "status": False,
@@ -523,6 +529,11 @@ class CreditOfferViewSet(viewsets.ModelViewSet):
                 "status": True,
                 "data": serializer.data
             }, status=status.HTTP_200_OK)
+        except Http404:
+            return Response({
+            "status": False,
+            "error": "No Record matches the given id"
+        }, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
             return Response({
                 "status": False,
@@ -661,9 +672,9 @@ class CreditOfferViewSet(viewsets.ModelViewSet):
                 
                 # Validate credit_available against comulative_certificate_potential
                 credit_available = float(request_data.get("credit_available", 0.0))
-                if credit_available > epr_credit.comulative_certificate_potential:
+                if credit_available > epr_credit.available_certificate_value:
                     raise ValidationError(
-                       f"Credit offer's credit {credit_available} can't exceed comulative certificate potential {epr_credit.comulative_certificate_potential}"
+                       f"Credit offer's credit {credit_available} can't exceed availabe certificate value {epr_credit.available_certificate_value}"
                     )
                 
                 # Add additional fields
@@ -2010,11 +2021,10 @@ class TransactionViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
     authentication_classes = [CustomJWTAuthentication]
 
-      # Fields that can be used for ordering
     filter_backends = [DjangoFilterBackend, CaseInsensitiveSearchFilter, OrderingFilter]
     search_fields = ['status','credit_quantity','order_id','waste_type','product_type','credit_type','producer_type','recycler_type','work_order_date']
-    ordering_fields = ['created_at']  # Adjust this to match your model's field name
-    ordering = ['-created_at']  # '-' indicates descending order
+    ordering_fields = ['created_at']  
+    ordering = ['-created_at']  
     
     def get_permissions(self):
         try:
