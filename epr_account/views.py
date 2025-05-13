@@ -248,6 +248,7 @@ class EPRCreditViewSet(viewsets.ModelViewSet):
     parser_classes = (MultiPartParser, FormParser,JSONParser)
      # Fields that can be used for ordering
     filter_backends = [DjangoFilterBackend, CaseInsensitiveSearchFilter, OrderingFilter]
+    filterset_fields = ['product_type']
     search_fields = ['epr_registration_number', 'waste_type', 'product_type', 'state', 'credit_type','year'] 
     ordering_fields = ['created_at']  # Adjust this to match your model's field name
     ordering = ['-created_at']  # '-' indicates descending order
