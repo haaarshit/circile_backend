@@ -2312,6 +2312,7 @@ class TransactionViewSet(viewsets.ModelViewSet):
             
             # Add producer_epr to data
             data['producer_epr'] = producer_epr.id
+            data['epr_target'] = epr_target.id
             # Validate available credits (credit_available - blocked_amount)
             credit_offer = purchases_request.credit_offer if purchases_request else counter_credit_offer.credit_offer
                 # Lock the credit_offer row to prevent race conditions

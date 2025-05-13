@@ -239,21 +239,12 @@ class TransactionDetailView(BaseSuperAdminModelDetailView):
 
                 if credit_offer.credit_available < transaction.credit_quantity:
                             raise ValidationError(f"Not enough credit is available in credit offer for this transaction. Available credit {credit_offer.credit_available}. Required credit {transaction.credit_quantity} ")
-                epr_target = EPRTarget.objects.filter(
-                    epr_account=transaction.producer_epr,
-                    waste_type=transaction.waste_type,
-                    product_type=transaction.product_type,
-                    credit_type=transaction.credit_type,
-                    is_achieved=False
-                ).annotate(
-                    remaining_quantity=F('target_quantity') - F('achieved_quantity') - F('blocked_target')
-                ).filter(
-                    remaining_quantity__gte=transaction.credit_quantity
-                ).first()
+
+                epr_target = transaction.epr_target
 
                 if not epr_target:
                     raise ValidationError(
-                         f"No matching EPR Target found. Please create an EPR target for the given EPR account where credit type should be {transaction.credit_type}, product type should be {transaction.product_type} and waste type {transaction.waste_type} and remaining Target quantity is higher than {transaction.credit_quantity}"
+                        f"No EPR Target is associated with this transaction. Please ensure the transaction has a valid EPR target."
                     )
 
 
@@ -489,6 +480,17 @@ class TransactionDetailView(BaseSuperAdminModelDetailView):
                 )
             
             elif transaction.status == 'rejected' and isinstance(request.user, SuperAdmin):
+                epr_target = transaction.epr_target
+                if epr_target:
+                    epr_target.blocked_target -= float(transaction.credit_quantity)
+                    if epr_target.blocked_target < 0:
+                        epr_target.blocked_target = 0  
+                    epr_target.save()
+                credit_offer.blocked_credit -= transaction.credit_quantity
+                if credit_offer.blocked_credit < 0:
+                    credit_offer.blocked_credit = 0
+                credit_offer.save()
+                
                 # Email to Producer
                 producer_subject = "Transaction Rejected by SuperAdmin"
                 producer_html_message = (
@@ -563,23 +565,7 @@ class TransactionDetailView(BaseSuperAdminModelDetailView):
                     fail_silently=False,
                     html_message=producer_html_message
                 )
-                epr_target = EPRTarget.objects.filter(
-                    epr_account=transaction.producer_epr,
-                    waste_type=transaction.waste_type,
-                    product_type=transaction.product_type,
-                    credit_type=transaction.credit_type,
-                    is_achieved=False
-                ).first()
 
-                if epr_target:
-                    epr_target.blocked_target -= float(transaction.credit_quantity)
-                    if epr_target.blocked_target < 0:
-                        epr_target.blocked_target = 0  # Ensure blocked_target doesn't go negative
-                    epr_target.save()
-                credit_offer.blocked_credit -= transaction.credit_quantity
-                if credit_offer.blocked_credit < 0:
-                    credit_offer.blocked_credit = 0
-                credit_offer.save()
 
             return Response( serializer.data, status=status.HTTP_200_OK)
         

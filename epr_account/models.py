@@ -649,10 +649,16 @@ class Transaction(models.Model):
         ProducerEPR, 
         on_delete=models.CASCADE, 
         related_name='epr_transactions',
-         null=True,  # Uncomment this temporarily for debugging if needed
-         blank=True  # Uncomment this temporarily for debugging if needed
+         null=True,  
+         blank=True  
     )
-
+    epr_target = models.ForeignKey(
+        'EPRTarget',  
+        on_delete=models.CASCADE,
+        related_name='transactions',
+        null=True,  
+        blank=True  
+    )
     credit_offer = models.ForeignKey(
         CreditOffer,  
         on_delete=models.CASCADE,
