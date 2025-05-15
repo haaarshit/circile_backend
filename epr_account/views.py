@@ -1335,7 +1335,7 @@ class CounterCreditOfferViewSet(viewsets.ModelViewSet):
             producer_subject = "Counter Credit Offer"
                 
             # calculate total price
-            price_per_credit = instance.credit_offer.price_per_credit
+            price_per_credit = instance.offer_price
             quantity = instance.quantity
             value = price_per_credit*quantity
             processing_fee = value*0.05
@@ -1844,16 +1844,17 @@ class CounterCreditOfferViewSet(viewsets.ModelViewSet):
                     is_approved=False
                 )
 
-                fee = 0
-                fees = TransactionFee.objects.first()
-                if fees:
-                    fee = fees.transaction_fee
+
 
                 # Common fields
                 email = 'support@circle8.in'
                 contact_number = '+91 9620220013'
-
-                total_price = (counter_credit_offer.credit_offer.price_per_credit * counter_credit_offer.quantity) + (counter_credit_offer.credit_offer.price_per_credit * counter_credit_offer.quantity) * 0.18 + fee
+                price_per_credit =  counter_credit_offer.offer_price
+                quantity = counter_credit_offer.quantity
+                value = price_per_credit*quantity
+                processing_fee = value*0.05
+                gst = (value+processing_fee)*0.18
+                total_price = value + processing_fee + gst
 
                 
                 # Send email to Recycler
@@ -2714,12 +2715,13 @@ class PurchasesRequestViewSet(viewsets.ModelViewSet):
             producer = purchase_request.producer
             recycler = purchase_request.recycler
 
-            fee = 0
-            fees = TransactionFee.objects.first()
-            if fees:
-                    fee = fees.transaction_fee
+            price_per_credit =  purchase_request.credit_offer.price_per_credit 
+            quantity = purchase_request.quantity
+            value = price_per_credit*quantity
+            processing_fee = value*0.05
+            gst = (value+processing_fee)*0.18
+            total_price = value + processing_fee + gst
 
-            total_price = (purchase_request.credit_offer.price_per_credit*purchase_request.quantity) +  (purchase_request.credit_offer.price_per_credit*purchase_request.quantity)*0.18 + fee
             trail_documents_html = "".join([f"<li>✅ {doc}</li>" for doc in purchase_request.credit_offer.trail_documents])
 
                 # Common fields
@@ -2896,7 +2898,14 @@ class PurchasesRequestViewSet(viewsets.ModelViewSet):
 
                 # Email to Producer (Stylish HTML)
                 producer_subject = "Purchase Request Approved"
-                total_price = (purchase_request.credit_offer.price_per_credit*purchase_request.quantity) +  (purchase_request.credit_offer.price_per_credit*purchase_request.quantity)*0.18 + fee
+
+                price_per_credit =  purchase_request.credit_offer.price_per_credit 
+                quantity = purchase_request.quantity
+                value = price_per_credit*quantity
+                processing_fee = value*0.05
+                gst = (value+processing_fee)*0.18
+                total_price = value + processing_fee + gst
+              
                 producer_html_message = (
     
 
@@ -3092,8 +3101,15 @@ class PurchasesRequestViewSet(viewsets.ModelViewSet):
                 # )
 
             if purchase_request.status == 'rejected':
+                
                 producer_subject = "Purchase Request Rejected"
-                total_price = (purchase_request.credit_offer.price_per_credit*purchase_request.quantity) +  (purchase_request.credit_offer.price_per_credit*purchase_request.quantity)*0.18 + fee
+                price_per_credit =  purchase_request.credit_offer.price_per_credit 
+                quantity = purchase_request.quantity
+                value = price_per_credit*quantity
+                processing_fee = value*0.05
+                gst = (value+processing_fee)*0.18
+                total_price = value + processing_fee + gst
+                
                 producer_html_message = (
     
                     f"<!DOCTYPE html>"
