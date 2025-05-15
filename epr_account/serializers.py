@@ -3,6 +3,7 @@ from .models import RecyclerEPR, ProducerEPR, EPRCredit, EPRTarget, CreditOffer,
 from decouple import config
 from users.models import Recycler,Producer
 from superadmin.models import TransactionFee
+import mimetypes
 
 from superadmin.models import SuperAdmin
 import json
@@ -275,7 +276,25 @@ class CreditOfferSerializer(serializers.ModelSerializer):
     def validate(self, data):
   
         request = self.context.get('request')
-        
+        allowed_mime_types = [
+            'image/jpeg',
+            'image/png',
+            'image/gif',
+            'image/bmp',
+            'image/webp',
+            'image/jpg'
+        ]
+
+        for field_name in ['product_image', 'availability_proof']:
+            image_field = request.FILES.get(field_name) if request.FILES else None
+            if image_field:
+                # For CloudinaryField, check the file object
+
+                mime_type, _ = mimetypes.guess_type(image_field.name)
+                if mime_type not in allowed_mime_types:
+                    raise serializers.ValidationError({
+                        field_name: f'Only image files (JPEG, PNG, GIF, BMP, WEBP) are allowed for {field_name.replace("_", " ").title()}.'
+                    })
         if request and request.method in ['POST', 'PUT']:
             # Check for required image files
             if 'product_image' not in request.FILES:

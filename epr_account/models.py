@@ -7,6 +7,7 @@ from cloudinary.models import CloudinaryField
 from django.core.validators import MinLengthValidator
 from django.utils import timezone
 import datetime
+import mimetypes
 
 
 class CustomCloudinaryField(CloudinaryField):
@@ -504,6 +505,7 @@ class CreditOffer(models.Model):
     )
 
     def clean(self):
+
         if self.waste_type in WASTE_CHOICES:
             valid_product_types = WASTE_CHOICES[self.waste_type]['product_types']
             valid_credit_types = WASTE_CHOICES[self.waste_type]['credit_types']
