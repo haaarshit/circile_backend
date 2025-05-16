@@ -3485,7 +3485,11 @@ class AllTypesView(APIView):
                 "product_type": product_serializer.data,
                 "credit_type": credit_serializer.data,
                 "trail_documents": formatted_allowed_docs,
-                "state": states
+                "state": states,
+                "has_availability_proof": [
+                    {"name": True},
+                    {"name": False}
+                ]
             }
         }
 
