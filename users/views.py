@@ -440,7 +440,7 @@ class UserCountStatsView(APIView):
                 stats["epr_accounts"] = RecyclerEPR.objects.filter(recycler=user).count()
                 stats["epr_credits"] = EPRCredit.objects.filter(recycler=user).count()
                 stats["credit_offers"] = CreditOffer.objects.filter(recycler=user).count()
-                stats["counter_credit_offers_received"] = CounterCreditOffer.objects.filter(recycler=user).count()
+                stats["counter_credit_offers_received"] = CounterCreditOffer.objects.filter(recycler=user).exclude(status='rejected').count()
                 stats["transactions"] = Transaction.objects.filter(recycler=user).count()
                 stats["pending_order"] = Transaction.objects.filter(recycler=user,is_complete=False).count()
                 stats["complete_order"] = Transaction.objects.filter(recycler=user,is_complete=True).count()
@@ -458,6 +458,7 @@ class UserCountStatsView(APIView):
                 stats["pending_order"] = Transaction.objects.filter(producer=user,is_complete=False).count()
                 stats["complete_order"] = Transaction.objects.filter(producer=user,is_complete=True).count()
                 stats["direct_purchase"] = PurchasesRequest.objects.filter(producer=user).count()
+                stats["credit_offers"] = CreditOffer.objects.count()
 
             else:
                 return Response(
