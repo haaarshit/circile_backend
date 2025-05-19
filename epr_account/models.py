@@ -663,7 +663,9 @@ class Transaction(models.Model):
     )
     credit_offer = models.ForeignKey(
         CreditOffer,  
-        on_delete=models.CASCADE,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
         related_name='transactions'
     )
     counter_credit_offer = models.ForeignKey(
@@ -752,12 +754,12 @@ class Transaction(models.Model):
         super().save(*args, **kwargs)
 
     def clean(self):
-        if (not self.credit_offer and self.counter_credit_offer) or (not self.credit_offer and not self.counter_credit_offer):
-            raise ValidationError("Transaction must be linked to either a CreditOffer or CounterCreditOffer")
+        # if (not self.credit_offer and self.counter_credit_offer) or (not self.credit_offer and not self.counter_credit_offer):
+        #     raise ValidationError("Transaction must be linked to either a CreditOffer or CounterCreditOffer")
         
         if not self.is_approved:
 
-            if self.credit_quantity > self.credit_offer.credit_available:
+            if self.credit_offer and self.credit_quantity > self.credit_offer.credit_available:
                 raise ValidationError(
                     f"Credit quantity ({self.credit_quantity}) exceeds available credits ({self.credit_offer.credit_available})"
                 )

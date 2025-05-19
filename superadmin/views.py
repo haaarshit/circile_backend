@@ -235,9 +235,11 @@ class TransactionDetailView(BaseSuperAdminModelDetailView):
             contact_number = '+91 9620220013'
             
             credit_offer = transaction.credit_offer
+            trail_docs = credit_offer.trail_documents if credit_offer else []
+            doc_items = ''.join([f'<li>✅ {doc}</li>' for doc in trail_docs if doc.strip()])
             if transaction.status == 'approved' and isinstance(request.user, SuperAdmin):
 
-                if credit_offer.credit_available < transaction.credit_quantity:
+                if credit_offer and credit_offer.credit_available < transaction.credit_quantity:
                             raise ValidationError(f"Not enough credit is available in credit offer for this transaction. Available credit {credit_offer.credit_available}. Required credit {transaction.credit_quantity} ")
 
                 epr_target = transaction.epr_target
@@ -257,21 +259,23 @@ class TransactionDetailView(BaseSuperAdminModelDetailView):
                         epr_target.is_achieved = True
                     epr_target.save()
 
-      
-                credit_offer.credit_available = credit_offer.credit_available - transaction.credit_quantity
-                credit_offer.blocked_credit -= transaction.credit_quantity
-                if credit_offer.blocked_credit < 0:
-                    credit_offer.blocked_credit = 0
-                if credit_offer.credit_available < credit_offer.minimum_purchase:
-                    credit_offer.minimum_purchase = credit_offer.credit_available
-                credit_offer.is_sold = credit_offer.credit_available == 0
-                credit_offer.save()
+                if credit_offer:
+                    credit_offer.credit_available = credit_offer.credit_available - transaction.credit_quantity
+                    credit_offer.blocked_credit -= transaction.credit_quantity
+                    if credit_offer.blocked_credit < 0:
+                        credit_offer.blocked_credit = 0
+                    if credit_offer.credit_available < credit_offer.minimum_purchase:
+                        credit_offer.minimum_purchase = credit_offer.credit_available
+                    credit_offer.is_sold = credit_offer.credit_available == 0
+                    credit_offer.save()
 
-
-
+               
+             
 
                 # Email to Recycler (Stylish HTML)
                 recycler_subject = "Transaction Approved by SuperAdmin"
+
+
                 recycler_html_message = (
                  
                     f"<!DOCTYPE html>"
@@ -371,7 +375,8 @@ class TransactionDetailView(BaseSuperAdminModelDetailView):
                     f"        <div class='details'>"
                     f"            <h3>📁 Trail Documents</h3>"
                     f"            <ul>"
-                    f"                  {''.join([f'<li>✅ {doc}</li>' for doc in transaction.credit_offer.trail_documents if doc.strip()])}"
+                    # f"                  {''.join([f'<li>✅ {doc}</li>' for doc in transaction.credit_offer.trail_documents if doc.strip()])}"
+                    f"               {doc_items}"
                     f"            </ul>"
                     f"        </div>"
                     f"        "
@@ -457,8 +462,8 @@ class TransactionDetailView(BaseSuperAdminModelDetailView):
                     f"        <div class='details'>"
                     f"            <h3>♻️ Recycler Details</h3>"
                     f"            <table>"
-                    f"                <tr><th>EPR Registration Number</th><td>{transaction.credit_offer.epr_account.epr_registration_number}</td></tr>"
-                    f"                <tr><th>EPR Registered Name</th><td>{transaction.credit_offer.epr_account.epr_registered_name}</td></tr>"
+                    f"                <tr><th>EPR Registration Number</th><td>{transaction.credit_offer.epr_account.epr_registration_number if transaction.credit_offer  else 'N/A'}</td></tr>"
+                    f"                <tr><th>EPR Registered Name</th><td>{transaction.credit_offer.epr_account.epr_registered_name if transaction.credit_offer else 'N/A'}</td></tr>"
                     f"                <tr><th>Email</th><td><a href='mailto:{email}'>{email}</a></td></tr>"
                     f"                <tr><th>Contact Number</th><td>{contact_number}</td></tr>"
                     f"            </table>"
@@ -466,7 +471,8 @@ class TransactionDetailView(BaseSuperAdminModelDetailView):
                     f"        <div class='details'>"
                     f"            <h3>📁 Trail Documents</h3>"
                     f"            <ul>"
-                    f"                  {''.join([f'<li>✅ {doc}</li>' for doc in transaction.credit_offer.trail_documents if doc.strip()])}"
+                    # f"                  {''.join([f'<li>✅ {doc}</li>' for doc in transaction.credit_offer.trail_documents if doc.strip()])}"
+                    f"            {doc_items}"
                     f"            </ul>"
                     f"        </div>"
                     f"        <div class='status'>Status: {transaction.status}</div>"
@@ -506,10 +512,11 @@ class TransactionDetailView(BaseSuperAdminModelDetailView):
                     if epr_target.blocked_target < 0:
                         epr_target.blocked_target = 0  
                     epr_target.save()
-                credit_offer.blocked_credit -= transaction.credit_quantity
-                if credit_offer.blocked_credit < 0:
-                    credit_offer.blocked_credit = 0
-                credit_offer.save()
+                if credit_offer:
+                    credit_offer.blocked_credit -= transaction.credit_quantity
+                    if credit_offer.blocked_credit < 0:
+                        credit_offer.blocked_credit = 0
+                    credit_offer.save()
                 
                 # Email to Producer
                 producer_subject = "Transaction Rejected by SuperAdmin"
@@ -563,7 +570,8 @@ class TransactionDetailView(BaseSuperAdminModelDetailView):
                     f"        <div class='details'>"
                     f"            <h3>📁 Trail Documents</h3>"
                     f"            <ul>"
-                    f"                  {''.join([f'<li>✅ {doc}</li>' for doc in transaction.credit_offer.trail_documents if doc.strip()])}"
+                    # f"                  {''.join([f'<li>✅ {doc}</li>' for doc in transaction.credit_offer.trail_documents if doc.strip()])}"
+                    f"            {doc_items}"
                     f"            </ul>"
                     f"        </div>"
                     f"        <div class='status'>Status: {transaction.status}</div>"
