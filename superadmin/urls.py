@@ -70,7 +70,7 @@ urlpatterns = [
 
 
     path('stats/', SuperAdminCountStatsView.as_view(), name='superadmin-stats'),
-    path('credit-offer-price-stats/', CreditOfferPriceStatsView.as_view(), name='credit-offer-price-stats'),
+    path('transaction-price-stats/', CreditOfferPriceStatsView.as_view(), name='credit-offer-price-stats'),
 
     path('contact-messages/', ContactMessagesView.as_view(), name='contact_messages'),
 

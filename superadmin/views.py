@@ -816,22 +816,70 @@ class CreditOfferPriceStatsView(APIView):
     permission_classes = [IsSuperAdmin]
 
     def get(self, request):
-        try:
+        # try:
             # Check if there are any records
-            if not CreditOffer.objects.exists():
+            # if not CreditOffer.objects.exists():
+            #     return Response(
+            #         {
+            #             "status": False,
+            #             "message": "No CreditOffer records found",
+            #             "data": {}
+            #         },
+            #         status=status.HTTP_404_NOT_FOUND
+            #     )
+
+            # # Get max and min price_per_credit
+            # price_stats = CreditOffer.objects.aggregate(
+            #     max_price=Max('price_per_credit'),
+            #     min_price=Min('price_per_credit')
+            # )
+
+            # # Calculate average as (max_price + min_price) / 2
+            # max_price = price_stats['max_price']
+            # min_price = price_stats['min_price']
+            # average_price = (max_price + min_price) / 2 if max_price is not None and min_price is not None else 0.0
+
+            # # Fetch records with max and min price_per_credit
+            # max_price_record = CreditOffer.objects.filter(price_per_credit=max_price).first()
+            # min_price_record = CreditOffer.objects.filter(price_per_credit=min_price).first()
+
+            # # Serialize the records
+            # max_serializer = CreditOfferSerializer(max_price_record)
+            # min_serializer = CreditOfferSerializer(min_price_record)
+
+            # # Prepare response data
+            # response_data = {
+            #     "maximum_price": float(max_price) if max_price is not None else None,
+            #     "minimum_price": float(min_price) if min_price is not None else None,
+            #     "average_price": float(average_price),
+            #     "maximum_price_record": max_serializer.data,
+            #     "minimum_price_record": min_serializer.data
+            # }
+
+            # return Response(
+            #     {
+            #         "status": True,
+            #         "message": "Credit offer price statistics retrieved successfully",
+            #         "data": response_data
+            #     },
+            #     status=status.HTTP_200_OK
+            # )
+        try:
+            # Check if there are any completed transaction records
+            if not Transaction.objects.filter(is_complete=True).exists():
                 return Response(
                     {
                         "status": False,
-                        "message": "No CreditOffer records found",
+                        "message": "No completed Transaction records found",
                         "data": {}
                     },
                     status=status.HTTP_404_NOT_FOUND
                 )
 
-            # Get max and min price_per_credit
-            price_stats = CreditOffer.objects.aggregate(
-                max_price=Max('price_per_credit'),
-                min_price=Min('price_per_credit')
+            # Get max and min total_price for completed transactions
+            price_stats = Transaction.objects.filter(is_complete=True).aggregate(
+                max_price=Max('total_price'),
+                min_price=Min('total_price')
             )
 
             # Calculate average as (max_price + min_price) / 2
@@ -839,13 +887,13 @@ class CreditOfferPriceStatsView(APIView):
             min_price = price_stats['min_price']
             average_price = (max_price + min_price) / 2 if max_price is not None and min_price is not None else 0.0
 
-            # Fetch records with max and min price_per_credit
-            max_price_record = CreditOffer.objects.filter(price_per_credit=max_price).first()
-            min_price_record = CreditOffer.objects.filter(price_per_credit=min_price).first()
+            # Fetch records with max and min total_price
+            max_price_record = Transaction.objects.filter(is_complete=True, total_price=max_price).first()
+            min_price_record = Transaction.objects.filter(is_complete=True, total_price=min_price).first()
 
             # Serialize the records
-            max_serializer = CreditOfferSerializer(max_price_record)
-            min_serializer = CreditOfferSerializer(min_price_record)
+            max_serializer = TransactionSerializer(max_price_record)
+            min_serializer = TransactionSerializer(min_price_record)
 
             # Prepare response data
             response_data = {
@@ -859,12 +907,11 @@ class CreditOfferPriceStatsView(APIView):
             return Response(
                 {
                     "status": True,
-                    "message": "Credit offer price statistics retrieved successfully",
+                    "message": "Transaction price statistics retrieved successfully",
                     "data": response_data
                 },
                 status=status.HTTP_200_OK
             )
-
         except Exception as e:
             return Response(
                 {"status": False, "error": str(e)},
