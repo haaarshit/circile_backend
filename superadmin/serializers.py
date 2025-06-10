@@ -68,8 +68,8 @@ class BlogSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Blog
-        fields = ['id', 'title', 'content', 'image', 'created_at', 'updated_at', 'created_by','sub_title','slug']
-        read_only_fields = ['id','created_at', 'updated_at', 'created_by','slug']
+        fields = '__all__'
+        read_only_fields = ['blog_id','created_at', 'updated_at', 'created_by','slug']
 
     def validate(self, data):
         request = self.context.get('request')
@@ -106,4 +106,12 @@ class BlogSerializer(serializers.ModelSerializer):
                 representation['image'] = f'https://res.cloudinary.com/{cloud_name}/{instance.image.url}'
         else:
             representation['image'] = None
+        
+        if instance.blog_banner:
+            if instance.blog_banner.url.startswith('http'):
+                representation['blog_banner'] = instance.blog_banner.url
+            else:
+                representation['blog_banner'] = f'https://res.cloudinary.com/{cloud_name}/{instance.blog_banner.url}'
+        else:
+            representation['blog_banner'] = None
         return representation

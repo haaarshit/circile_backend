@@ -4,6 +4,7 @@ from django.core.validators import EmailValidator,MinValueValidator
 import uuid 
 from cloudinary.models import CloudinaryField
 from django.utils.text import slugify
+from decouple import config 
 
 class SuperAdmin(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -57,15 +58,25 @@ class TransactionFee(models.Model):
 
 
 class Blog(models.Model):
-    title = models.CharField(max_length=255)
+
+    blog_id =  models.AutoField(primary_key=True)
+    title = models.CharField(max_length=255)  
     sub_title = models.CharField(max_length=255)
-
     content = models.TextField()
-
     slug = models.SlugField(max_length=255, unique=True, blank=True)
-
-
-    image = CloudinaryField('image', blank=True, null=True, folder='blogs')
+    
+    # Added fields from JSON
+    blog_date = models.DateTimeField(blank=True, null=True)  
+    blog_banner = CloudinaryField('image', blank=True, null=True, folder='blogBanner')  
+    blog_banner_alt_text = models.CharField(max_length=255, blank=True, null=True)  
+    name = models.CharField(max_length=255, blank=True, null=True)  
+    url = models.CharField(max_length=255, blank=True, null=True)  
+    page_title = models.CharField(max_length=255, blank=True, null=True)  
+    meta_title = models.CharField(max_length=255, blank=True, null=True)  
+    meta_keywords = models.CharField(max_length=255, blank=True, null=True)  
+    meta_description = models.TextField(blank=True, null=True)  
+    
+    image = CloudinaryField('image', blank=True, null=True, folder='blogs')  
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     created_by = models.ForeignKey(
@@ -86,7 +97,14 @@ class Blog(models.Model):
             # Ensure slug is unique by appending a counter if necessary
             original_slug = self.slug
             counter = 1
-            while Blog.objects.filter(slug=self.slug).exclude(id=self.id).exists():
+            while Blog.objects.filter(slug=self.slug).exclude(blog_id=self.blog_id).exists():
                 self.slug = f"{original_slug}-{counter}"
                 counter += 1
+
+        domain = config('BASE_URL', default='https://circle8.in/backend')  # Fallback to example.com if not set
+        self.url = f"{domain}/api/users/{self.slug}/"
+
+        if self.image and not self.blog_banner:
+            self.blog_banner = self.image
+        
         super().save(*args, **kwargs)

@@ -1110,7 +1110,7 @@ class BlogDetailView(ResponseWrapperMixin, generics.RetrieveUpdateDestroyAPIView
 
         if lookup_value.isdigit():
             try:
-                return Blog.objects.get(id=int(lookup_value))
+                return Blog.objects.get(blog_id=int(lookup_value))
             except Blog.DoesNotExist:
                 pass  
         try:
