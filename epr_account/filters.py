@@ -214,11 +214,15 @@ class CreditOfferFilter(filters.FilterSet):
     minimum_purchase = filters.RangeFilter()
     is_sold = filters.BooleanFilter()
 
-    has_availability_proof = filters.BooleanFilter(
+    # has_availability_proof = filters.BooleanFilter(
+    #     method='filter_has_availability_proof',
+    #     label='Has Availability Proof'
+    # )
+    
+    has_availability_proof = filters.CharFilter(
         method='filter_has_availability_proof',
         label='Has Availability Proof'
     )
-
     def filter_waste_type(self, queryset, name, value):
         """
         Filter CreditOffers where waste_type is any of the selected values.
@@ -273,9 +277,15 @@ class CreditOfferFilter(filters.FilterSet):
         return queryset
 
     def filter_has_availability_proof(self, queryset, name, value):
-        if value is True:
+        # if value is True:
+        #     return queryset.exclude(availability_proof__exact="").filter(availability_proof__isnull=False)
+        # elif value is False:
+        #     return queryset.filter(Q(availability_proof__exact="") | Q(availability_proof__isnull=True))
+        # return queryset
+        value = str(value).lower()
+        if value == "yes":
             return queryset.exclude(availability_proof__exact="").filter(availability_proof__isnull=False)
-        elif value is False:
+        elif value == "no":
             return queryset.filter(Q(availability_proof__exact="") | Q(availability_proof__isnull=True))
         return queryset
 

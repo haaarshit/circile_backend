@@ -202,10 +202,7 @@ class UpdateUserProfileView(APIView):
     authentication_classes = [CustomJWTAuthentication]
     permission_classes = [IsAuthenticated]
     parser_classes = [JSONParser, FormParser, MultiPartParser]
-     
-    # TODO -> MAY REMOVE 
-    # def put(self, request):
-    #     return self.update_profile(request, partial=False)  
+      
     def put(self, request):
             return Response(
                 {"error": "PUT method is not allowed. Please use PATCH instead.","status":False},
@@ -240,7 +237,7 @@ class UpdateUserProfileView(APIView):
                     return Response({"error": "Invalid user type","status":False}, status=status.HTTP_400_BAD_REQUEST)
 
                 serializer.is_valid(raise_exception=True)
-                serializer.save()  # This triggers model save() and clean()
+                serializer.save() 
                 return Response(
                             {"message": "Profile updated successfully", "data": serializer.data, "status": True},
                             status=status.HTTP_200_OK

@@ -4,13 +4,23 @@ from decouple import config
 from users.models import Recycler,Producer
 from superadmin.models import TransactionFee
 import mimetypes
+from rest_framework.validators import UniqueValidator
 
 from superadmin.models import SuperAdmin
 import json
 cloud_name = config('CLOUDINARY_CLOUD_NAME')
 
 class RecyclerEPRSerializer(serializers.ModelSerializer):
-    # Define the field explicitly as a SerializerMethodField
+
+    epr_registration_number = serializers.CharField(
+        max_length=50,
+        validators=[
+            UniqueValidator(
+                queryset=RecyclerEPR.objects.all(),
+                message="This EPR Account already exists."
+            )
+        ]
+    )     
     epr_certificate = serializers.SerializerMethodField()
 
     class Meta:
@@ -72,6 +82,17 @@ class RecyclerEPRSerializer(serializers.ModelSerializer):
     #     return super().create(validated_data)
 
 class ProducerEPRSerializer(serializers.ModelSerializer):
+
+    epr_registration_number = serializers.CharField(
+        max_length=50,
+        validators=[
+            UniqueValidator(
+                queryset=ProducerEPR.objects.all(),
+                message="This EPR Account already exists."
+            )
+        ]
+    )
+
     epr_certificate = serializers.SerializerMethodField()
     targets = serializers.SerializerMethodField()
     class Meta:

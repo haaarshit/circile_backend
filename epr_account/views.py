@@ -3487,8 +3487,8 @@ class AllTypesView(APIView):
                 "trail_documents": formatted_allowed_docs,
                 "state": states,
                 "has_availability_proof": [
-                    {"name": True},
-                    {"name": False}
+                    {"name": "Yes"},
+                    {"name": "No"}
                 ]
             }
         }
