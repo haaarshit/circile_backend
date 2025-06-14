@@ -1972,7 +1972,6 @@ class CounterCreditOfferViewSet(viewsets.ModelViewSet):
 
 
 # PUBLIC VIEW FOR LISTING CREDIT OFFERS
-@method_decorator(cache_page(60 * 15), name='dispatch')
 class PublicCreditOfferListView(generics.ListAPIView):
     queryset = CreditOffer.objects.filter(is_sold=False).select_related('epr_account', 'epr_credit')
     serializer_class = CreditOfferSerializer
