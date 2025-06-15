@@ -408,6 +408,60 @@ class ResetPasswordView(APIView):
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+# update mail and password when user is logged in
+
+class UpdateEmailView(APIView):
+    authentication_classes = [CustomJWTAuthentication]
+    permission_classes = [IsAuthenticated]
+    parser_classes = [JSONParser, FormParser, MultiPartParser]
+
+    def patch(self, request):
+        current_password = request.data.get('current_password')
+        new_email = request.data.get('new_email')
+
+        if not current_password or not new_email:
+            return Response({"error": "Current password and new email are required.","status":False},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        user = request.user
+
+        if not check_password(current_password, user.password):
+            return Response({"error": "Current password is incorrect.","status":False},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        user.email = new_email
+        user.is_verified = False  
+        user.save()
+
+        user.generate_verification_token()
+        user.send_verification_email()
+
+        return Response({"message": "Email updated successfully.","status":True}, status=status.HTTP_200_OK)
+
+
+class UpdatePasswordView(APIView):
+    authentication_classes = [CustomJWTAuthentication]
+    permission_classes = [IsAuthenticated]
+    parser_classes = [JSONParser, FormParser, MultiPartParser]
+
+    def patch(self, request):
+        current_password = request.data.get('current_password')
+        new_password = request.data.get('new_password')
+
+        if not current_password or not new_password:
+            return Response({"error": "Current password and new password are required.","status":False},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        user = request.user
+
+        if not check_password(current_password, user.password):
+            return Response({"error": "Current password is incorrect.","status":False},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        user.set_password(new_password)
+        user.save()
+
+        return Response({"message": "Password updated successfully.","status":True}, status=status.HTTP_200_OK)
 
 class UserCountStatsView(APIView):
     authentication_classes = [CustomJWTAuthentication]

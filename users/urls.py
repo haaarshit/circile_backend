@@ -19,7 +19,9 @@ from .views import (
     PublicBlogListView,
     PublicBlogDetailView,
     LatestBlogsView,
-    battery_contact_email
+    battery_contact_email,
+    UpdateEmailView,
+    UpdatePasswordView,
 )
 
 urlpatterns = [
@@ -33,6 +35,10 @@ urlpatterns = [
     # password reset
     path('forgot-password/', ForgotPasswordView.as_view(), name='forgot-password'),
     path('reset-password/<str:user_type>/<str:token>/', ResetPasswordView.as_view(), name='reset-password'),
+
+    # update password and email where user is logged in
+    path('update-email/', UpdateEmailView.as_view(), name='update-email'),
+    path('update-password/', UpdatePasswordView.as_view(), name='update-password'),
 
     path('update/', UpdateUserProfileView.as_view(), name='udpate_view'),
     path('profile/', GetProfileView.as_view(), name='profile_view'),
