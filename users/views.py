@@ -49,6 +49,7 @@ from .filter import BlogFilter
 from .pagination import CustomPagination
 from django.utils.decorators import method_decorator
 from django.views.decorators.cache import cache_page
+from django.http import HttpResponseRedirect
 
 
 
@@ -1106,8 +1107,9 @@ def verify_email(request, user_type, token):
         user.verification_token = None
         user.save()
 
-        # TODO -> redirect to profile of the user
-        return Response({'message': 'Email verified successfully',"status":True}, status=status.HTTP_200_OK)
+        # return Response({'message': 'Email verified successfully',"status":True}, status=status.HTTP_200_OK)
+        redirect_url = 'https://circle8.in/login'  
+        return HttpResponseRedirect(redirect_url)
     
     except Exception as e:
                     print(f"Mail verification error: {str(e)}")
