@@ -681,7 +681,7 @@ class PublicBlogListView(generics.ListAPIView):
 
     search_fields = ['title', 'content']  # Keyword search fields
 
-    @method_decorator(cache_page(60 * 30))
+    @method_decorator(cache_page(60 * 10))
     def list(self, request, *args, **kwargs):
         try:
             queryset = self.filter_queryset(self.get_queryset())

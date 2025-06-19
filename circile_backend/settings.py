@@ -53,7 +53,8 @@ INSTALLED_APPS = [
     'epr_account',
     'corsheaders',
     'superadmin',
-    'django_filters'
+    'django_filters',
+    'ckeditor'
 ]
 
 MIDDLEWARE = [
