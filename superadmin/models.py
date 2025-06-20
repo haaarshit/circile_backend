@@ -101,8 +101,8 @@ class Blog(models.Model):
                 self.slug = f"{original_slug}-{counter}"
                 counter += 1
 
-        domain = config('BASE_URL', default='https://circle8.in/backend')  # Fallback to example.com if not set
-        self.url = f"{domain}/api/users/blogs/{self.slug}/"
+        domain = 'https://circle8.in'
+        self.url = f"{domain}/blog/{self.slug}/"
 
         if self.image and not self.blog_banner:
             self.blog_banner = self.image

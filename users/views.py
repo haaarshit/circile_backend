@@ -681,7 +681,6 @@ class PublicBlogListView(generics.ListAPIView):
 
     search_fields = ['title', 'content']  # Keyword search fields
 
-    @method_decorator(cache_page(60 * 10))
     def list(self, request, *args, **kwargs):
         try:
             queryset = self.filter_queryset(self.get_queryset())
@@ -709,7 +708,6 @@ class LatestBlogsView(generics.ListAPIView):
     filter_backends = [DjangoFilterBackend, filters.SearchFilter]
     filterset_class = BlogFilter
     search_fields = ['title', 'content']
-    @method_decorator(cache_page(60 * 60 * 2))
     def list(self, request, *args, **kwargs):
         try:
             queryset = self.filter_queryset(self.get_queryset())
@@ -775,7 +773,6 @@ class PublicBlogDetailView(generics.RetrieveAPIView):
             return Blog.objects.get(slug=lookup_value)
         except Blog.DoesNotExist:
             raise Http404("Blog not found")
-    @method_decorator(cache_page(60 * 60 * 2))
     def retrieve(self, request, *args, **kwargs):
         try:
             instance = self.get_object()
