@@ -574,7 +574,7 @@ class CounterCreditOffer(models.Model):
     )
     
     def generate_order_id(self):
-        last_request = PurchasesRequest.objects.aggregate(Max('order_id'))['order_id__max']
+        last_request = CounterCreditOffer.objects.aggregate(Max('order_id'))['order_id__max']
         if last_request:
             last_number = int(last_request[2:])  
             new_number = last_number + 1
