@@ -589,7 +589,7 @@ class CounterCreditOffer(models.Model):
         self.clean()
         if not self.order_id:
             with transaction.atomic():
-                locked_requests = PurchasesRequest.objects.select_for_update().all()
+                locked_requests = CounterCreditOffer.objects.select_for_update().all()
                 self.order_id = self.generate_order_id()
         super().save(*args, **kwargs)
 
