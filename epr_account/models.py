@@ -523,6 +523,12 @@ class CreditOffer(models.Model):
         fields_to_capitalize = [
             'offer_title'
         ]
+        
+        self.credit_available = abs(self.credit_available) if self.credit_available is not None else 0.0
+        self.minimum_purchase = abs(self.minimum_purchase) if self.minimum_purchase is not None else 0.0
+        self.price_per_credit = abs(self.price_per_credit) if self.price_per_credit is not None else 0.0
+        self.blocked_credit = abs(self.blocked_credit) if self.blocked_credit is not None else 0.0
+        
 
         # Apply title case to specified fields if they exist and are strings
         for field in fields_to_capitalize:
@@ -558,12 +564,33 @@ class CounterCreditOffer(models.Model):
 
 
     created_at = models.DateTimeField(default=timezone.now)
+    order_id = models.CharField(
+        max_length=8,  
+        unique=True,
+        editable=False,
+        null=False,
+        blank=False,
+        default=None 
+    )
+    
+    def generate_order_id(self):
+        last_request = PurchasesRequest.objects.aggregate(Max('order_id'))['order_id__max']
+        if last_request:
+            last_number = int(last_request[2:])  
+            new_number = last_number + 1
+        else:
+            new_number = 1
+        return f'CO{new_number:06d}'
 
     def clean(self):
         pass
     
     def save(self, *args, **kwargs):
         self.clean()
+        if not self.order_id:
+            with transaction.atomic():
+                locked_requests = PurchasesRequest.objects.select_for_update().all()
+                self.order_id = self.generate_order_id()
         super().save(*args, **kwargs)
 
 class PurchasesRequest(models.Model):
@@ -615,6 +642,30 @@ class PurchasesRequest(models.Model):
     is_complete = models.BooleanField(default=False)  # New field added
 
     created_at = models.DateTimeField(default=timezone.now)
+    order_id = models.CharField(
+        max_length=8,  
+        unique=True,
+        editable=False,
+        null=False,
+        blank=False,
+        default=None 
+    )
+    
+    def generate_order_id(self):
+        last_request = PurchasesRequest.objects.aggregate(Max('order_id'))['order_id__max']
+        if last_request:
+            last_number = int(last_request[2:])  # Skip 'O' prefix
+            new_number = last_number + 1
+        else:
+            new_number = 1
+        return f'PO{new_number:06d}'
+
+    def save(self, *args, **kwargs):
+        if not self.order_id:
+            with transaction.atomic():
+                locked_requests = PurchasesRequest.objects.select_for_update().all()
+                self.order_id = self.generate_order_id()
+        super().save(*args, **kwargs)
 
 
 
@@ -630,11 +681,19 @@ class Transaction(models.Model):
     id = models.UUIDField(default=uuid.uuid4, primary_key=True, editable=False)
     order_id = models.CharField(
         max_length=8,  
-        unique=True,
         editable=False,
         null=False,
         blank=False
     )
+    transac_id = models.CharField(
+        max_length=8,  
+        unique=True,
+        editable=False,
+        null=False,
+        blank=False,
+        default=None 
+    )
+    
     
     recycler = models.ForeignKey(
         'users.Recycler', 
@@ -732,24 +791,40 @@ class Transaction(models.Model):
     created_at = models.DateTimeField(default=timezone.now)
 
 
-    def generate_order_id(self):
+    # def generate_order_id(self):
+    #     # Get the highest existing order_id with 'O' prefix
+    #     last_transaction = Transaction.objects.aggregate(Max('order_id'))['order_id__max']
+    #     if last_transaction:
+    #         # Extract the numeric part (e.g., 'O0000012' -> '0000012')
+    #         last_number = int(last_transaction[1:])  # Skip the 'O' prefix
+    #         new_number = last_number + 1
+    #     else:
+    #         new_number = 1  # Start at 1 if no 
+        
+    #     return f'O{new_number:07d}'  
+    
+    def generate_tansaction_id(self):
         # Get the highest existing order_id with 'O' prefix
-        last_transaction = Transaction.objects.aggregate(Max('order_id'))['order_id__max']
+        last_transaction = Transaction.objects.aggregate(Max('transac_id'))['transac_id__max']
         if last_transaction:
             # Extract the numeric part (e.g., 'O0000012' -> '0000012')
-            last_number = int(last_transaction[1:])  # Skip the 'O' prefix
+            last_number = int(last_transaction[1:])  
             new_number = last_number + 1
         else:
-            new_number = 1  # Start at 1 if no 
+            new_number = 1  
         
-        return f'O{new_number:07d}'  # e.g., O0000001, O0000002, etc.
+        return f'T{new_number:07d}'  
 
     def save(self, *args, **kwargs):
         if not self.order_id:
+            raise ValidationError(f"order_id must be provided before saving Transaction. Received: {self.order_id}")
+     
+        if not self.transac_id:
             with transaction.atomic():
                 # Lock the table to ensure uniqueness in concurrent scenarios
                 locked_transactions = Transaction.objects.select_for_update().all()
-                self.order_id = self.generate_order_id()
+                # self.order_id = self.generate_order_id()
+                self.transac_id = self.generate_tansaction_id()
         self.clean()
         super().save(*args, **kwargs)
 

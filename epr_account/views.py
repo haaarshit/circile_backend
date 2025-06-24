@@ -2232,6 +2232,8 @@ class TransactionViewSet(viewsets.ModelViewSet):
                     data['product_type'] = credit_offer.epr_credit.product_type
                     data['producer_type'] = request.user.epr_accounts.first().producer_type
                     data['offered_by'] = credit_offer.recycler.unique_id
+                    data['order_id'] = purchases_request.order_id
+
 
                 except Exception as e:
                     return Response({
@@ -2274,6 +2276,8 @@ class TransactionViewSet(viewsets.ModelViewSet):
                     data['product_type'] = counter_credit_offer.credit_offer.epr_credit.product_type
                     data['producer_type'] = request.user.epr_accounts.first().producer_type
                     data['offered_by'] = request.user.unique_id
+                    data['order_id'] = counter_credit_offer.order_id
+                     
                 except CounterCreditOffer.DoesNotExist:
                     return Response({
                         "status": False,
@@ -3317,30 +3321,7 @@ class OrderDetailView(APIView):
                     serializer = PurchasesRequestSerializer(instance)
                     type = "direct purchase"
 
-            # Determine user type and filter accordingly
-            # if isinstance(user, Producer):
-            #     # Check CounterCreditOffer first (Producer creates these)
-            #     instance = CounterCreditOffer.objects.filter(id=record_id, producer=user).first()
-            #     if instance:
-            #         serializer = CounterCreditOfferSerializer(instance)
-            #     else:
-            #         # Check PurchasesRequest (Producer also creates these)
-            #         instance = PurchasesRequest.objects.filter(id=record_id, producer=user).first()
-            #         if instance:
-            #             serializer = PurchasesRequestSerializer(instance)
 
-            # elif isinstance(user, Recycler):
-            #     # Check CounterCreditOffer (Recycler updates/approves these)
-            #     instance = CounterCreditOffer.objects.filter(id=record_id, recycler=user).first()
-            #     if instance:
-            #         serializer = CounterCreditOfferSerializer(instance)
-            #     else:
-            #         # Check PurchasesRequest (Recycler updates/approves these)
-            #         instance = PurchasesRequest.objects.filter(id=record_id, recycler=user).first()
-            #         if instance:
-            #             serializer = PurchasesRequestSerializer(instance)
-
-            # If no instance is found
             if not instance:
                 return Response({
                     "status": False,

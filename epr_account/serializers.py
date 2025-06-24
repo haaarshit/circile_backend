@@ -614,7 +614,9 @@ class TransactionSerializer(serializers.ModelSerializer):
     producer_unique_id = serializers.SerializerMethodField()
     recycler_unique_id = serializers.SerializerMethodField()
     transaction_status = serializers.SerializerMethodField()
-    
+
+    order_id = serializers.CharField(max_length=8, required=True)
+
 
     def get_transaction_proof(self, obj):
         if obj.transaction_proof:
@@ -667,7 +669,6 @@ class TransactionSerializer(serializers.ModelSerializer):
 
     def validate(self, data):
         request = self.context.get('request')
-        
         if self.instance:  # Update
             user = request.user
             
