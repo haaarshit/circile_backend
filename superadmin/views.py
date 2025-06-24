@@ -237,7 +237,7 @@ class TransactionDetailView(BaseSuperAdminModelDetailView):
             credit_offer = transaction.credit_offer
             trail_docs = credit_offer.trail_documents if credit_offer else []
             doc_items = ''.join([f'<li>✅ {doc}</li>' for doc in trail_docs if doc.strip()])
-            if transaction.status == 'approved' and isinstance(request.user, SuperAdmin):
+            if transaction.status == 'approved' and isinstance(request.user, SuperAdmin) and not transaction.is_complete:
 
                 if credit_offer and credit_offer.credit_available < transaction.credit_quantity:
                             raise ValidationError(f"Not enough credit is available in credit offer for this transaction. Available credit {credit_offer.credit_available}. Required credit {transaction.credit_quantity} ")
@@ -250,24 +250,24 @@ class TransactionDetailView(BaseSuperAdminModelDetailView):
                     )
 
 
-                if epr_target:
-                    epr_target.achieved_quantity += int(transaction.credit_quantity)
-                    epr_target.blocked_target -= float(transaction.credit_quantity)
-                    if epr_target.blocked_target < 0:
-                        epr_target.blocked_target = 0  
-                    if epr_target.achieved_quantity >= epr_target.target_quantity:
-                        epr_target.is_achieved = True
-                    epr_target.save()
+                # if epr_target:
+                #     epr_target.achieved_quantity += int(transaction.credit_quantity)
+                #     epr_target.blocked_target -= float(transaction.credit_quantity)
+                #     if epr_target.blocked_target < 0:
+                #         epr_target.blocked_target = 0  
+                #     if epr_target.achieved_quantity >= epr_target.target_quantity:
+                #         epr_target.is_achieved = True
+                #     epr_target.save()
 
-                if credit_offer:
-                    credit_offer.credit_available = credit_offer.credit_available - transaction.credit_quantity
-                    credit_offer.blocked_credit -= transaction.credit_quantity
-                    if credit_offer.blocked_credit < 0:
-                        credit_offer.blocked_credit = 0
-                    if credit_offer.credit_available < credit_offer.minimum_purchase:
-                        credit_offer.minimum_purchase = credit_offer.credit_available
-                    credit_offer.is_sold = credit_offer.credit_available == 0
-                    credit_offer.save()
+                # if credit_offer:
+                #     credit_offer.credit_available = credit_offer.credit_available - transaction.credit_quantity
+                #     credit_offer.blocked_credit -= transaction.credit_quantity
+                #     if credit_offer.blocked_credit < 0:
+                #         credit_offer.blocked_credit = 0
+                #     if credit_offer.credit_available < credit_offer.minimum_purchase:
+                #         credit_offer.minimum_purchase = credit_offer.credit_available
+                #     credit_offer.is_sold = credit_offer.credit_available == 0
+                #     credit_offer.save()
 
                
              
@@ -593,6 +593,33 @@ class TransactionDetailView(BaseSuperAdminModelDetailView):
                     fail_silently=False,
                     html_message=producer_html_message
                 )
+ 
+            if transaction.status == 'approved' and  isinstance(request.user, SuperAdmin) and transaction.is_complete:
+                
+                epr_target = transaction.epr_target
+
+                if not epr_target:
+                    raise ValidationError(
+                        f"No EPR Target is associated with this transaction. Please ensure the transaction has a valid EPR target."
+                    )
+                if epr_target:
+                    epr_target.achieved_quantity += int(transaction.credit_quantity)
+                    epr_target.blocked_target -= float(transaction.credit_quantity)
+                    if epr_target.blocked_target < 0:
+                        epr_target.blocked_target = 0  
+                    if epr_target.achieved_quantity >= epr_target.target_quantity:
+                        epr_target.is_achieved = True
+                    epr_target.save()
+
+                if credit_offer:
+                    credit_offer.credit_available = credit_offer.credit_available - transaction.credit_quantity
+                    credit_offer.blocked_credit -= transaction.credit_quantity
+                    if credit_offer.blocked_credit < 0:
+                        credit_offer.blocked_credit = 0
+                    if credit_offer.credit_available < credit_offer.minimum_purchase:
+                        credit_offer.minimum_purchase = credit_offer.credit_available
+                    credit_offer.is_sold = credit_offer.credit_available == 0
+                    credit_offer.save()
 
 
             return Response( serializer.data, status=status.HTTP_200_OK)

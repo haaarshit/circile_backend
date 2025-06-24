@@ -674,8 +674,8 @@ class TransactionSerializer(serializers.ModelSerializer):
             
             # Superadmin check
             if isinstance(user, SuperAdmin):
-                allowed_fields = {'is_approved', 'status'}
-                if self.instance.is_approved:
+                allowed_fields = {'is_approved', 'status','is_complete'}
+                if self.instance.is_approved and data.get('status'):
                     raise serializers.ValidationError("Transaction is already approved")
                 if any(k not in allowed_fields for k in data.keys()):
                     raise serializers.ValidationError("Superadmin can only update 'is_approved' and 'status'")
@@ -737,11 +737,13 @@ class TransactionSerializer(serializers.ModelSerializer):
         elif isinstance(request.user, Recycler):
             instance.trail_documents = request.FILES.get('trail_documents', instance.trail_documents)
             instance.recycler_transfer_proof = request.FILES.get('recycler_transfer_proof', instance.recycler_transfer_proof)
-            instance.is_complete = True
+            # instance.is_complete = True
         
         elif isinstance(request.user, SuperAdmin):
             instance.is_approved = validated_data.get('is_approved', instance.is_approved)
             instance.status = validated_data.get('status', instance.status)
+            instance.is_complete = validated_data.get('is_complete', instance.is_complete)
+
         
         instance.save()
         return instance
