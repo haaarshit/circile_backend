@@ -5,7 +5,8 @@ from users.models import Recycler,Producer
 from superadmin.models import TransactionFee
 import mimetypes
 from rest_framework.validators import UniqueValidator
-
+from django.db import IntegrityError, transaction
+from django.core.exceptions import ValidationError as DjangoValidationError
 from superadmin.models import SuperAdmin
 import json
 cloud_name = config('CLOUDINARY_CLOUD_NAME')
@@ -172,6 +173,20 @@ class EPRTargetSerializer(serializers.ModelSerializer):
         model = EPRTarget
         fields = '__all__'
         read_only_fields = ['id', 'producer','erp_account'] 
+    
+
+    def create(self, validated_data):
+        try:
+            with transaction.atomic():
+                target = EPRTarget.objects.create(**validated_data)
+            return target
+
+        except IntegrityError:
+            raise serializers.ValidationError("Target for this Product Type and FY already exists for this producer.")
+
+
+        except DjangoValidationError as e:
+            raise serializers.ValidationError(e.message_dict)
 
 
 class CreditOfferSerializer(serializers.ModelSerializer):
@@ -681,7 +696,10 @@ class TransactionSerializer(serializers.ModelSerializer):
                     raise serializers.ValidationError("Superadmin can only update 'is_approved' and 'status'")
                 if data.get('status') == 'approved' and not (self.instance.transaction_proof):
                     raise serializers.ValidationError("Cannot approve transaction without Producer Transaction Proof")
-            
+                if data.get('is_complete') and not  self.instance.recycler_transfer_proof:
+                    raise serializers.ValidationError("Cannot mark transaction as complete without Recycler Transfer Proof")
+                if data.get('is_complete') and  self.instance.is_complete:
+                    raise serializers.ValidationError("Transaction is already marked as complete")
             # Producer check
             elif isinstance(user, Producer):
                 if self.instance.status == 'rejected':

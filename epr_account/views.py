@@ -1038,9 +1038,17 @@ class EPRTargetViewSet(viewsets.ModelViewSet):
                 "data": serializer.data
             }, status=status.HTTP_201_CREATED)
         except serializers.ValidationError as e:
+            error_message = e.detail
+            if isinstance(error_message, dict):
+                # If it's a message dict, join values
+                error_message = " ".join([str(v[0]) if isinstance(v, list) else str(v) for v in error_message.values()])
+            elif isinstance(error_message, list):
+                error_message = " ".join([str(m) for m in error_message])
+            else:
+                error_message = str(error_message)
             return Response({
                 "status": False,
-                "error": e.detail if hasattr(e, 'detail') else str(e)
+                "error": error_message
             }, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             return Response({
@@ -1143,10 +1151,33 @@ class EPRTargetViewSet(viewsets.ModelViewSet):
             if instance is None:
               raise ValueError("Serializer.save() returned None, expected an instance.")
             instance.full_clean()  
+        
+        except serializers.ValidationError as e:
+            error_message = e.detail
+            if isinstance(error_message, dict):
+                messages = []
+                for v in error_message.values():
+                    if isinstance(v, list):
+                        messages.extend([str(item) for item in v])
+                    else:
+                        messages.append(str(v))
+                message = " ".join(messages)
+            elif isinstance(error_message, list):
+                message = " ".join([str(m) for m in error_message])
+            else:
+                message = str(error_message)
+            raise ValidationError(message)
         except DjangoValidationError as e:
-            if instance is not None: 
-                instance.delete()
-            raise serializers.ValidationError(e.message_dict if hasattr(e, 'message_dict') else {'error': str(e)})
+            if hasattr(e, 'message_dict'):
+                    message = e.message_dict
+            elif hasattr(e, 'messages'):
+                    message = e.messages[0]  
+            else:
+                    message = str(e)
+            raise ValidationError(
+               message
+            )
+        
         except Exception as e:
             if instance is not None:  
                instance.delete()

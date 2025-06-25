@@ -418,6 +418,13 @@ class EPRTarget(models.Model):
 
     created_at = models.DateTimeField(default=timezone.now)
 
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=['producer', 'product_type', 'FY'],
+                name='unique_producer_product_type_fy'
+            )
+        ]
     
     def clean(self):
         if self.waste_type in WASTE_CHOICES:
