@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from .models import Recycler, Producer, Subscriber
 from decouple import config
+import mimetypes
 cloud_name = config('CLOUDINARY_CLOUD_NAME')
 
 class RecyclerSerializer(serializers.ModelSerializer):
@@ -37,25 +38,39 @@ class RecyclerUpdateSerializer(serializers.ModelSerializer):
         request = self.context.get('request')
         instance = self.instance  
 
+        allowed_logo_types = [
+            'image/jpeg',
+            'image/png',
+            'image/gif',
+            'image/bmp',
+            'image/webp',
+            'image/jpg'
+        ]
+        if 'gst_certificate' in request.FILES:
+            gst_certificate_file = request.FILES.get('gst_certificate')
+            mime_type, _ = mimetypes.guess_type(gst_certificate_file.name)
+            if mime_type != 'application/pdf':
+                raise serializers.ValidationError({
+                    'gst_certificate': 'Only PDF files are allowed for GST Certificate.'
+                })
+        if 'company_logo' in request.FILES:
+            company_logo_file = request.FILES.get('company_logo')
+            mime_type, _ = mimetypes.guess_type(company_logo_file.name)
+            if mime_type not in allowed_logo_types:
+                raise serializers.ValidationError({
+                    'company_logo': 'Only JPEG, PNG, GIF, BMP, WEBP, and JPG files are allowed for Company Logo.'
+                })
+
 
         if request and request.method in ['PATCH', 'PUT']:
-            # For partial updates, only validate fields that are being updated
-            # if 'company_logo' in request.FILES and not request.FILES.get('company_logo'):
-            #     raise serializers.ValidationError({"company_logo": "Company logo file is required."})
-                
-            # if 'pcb_doc' in request.FILES and not request.FILES.get('pcb_doc'):
-            #     raise serializers.ValidationError({"pcb_doc": "PCB document file is required."})
-            
-                            
-            # if 'canceled_check_proof' in request.FILES and not request.FILES.get('canceled_check_proof'):
-            #     raise serializers.ValidationError({"canceled_check_proof": " canceled_check_proof is required."})
+
 
             if 'company_logo' in request.FILES:
                 if not request.FILES.get('company_logo'):
                     raise serializers.ValidationError({"company_logo": "Company logo file is required."})
                 # Check if company_logo is already set
-                if instance and instance.company_logo:
-                    raise serializers.ValidationError({"company_logo": "Company logo is already set and cannot be updated."})
+                # if instance and instance.company_logo:
+                #     raise serializers.ValidationError({"company_logo": "Company logo is already set and cannot be updated."})
                 
             if 'pcb_doc' in request.FILES:
                 if not request.FILES.get('pcb_doc'):
@@ -97,6 +112,11 @@ class RecyclerUpdateSerializer(serializers.ModelSerializer):
                 representation['canceled_check_proof'] = instance.canceled_check_proof.url
             else:
                 representation['canceled_check_proof'] = f'https://res.cloudinary.com/{cloud_name}/{instance.canceled_check_proof.url}'
+        if instance.gst_certificate:
+            if instance.gst_certificate.url.startswith('http'):
+                representation['gst_certificate'] = instance.gst_certificate.url
+            else:
+                representation['gst_certificate'] = f'https://res.cloudinary.com/{cloud_name}/{instance.gst_certificate.url}'
         representation.pop('password', None)        
         return representation
 
@@ -109,7 +129,29 @@ class ProducerUpdateSerializer(serializers.ModelSerializer):
     def validate(self, data):
         request = self.context.get('request')
         instance = self.instance  
-
+        allowed_logo_types = [
+            'image/jpeg',
+            'image/png',
+            'image/gif',
+            'image/bmp',
+            'image/webp',
+            'image/jpg'
+        ]
+        if 'gst_certificate' in request.FILES:
+            gst_certificate_file = request.FILES.get('gst_certificate')
+            mime_type, _ = mimetypes.guess_type(gst_certificate_file.name)
+            if mime_type != 'application/pdf':
+                raise serializers.ValidationError({
+                    'gst_certificate': 'Only PDF files are allowed for GST Certificate.'
+                })
+        if 'company_logo' in request.FILES:
+            company_logo_file = request.FILES.get('company_logo')
+            mime_type, _ = mimetypes.guess_type(company_logo_file.name)
+            if mime_type not in allowed_logo_types:
+                raise serializers.ValidationError({
+                    'company_logo': 'Only JPEG, PNG, GIF, BMP, WEBP, and JPG files are allowed for Company Logo.'
+                })
+            
         if request and request.method in ['PATCH', 'PUT']:
             # For partial updates, only validate fields that are being updated
             # if 'company_logo' in request.FILES and not request.FILES.get('company_logo'):
@@ -125,8 +167,8 @@ class ProducerUpdateSerializer(serializers.ModelSerializer):
                 if not request.FILES.get('company_logo'):
                     raise serializers.ValidationError("Company logo file is required.")
                 # Check if company_logo is already set
-                if instance and instance.company_logo:
-                    raise serializers.ValidationError({"company_logo": "Company logo is already set and cannot be updated."})
+                # if instance and instance.company_logo:
+                #     raise serializers.ValidationError({"company_logo": "Company logo is already set and cannot be updated."})
                 
             if 'pcb_doc' in request.FILES:
                 if not request.FILES.get('pcb_doc'):
@@ -170,19 +212,26 @@ class ProducerUpdateSerializer(serializers.ModelSerializer):
                 representation['canceled_check_proof'] = f'https://res.cloudinary.com/{cloud_name}/{instance.canceled_check_proof.url}'
         representation.pop('password', None)
 
+        if instance.gst_certificate:
+            if instance.gst_certificate.url.startswith('http'):
+                representation['gst_certificate'] = instance.gst_certificate.url
+            else:
+                representation['gst_certificate'] = f'https://res.cloudinary.com/{cloud_name}/{instance.gst_certificate.url}'
+
         return representation
     
 class RecyclerDetailSerializer(serializers.ModelSerializer):
     company_logo = serializers.SerializerMethodField()
     canceled_check_proof = serializers.SerializerMethodField()
     pcb_doc = serializers.SerializerMethodField()
+    gst_certificate = serializers.SerializerMethodField()
     class Meta:
         model = Recycler
         fields = [
             'id', 'email', 'full_name', 'mobile_no', 'designation', 
             'company_name', 'city', 'state', 'gst_number', 'pcb_number', 
             'address', 'company_logo', 'pcb_doc', 'is_active', 'is_verified','unique_id','social_links','registration_date', 'account_holder_name', 'account_number', 'bank_name', 
-                'ifsc_code', 'branch_name','canceled_check_proof'
+                'ifsc_code', 'branch_name','canceled_check_proof','gst_certificate'
         ]
     def get_company_logo(self, obj):
         """
@@ -228,10 +277,25 @@ class RecyclerDetailSerializer(serializers.ModelSerializer):
                 print(f"Error getting pcb_doc URL: {str(e)}")
                 return None
         return None
+    def get_gst_certificate(self, obj):
+        """
+        Handle gst_certificate URL generation
+        """
+        if obj.gst_certificate:
+            try:
+                url = obj.gst_certificate.url
+                if url.startswith('http'):
+                    return url
+                return f'https://res.cloudinary.com/{cloud_name}/{url}'
+            except Exception as e:
+                print(f"Error getting gst_certificate URL: {str(e)}")
+                return None
+        return None
     
 class ProducerDetailSerializer(serializers.ModelSerializer):
     company_logo = serializers.SerializerMethodField()
     canceled_check_proof = serializers.SerializerMethodField()
+    gst_certificate = serializers.SerializerMethodField()
 
     pcb_doc = serializers.SerializerMethodField()
     class Meta:
@@ -240,7 +304,7 @@ class ProducerDetailSerializer(serializers.ModelSerializer):
             'id', 'email', 'full_name', 'mobile_no', 'designation', 
             'company_name', 'city', 'state', 'gst_number', 'pcb_number', 
             'address', 'company_logo', 'pcb_doc', 'is_active', 'is_verified','unique_id','social_links','registration_date', 'account_holder_name', 'account_number', 'bank_name', 
-                'ifsc_code', 'branch_name','canceled_check_proof'
+                'ifsc_code', 'branch_name','canceled_check_proof','gst_certificate'
         ]
     def get_company_logo(self, obj):
         """
@@ -284,6 +348,20 @@ class ProducerDetailSerializer(serializers.ModelSerializer):
                 return f'https://res.cloudinary.com/{cloud_name}/{url}'
             except Exception as e:
                 print(f"Error getting pcb_doc URL: {str(e)}")
+                return None
+        return None
+    def get_gst_certificate(self, obj):
+        """
+        Handle gst_certificate URL generation
+        """
+        if obj.gst_certificate:
+            try:
+                url = obj.gst_certificate.url
+                if url.startswith('http'):
+                    return url
+                return f'https://res.cloudinary.com/{cloud_name}/{url}'
+            except Exception as e:
+                print(f"Error getting gst_certificate URL: {str(e)}")
                 return None
         return None
 

@@ -42,7 +42,7 @@ class BaseUserModel(AbstractBaseUser):
 
     company_logo = CloudinaryField('image', null=True, blank=True)
     pcb_doc = CloudinaryField('raw', resource_type='raw', null=True, blank=True)
-
+    gst_certificate = CloudinaryField('raw', resource_type='raw', null=True, blank=True)
     password_reset_token = models.CharField(max_length=100, null=True, blank=True)
     reset_token_created_at = models.DateTimeField(null=True, blank=True)
 

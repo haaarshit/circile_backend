@@ -400,6 +400,7 @@ class CounterCreditOfferSerializer(serializers.ModelSerializer):
     transaction_fee =  serializers.SerializerMethodField()
     gst =  serializers.SerializerMethodField()
     total =  serializers.SerializerMethodField()
+    product_type =  serializers.SerializerMethodField()
 
 
 
@@ -479,7 +480,9 @@ class CounterCreditOfferSerializer(serializers.ModelSerializer):
             # return (price*quantity) + (price*quantity)*0.18 + fee
         return 0
 
-
+    def get_product_type(self, obj):
+        if obj.credit_offer:
+            return obj.credit_offer.product_type
 
     def create(self, validated_data): 
 
@@ -522,6 +525,7 @@ class PurchasesRequestSerializer(serializers.ModelSerializer):
     transaction_fee =  serializers.SerializerMethodField()
     gst =  serializers.SerializerMethodField()
     total =  serializers.SerializerMethodField()
+    product_type =  serializers.SerializerMethodField()
 
     class Meta:
         model = PurchasesRequest
@@ -594,7 +598,10 @@ class PurchasesRequestSerializer(serializers.ModelSerializer):
             return  value + processing_fee + gst 
             # return (price*quantity) + (price*quantity)*0.18 + fee
         return 0
-
+    
+    def get_product_type(self, obj):
+        if obj.credit_offer:
+            return obj.credit_offer.product_type
 
 
     def validate(self, data):
