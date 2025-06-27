@@ -51,7 +51,7 @@ from django.utils.decorators import method_decorator
 from django.views.decorators.cache import cache_page
 from django.http import HttpResponseRedirect
 
-
+import requests
 
 class RegisterRecyclerView(generics.CreateAPIView):
     """
@@ -801,7 +801,38 @@ class PublicBlogDetailView(generics.RetrieveAPIView):
                 },
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
-        
+
+
+# IFSC Code Fetch API
+class FetchBankDetailsAPIView(APIView):
+
+    def post(self, request):
+        ifsc_code = request.data.get('ifsc')
+
+        if not ifsc_code:
+            return Response(
+                {"status": False, "message": "IFSC code is required"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        url = f"https://ifsc.razorpay.com/{ifsc_code}"
+        response = requests.get(url)
+
+        if response.status_code == 200:
+            bank_data = response.json()
+            branch_name = bank_data.get("BRANCH", "Unknown Branch")
+            bank = bank_data.get("BANK", "Unknown Bank")
+
+            return Response(
+                {"status": True, "branch": branch_name, "bank": bank},
+                status=status.HTTP_200_OK
+            )
+        else:
+            return Response(
+                {"status": False, "message": "Invalid IFSC code"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
 # contact us
 @api_view(['POST'])
 @permission_classes([AllowAny])  # Public route

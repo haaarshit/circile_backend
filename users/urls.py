@@ -22,6 +22,7 @@ from .views import (
     battery_contact_email,
     UpdateEmailView,
     UpdatePasswordView,
+    FetchBankDetailsAPIView,
 )
 
 urlpatterns = [
@@ -64,5 +65,6 @@ urlpatterns = [
     # path('blogs/<int:pk>/', PublicBlogDetailView.as_view(), name='public-blog-detail'),
     path('blogs/<str:pk>/', PublicBlogDetailView.as_view(), name='public-blog-detail'),
 
+    path('fetch-bank-details/', FetchBankDetailsAPIView.as_view(), name='fetch-bank-details'),
 
 ]
