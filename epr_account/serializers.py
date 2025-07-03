@@ -256,9 +256,12 @@ class CreditOfferSerializer(serializers.ModelSerializer):
         return None
     
     def get_transaction_fee(self, obj):
-        fees =  TransactionFee.objects.first()
-        if fees:
-            return fees.transaction_fee 
+        price = obj.price_per_credit
+        if price and obj.minimum_purchase:
+            value = price*obj.minimum_purchase
+            processing_fee = 0.005 * value
+            return processing_fee
+
         return 0
     
     def get_gst(self, obj):
@@ -450,7 +453,7 @@ class CounterCreditOfferSerializer(serializers.ModelSerializer):
         quantity = obj.quantity
         if price and quantity:
             value = price*quantity
-            processing_fee = 0.05 * value
+            processing_fee = 0.005 * value
             return processing_fee
         return 0
     
@@ -568,7 +571,7 @@ class PurchasesRequestSerializer(serializers.ModelSerializer):
         quantity = obj.quantity
         if price and quantity:
             value = price*quantity
-            processing_fee = 0.05 * value
+            processing_fee = 0.005 * value
             return processing_fee
         return 0
     

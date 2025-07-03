@@ -580,14 +580,18 @@ class CounterCreditOffer(models.Model):
         default=None 
     )
     
+    # def generate_order_id(self):
+    #     last_request = CounterCreditOffer.objects.aggregate(Max('order_id'))['order_id__max']
+    #     if last_request:
+    #         last_number = int(last_request[2:])  
+    #         new_number = last_number + 1
+    #     else:
+    #         new_number = 1
+    #     return f'O{new_number:07d}'
     def generate_order_id(self):
-        last_request = CounterCreditOffer.objects.aggregate(Max('order_id'))['order_id__max']
-        if last_request:
-            last_number = int(last_request[2:])  
-            new_number = last_number + 1
-        else:
-            new_number = 1
-        return f'CO{new_number:06d}'
+        new_number = OrderSequence.get_next_number()
+        return f'O{new_number:07d}'
+
 
     def clean(self):
         pass
@@ -658,14 +662,17 @@ class PurchasesRequest(models.Model):
         default=None 
     )
     
+    # def generate_order_id(self):
+    #     last_request = PurchasesRequest.objects.aggregate(Max('order_id'))['order_id__max']
+    #     if last_request:
+    #         last_number = int(last_request[2:])  # Skip 'O' prefix
+    #         new_number = last_number + 1
+    #     else:
+    #         new_number = 1
+    #     return f'O{new_number:07d}'
     def generate_order_id(self):
-        last_request = PurchasesRequest.objects.aggregate(Max('order_id'))['order_id__max']
-        if last_request:
-            last_number = int(last_request[2:])  # Skip 'O' prefix
-            new_number = last_number + 1
-        else:
-            new_number = 1
-        return f'PO{new_number:06d}'
+        new_number = OrderSequence.get_next_number()
+        return f'O{new_number:07d}'
 
     def save(self, *args, **kwargs):
         if not self.order_id:
@@ -674,7 +681,17 @@ class PurchasesRequest(models.Model):
                 self.order_id = self.generate_order_id()
         super().save(*args, **kwargs)
 
+# order sequence for counter credit and purchase request
+class OrderSequence(models.Model):
+    last_number = models.IntegerField(default=0)
 
+    @classmethod
+    def get_next_number(cls):
+        with transaction.atomic():
+            obj, _ = cls.objects.select_for_update().get_or_create(pk=1)
+            obj.last_number += 1
+            obj.save()
+            return obj.last_number
 
 
 
