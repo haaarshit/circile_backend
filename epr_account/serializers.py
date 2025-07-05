@@ -462,7 +462,7 @@ class CounterCreditOfferSerializer(serializers.ModelSerializer):
         quantity = obj.quantity
         if price and quantity:
             value = price*quantity
-            processing_fee = 0.05 * value
+            processing_fee = 0.005 * value
             gst = (value+processing_fee)*0.18
             return gst
         return 0
@@ -477,7 +477,7 @@ class CounterCreditOfferSerializer(serializers.ModelSerializer):
         quantity = obj.quantity
         if price and quantity:
             value = price*quantity
-            processing_fee = 0.05 * value
+            processing_fee = 0.005 * value
             gst = (value+processing_fee)*0.18
             return  value + processing_fee + gst 
             # return (price*quantity) + (price*quantity)*0.18 + fee
@@ -580,7 +580,7 @@ class PurchasesRequestSerializer(serializers.ModelSerializer):
         quantity = obj.quantity
         if price and quantity:
             value = price*quantity
-            processing_fee = 0.05 * value
+            processing_fee = 0.005 * value
             gst = (value+processing_fee)*0.18
             return gst
             # return (price*quantity)*0.18
@@ -596,7 +596,7 @@ class PurchasesRequestSerializer(serializers.ModelSerializer):
         quantity = obj.quantity
         if price and quantity:
             value = price*quantity
-            processing_fee = 0.05 * value
+            processing_fee = 0.005 * value
             gst = (value+processing_fee)*0.18
             return  value + processing_fee + gst 
             # return (price*quantity) + (price*quantity)*0.18 + fee
